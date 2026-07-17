@@ -12,11 +12,13 @@ import { WorkspaceStore } from './workspace-store.js';
 import {
   gitClone,
   gitCommit,
+  gitListChanges,
   gitPush,
   gitStatus,
   listWorkspaceFiles,
   readWorkspaceFile,
   writeWorkspaceFile,
+  type GitChange,
 } from './git.js';
 import { searchWorkspace, type SearchHit, type SearchOpts } from './search.js';
 
@@ -53,8 +55,11 @@ export class ZCodeBrowserAgent implements BrowserAgent {
       const keys = await this.fs.listFiles('workspace');
       const ids = new Set<string>();
       for (const k of keys) {
-        const m = /^workspace\/([^/]+)\/\.zcode-workspace\.json$/.exec(k);
-        if (m) ids.add(m[1]!);
+        // Prefer explicit meta; also discover bare workspace/<id>/... trees (e.g. older clones)
+        const meta = /^workspace\/([^/]+)\/\.zcode-workspace\.json$/.exec(k);
+        if (meta) ids.add(meta[1]!);
+        const any = /^workspace\/([^/]+)\//.exec(k);
+        if (any) ids.add(any[1]!);
       }
       for (const id of ids) {
         if (this.store.get(id)) continue;
@@ -141,6 +146,12 @@ export class ZCodeBrowserAgent implements BrowserAgent {
     behind: number;
   }> {
     return gitStatus(this.fs, this.store, workspaceId);
+  }
+
+  /** Working-tree changes for SCM providers (browser mode). */
+  async listChanges(workspaceId: string): Promise<GitChange[]> {
+    await this.ensureHydrated();
+    return gitListChanges(this.fs, this.store, workspaceId);
   }
 
   async listFiles(workspaceId: string): Promise<string[]> {

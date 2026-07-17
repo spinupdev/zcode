@@ -73,6 +73,13 @@ importers:
   extensions/zcode-diagnostics: {}
 
   extensions/zcode-git:
+    dependencies:
+      '@zcode/browser-agent':
+        specifier: workspace:*
+        version: link:../../packages/browser-agent
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
     devDependencies:
       '@types/vscode':
         specifier: ^1.95.0

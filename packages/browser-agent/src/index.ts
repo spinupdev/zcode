@@ -11,3 +11,5 @@ export { createDefaultFs } from './default-fs.js';
 export { createIsoFs } from './iso-fs.js';
 export { searchWorkspace } from './search.js';
 export type { SearchHit, SearchOpts } from './search.js';
+export { changeKindFromMatrix, gitListChanges } from './git.js';
+export type { GitChange, GitChangeKind } from './git.js';

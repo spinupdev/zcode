@@ -100,6 +100,22 @@ export async function gitClone(
   }
 
   emit({ phase: 'done', message: 'clone complete' });
+
+  // Persist meta so IDE / new tabs can hydrate the same IDB workspace
+  try {
+    await fs.writeFile(
+      `${rec.rootKey}/.zcode-workspace.json`,
+      JSON.stringify({
+        id: rec.id,
+        name: rec.name,
+        createdAt: rec.createdAt,
+        origin: opts.url,
+      }),
+    );
+  } catch {
+    /* non-fatal */
+  }
+
   await refreshBytes(fs, store, rec.id, rec.rootKey);
 
   const fresh = store.get(rec.id)!;
@@ -181,6 +197,59 @@ export async function gitPush(
   }
 }
 
+export type GitChangeKind = 'modified' | 'added' | 'deleted' | 'untracked';
+
+export interface GitChange {
+  path: string;
+  kind: GitChangeKind;
+}
+
+/**
+ * Map isomorphic-git statusMatrix row → change kind.
+ * Matrix: [filepath, HEAD, WORKDIR, STAGE] where 0=absent, 1=same/present, 2=different.
+ */
+export function changeKindFromMatrix(
+  head: number,
+  workdir: number,
+  stage: number,
+): GitChangeKind | null {
+  // Clean
+  if (head === 1 && workdir === 1 && stage === 1) return null;
+  // Untracked
+  if (head === 0 && workdir === 2 && stage === 0) return 'untracked';
+  // Deleted (in workdir)
+  if (head === 1 && workdir === 0) return 'deleted';
+  // Added (new file staged or present, not in HEAD)
+  if (head === 0 && (workdir === 2 || stage === 2 || stage === 3)) return 'added';
+  // Modified
+  if (head === 1 && (workdir === 2 || stage === 2 || stage === 3)) return 'modified';
+  // Staged-only variants
+  if (head === 0 && stage !== 0) return 'added';
+  if (head === 1 && stage === 0) return 'deleted';
+  return 'modified';
+}
+
+export async function gitListChanges(
+  fs: AgentFs,
+  store: WorkspaceStore,
+  workspaceId: string,
+): Promise<GitChange[]> {
+  const rec = requireWorkspace(store, workspaceId);
+  const iso = createIsoFs(fs, rec.rootKey);
+  try {
+    const matrix = await git.statusMatrix({ fs: iso, dir: '.' });
+    const out: GitChange[] = [];
+    for (const [filepath, head, workdir, stage] of matrix) {
+      if (filepath === '.' || filepath.startsWith('.git/')) continue;
+      const kind = changeKindFromMatrix(head, workdir, stage);
+      if (kind) out.push({ path: filepath, kind });
+    }
+    return out.sort((a, b) => a.path.localeCompare(b.path));
+  } catch {
+    return [];
+  }
+}
+
 export async function gitStatus(
   fs: AgentFs,
   store: WorkspaceStore,
@@ -196,8 +265,8 @@ export async function gitStatus(
   }
   let dirty = false;
   try {
-    const matrix = await git.statusMatrix({ fs: iso, dir: '.' });
-    dirty = matrix.some(([, head, workdir, stage]) => head !== workdir || workdir !== stage);
+    const changes = await gitListChanges(fs, store, workspaceId);
+    dirty = changes.length > 0;
   } catch {
     dirty = false;
   }

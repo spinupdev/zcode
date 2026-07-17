@@ -15,6 +15,11 @@ await esbuild.build({
   target: ['es2022'],
   external: ['vscode'],
   logLevel: 'info',
+  define: {
+    'process.env.NODE_ENV': '"production"',
+    'process.env': '{"NODE_ENV":"production"}',
+    global: 'globalThis',
+  },
 });
 
 console.log('zcode-git: built dist/web/extension.js');
