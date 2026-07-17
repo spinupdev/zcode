@@ -91,6 +91,17 @@ check_prereqs() {
 
 install_deps() {
   log "Installing npm deps in vendor/vscode (isolated from monorepo pnpm)"
+  # @vscode/ripgrep postinstall downloads GitHub releases; anonymous 403s are common.
+  # Prefer GITHUB_TOKEN (CI provides secrets.GITHUB_TOKEN; local: gh auth token).
+  if [[ -z "${GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null 2>&1; then
+    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+    export GITHUB_TOKEN
+  fi
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    log "GITHUB_TOKEN present for @vscode/ripgrep postinstall"
+  else
+    warn "GITHUB_TOKEN unset — @vscode/ripgrep may 403 on GitHub releases; set token or use CI"
+  fi
   (
     cd "${VSCODE}"
     if [[ -f package-lock.json ]]; then
@@ -150,61 +161,110 @@ compile_web() {
 }
 
 package_web() {
-  log "gulp vscode-web (product package — long-running, large disk)"
-  (
-    cd "${VSCODE}"
-    # Primary product task; falls back to esbuild bundle path if needed
-    if npm run gulp vscode-web; then
-      :
+  # Prefer without-mangling + vscode-web-ci: full `gulp vscode-web` runs
+  # compile-build-with-mangling which can fail typecheck on 1.129 (mangler renames
+  # private fields in test/sources). CI task uses esbuild bundle + package.
+  # Strategy (1.129):
+  # 1) vscode-web-ci — esbuild bundle + package (skips compile-build typecheck; preferred)
+  # 2) compile-build-without-mangling + vscode-web-ci
+  # 3) full vscode-web (mangler — often fails typecheck on this pin)
+  log "gulp vscode-web-ci (esbuild product package — preferred)"
+  local ok=0
+  local strategy="vscode-web-ci"
+  if (cd "${VSCODE}" && npm run gulp vscode-web-ci); then
+    ok=1
+  else
+    warn "vscode-web-ci failed — trying compile-build-without-mangling + vscode-web-ci"
+    strategy="compile-build-without-mangling+vscode-web-ci"
+    if (
+      cd "${VSCODE}"
+      npm run gulp compile-build-without-mangling && npm run gulp vscode-web-ci
+    ); then
+      ok=1
     else
-      warn "gulp vscode-web failed — trying esbuild-vscode-web"
-      npm run gulp esbuild-vscode-web
+      warn "without-mangling path failed — trying full gulp vscode-web (mangler may error)"
+      strategy="vscode-web"
+      if (cd "${VSCODE}" && npm run gulp vscode-web); then
+        ok=1
+      fi
     fi
-  )
+  fi
+  [[ "${ok}" -eq 1 ]] || die "all vscode-web package strategies failed (see docs/m0d-owned-web-spike.md)"
 
   local built=""
+  # Prefer full product package (monorepo/vscode-web) over intermediate out-vscode-web.
   local candidates=(
+    "${ROOT}/vscode-web"
     "${VSCODE}/.build/vscode-web"
     "${VSCODE}/.build/vscode-web-min"
     "${VSCODE}/out-vscode-web"
     "${VSCODE}/out-vscode-web-min"
+    "${ROOT}/out-vscode-web"
   )
   for c in "${candidates[@]}"; do
-    if [[ -d "${c}/out/vs" ]] || [[ -d "${c}/out/vs/workbench" ]]; then
+    if [[ -d "${c}/out/vs/workbench" ]] || [[ -d "${c}/vs/workbench" ]]; then
       built="${c}"
       break
     fi
   done
-  # Some layouts use out/vs at top of .build
   if [[ -z "${built}" ]]; then
     built="$(find "${VSCODE}/.build" -maxdepth 2 -type d -name 'vscode-web*' 2>/dev/null | head -1 || true)"
   fi
 
-  [[ -n "${built}" && -d "${built}" ]] || die "could not locate vscode-web output under vendor/vscode/.build — see docs/building-vscode.md"
+  [[ -n "${built}" && -d "${built}" ]] || die "could not locate vscode-web output — see docs/building-vscode.md"
 
   log "Staging ${built} → ${OUT_DIR}"
   rm -rf "${OUT_DIR}"
   mkdir -p "${OUT_DIR}"
-  if command -v rsync >/dev/null 2>&1; then
-    rsync -a "${built}/" "${OUT_DIR}/"
+
+  # Normalize layouts into dist/vscode-web/out/vs/... expected by /vscode/* host.
+  # - Product package: already has out/
+  # - esbuild intermediate (out-vscode-web): vs/ at top → wrap under out/
+  if [[ -d "${built}/out/vs" ]]; then
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a "${built}/" "${OUT_DIR}/"
+    else
+      cp -R "${built}/." "${OUT_DIR}/"
+    fi
+  elif [[ -d "${built}/vs" ]]; then
+    mkdir -p "${OUT_DIR}/out"
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a "${built}/" "${OUT_DIR}/out/"
+    else
+      cp -R "${built}/." "${OUT_DIR}/out/"
+    fi
   else
-    cp -R "${built}/." "${OUT_DIR}/"
+    die "unrecognized vscode-web layout at ${built}"
   fi
+
+  local entry="unknown"
+  if [[ -f "${OUT_DIR}/out/vs/workbench/workbench.web.main.internal.js" ]]; then
+    entry="workbench.web.main.internal.js"
+  elif [[ -f "${OUT_DIR}/out/vs/loader.js" ]]; then
+    entry="loader.js"
+  fi
+  [[ "${entry}" != "unknown" ]] || die "staged tree missing workbench entry under ${OUT_DIR}/out/vs"
 
   cat > "${OUT_DIR}/.zcode-vscode-web.json" <<EOF
 {
   "source": "owned",
   "path": "${built}",
+  "strategy": "${strategy}",
+  "entry": "${entry}",
   "vscodeCommit": "$(cd "${VSCODE}" && git rev-parse HEAD)",
   "vscodeTag": "$(cd "${VSCODE}" && git describe --tags --always 2>/dev/null || echo unknown)",
   "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "node": "$(node -v)"
 }
 EOF
-  # Marker for monorepo tooling
   mkdir -p "${ROOT}/dist/web"
   cp "${OUT_DIR}/.zcode-vscode-web.json" "${ROOT}/dist/web/.zcode-build.json"
-  log "Owned vscode-web staged at dist/vscode-web"
+  log "Owned vscode-web staged at dist/vscode-web (entry=${entry})"
+
+  if [[ -d "${ROOT}/vscode-web" ]]; then
+    log "Removing intermediate ${ROOT}/vscode-web (staged to dist/vscode-web)"
+    rm -rf "${ROOT}/vscode-web"
+  fi
 }
 
 main() {

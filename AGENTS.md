@@ -30,7 +30,11 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 ## Highest-priority remaining work
 
-See **PLAN.md §5**. B7, B8, M3, R3b code paths are **done**. Default next: **M0d** package on Node 24, **R2c** REH artifact, then **R6** terminal e2e.
+See **PLAN.md §5**. B7, B8, M3, R3b done; M0d/R2c/R6 harness in progress.
+
+- **M0d**: `./scripts/build-web.sh --package` on Node 24 + `GITHUB_TOKEN` (or CI `heavy_build=web`)
+- **R2c**: `./scripts/build-server.sh` or CI `heavy_build=reh` → `dist/server` (never commit binaries)
+- **R6**: `pnpm e2e:reh` (skips without artifact); full pass needs R2c
 
 ## Rules
 

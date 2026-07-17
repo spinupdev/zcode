@@ -59,7 +59,8 @@ const indexHtml = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>ZCode IDE</title>
   <link rel="icon" href="/vscode/favicon.ico" type="image/x-icon" />
-  <link data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="/vscode/out/vs/workbench/workbench.web.main.css" />
+  <!-- Stylesheet href is finalized by bootstrap.js (dogfood AMD vs owned esbuild). -->
+  <link id="zcode-workbench-css" data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="/vscode/out/vs/workbench/workbench.web.main.css" />
   <style>
     html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #1e1e1e; }
     #fallback {
@@ -161,13 +162,42 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
 
   window.product = withHostAuthority(window.product || {});
 
+  function loadScript(src, type) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      if (type) s.type = type;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load ' + src));
+      document.body.appendChild(s);
+    });
+  }
+
+  function setWorkbenchCss(href) {
+    const link = document.getElementById('zcode-workbench-css');
+    if (link) link.href = href;
+  }
+
+  // Detect layout: owned pin 1.129 esbuild (workbench.web.main.internal.js)
+  // vs dogfood npm vscode-web (AMD loader.js).
+  let layout = 'missing';
   try {
-    const probe = await fetch('/vscode/out/vs/loader.js', { method: 'HEAD', cache: 'no-store' });
-    if (!probe.ok) {
-      showFallback('Missing /vscode/out/vs/loader.js — run ./scripts/fetch-vscode-web.sh');
+    const owned = await fetch('/vscode/out/vs/workbench/workbench.web.main.internal.js', {
+      method: 'HEAD',
+      cache: 'no-store',
+    });
+    if (owned.ok) {
+      layout = 'owned-esbuild';
+    } else {
+      const dogfood = await fetch('/vscode/out/vs/loader.js', { method: 'HEAD', cache: 'no-store' });
+      if (dogfood.ok) layout = 'dogfood-amd';
+    }
+    if (layout === 'missing') {
+      showFallback(
+        'Missing VS Code Web assets under /vscode/out — run ./scripts/fetch-vscode-web.sh or ./scripts/build-web.sh --package',
+      );
       return;
     }
-    // Probe extension package
     const ext = await fetch('/extensions/zcode-browser-fs/package.json', { cache: 'no-store' });
     if (!ext.ok) {
       showFallback('Missing /extensions/zcode-browser-fs — rebuild extensions and workbench');
@@ -181,17 +211,26 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
   if (fallback) fallback.classList.add('hidden');
 
   const baseUrl = new URL('/vscode', location.origin).toString();
+  globalThis._VSCODE_FILE_ROOT = baseUrl + '/out/';
 
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('Failed to load ' + src));
-      document.body.appendChild(s);
-    });
+  if (layout === 'owned-esbuild') {
+    // Owned microsoft/vscode @ pin — ESM esbuild bundle (vscode-web-ci).
+    setWorkbenchCss('/vscode/out/vs/workbench/workbench.web.main.internal.css');
+    try {
+      await loadScript('/vscode/out/nls.messages.js');
+    } catch (_) {
+      /* english fallback is compiled into bundle */
+    }
+    const mod = await import('/vscode/out/vs/workbench/workbench.web.main.internal.js');
+    if (typeof mod.create !== 'function') {
+      throw new Error('owned workbench.web.main.internal.js missing create() export');
+    }
+    mod.create(document.body, window.product || {});
+    return;
   }
 
+  // Dogfood AMD (vscode-web npm package)
+  setWorkbenchCss('/vscode/out/vs/workbench/workbench.web.main.css');
   await loadScript('/vscode/out/vs/loader.js');
   await loadScript('/vscode/out/vs/webPackagePaths.js');
 

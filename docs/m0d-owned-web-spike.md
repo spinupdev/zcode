@@ -1,91 +1,64 @@
-# M0d — Owned VS Code Web build spike (pin 1.129.0)
+# M0d — Owned VS Code Web build (pin 1.129.0)
 
-Status: **scripts + docs ready**; full package is environment-bound (Node 24, disk, time).
+Status: **owned package path works** via `gulp vscode-web-ci` (esbuild). Dogfood AMD remains a fallback when only `fetch-vscode-web.sh` has been run.
 
 ## Goal
 
-Replace dogfood `vscode-web@1.91.1` (`./scripts/fetch-vscode-web.sh`) with an **owned** static tree from `vendor/vscode@1.129.0` staged at `dist/vscode-web`.
+Replace dogfood `vscode-web@1.91.1` with an **owned** static tree from `vendor/vscode@1.129.0` at `dist/vscode-web`.
+
+## Success criteria
+
+| Check | Result (2026-07-17 agent session) |
+| --- | --- |
+| `dist/vscode-web/.zcode-vscode-web.json` `"source":"owned"` | **yes** |
+| Entry `out/vs/workbench/workbench.web.main.internal.js` | **yes** (esbuild; no AMD `loader.js`) |
+| Workbench dual bootstrap (owned ESM + dogfood AMD) | **yes** (`apps/workbench` bootstrap) |
+| `/ide/` + `/vscode/...internal.js` HTTP 200 | **yes** (smoke) |
 
 ## Prerequisites
 
 | Item | Requirement |
 | --- | --- |
-| Node | **24.x** (see `vendor/vscode/.nvmrc`) |
-| Disk free | **≥ 30 GB** recommended for package |
-| RAM | 8 GB min; 16 GB+ preferred |
-| Time | compile-web: tens of minutes; `vscode-web` package: 1h+ cold |
-| Tooling | `npm` inside `vendor/vscode` only (not monorepo pnpm) |
+| Node | **24.x** (`vendor/vscode/.nvmrc`) |
+| Disk free | **≥ 30 GB** recommended |
+| `GITHUB_TOKEN` | Recommended for `@vscode/ripgrep` postinstall (anonymous **403** common) |
 
 ```bash
-# match upstream
-nvm install 24 && nvm use
-node -v   # v24.x
-
+export PATH="/path/to/node24/bin:$PATH"   # or nvm use 24
+export GITHUB_TOKEN="$(gh auth token)"
 ./scripts/build-web.sh --check
-./scripts/build-web.sh --spike    # list *web* gulp tasks when deps present
+./scripts/build-web.sh --package         # prefers gulp vscode-web-ci (~1 min after deps)
 ```
 
-## Gulp tasks (1.129)
+## Package strategy (1.129)
 
-From `vendor/vscode/build/gulpfile.vscode.web.ts` / `package.json`:
+Full `gulp vscode-web` runs **compile-build-with-mangling** and often fails typecheck (mangler + tests + copilot types).
 
-| Task | Purpose |
-| --- | --- |
-| `compile-web` | Compile browser workbench sources |
-| `esbuild-vscode-web` | Esbuild bundle → `out-vscode-web` |
-| `esbuild-vscode-web-min` | Minified bundle |
-| `vscode-web` / `vscode-web-ci` | Product package under `.build/vscode-web` |
-| `vscode-web-min` | Minified product package |
+Preferred path (what `build-web.sh --package` uses first):
 
-## Commands
+1. `gulp vscode-web-ci` — extensions + **esbuild-vscode-web** + product package (~45s warm)
+2. Fallback: `compile-build-without-mangling` + `vscode-web-ci`
+3. Fallback: full `gulp vscode-web` (mangler)
 
-```bash
-# 1) deps (isolated npm)
-./scripts/build-web.sh --deps-only
+Staging normalizes layouts so the host always sees:
 
-# 2) compile only (marker dist/web/.zcode-build.json)
-./scripts/build-web.sh --compile-only
-
-# 3) full package + stage dist/vscode-web
-./scripts/build-web.sh --package
-
-# 4) fetch prefers owned tree when .build/vscode-web exists
-./scripts/fetch-vscode-web.sh
+```text
+dist/vscode-web/out/vs/workbench/workbench.web.main.internal.js
 ```
 
-Serve:
+## Workbench load paths
 
-```bash
-pnpm --filter @zcode/workbench build
-node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
-# → /vscode/* from dist/vscode-web
-```
-
-## Success criteria
-
-- [ ] `dist/vscode-web/out/vs/loader.js` exists  
-- [ ] `dist/vscode-web/.zcode-vscode-web.json` has `"source": "owned"`  
-- [ ] `/ide/` boots with owned tree (same workbench host)  
-- [ ] `pnpm e2e:playwright` still green  
-
-## Known blockers on small machines
-
-| Symptom | Mitigation |
-| --- | --- |
-| Disk ~20GB free (this agent host) | Free space or run package on CI fat runner |
-| Node 26 vs .nvmrc 24 | `nvm use 24` before gulp |
-| OOM | `NODE_OPTIONS=--max-old-space-size=8192` (script default) |
-| Timeouts | Use `workflow_dispatch` REH/web jobs; do not block PR CI |
-
-## Dogfood vs owned
-
-| Mode | Source | Use |
+| Layout | Detect | Load |
 | --- | --- | --- |
-| Dogfood | npm `vscode-web@1.91.1` | Local UX until owned tree exists |
-| Owned | `gulp vscode-web` @ pin 1.129 | GA / version-aligned |
+| Owned esbuild | HEAD `…/workbench.web.main.internal.js` | `import(…internal.js).create(body, product)` |
+| Dogfood AMD | HEAD `…/loader.js` | classic `require` + `workbench.web.main.js` |
+
+## CI
+
+Actions → CI → Run workflow → `heavy_build=web` → artifact `zcode-vscode-web`.
 
 ## Related
 
-- [building-vscode.md](./building-vscode.md) — REH + web resource table  
-- [vscode-web.md](./vscode-web.md) — `/ide` integration  
-- [vscode-pin.md](./vscode-pin.md) — 1.129.0 pin  
+- [building-vscode.md](./building-vscode.md)
+- [vscode-web.md](./vscode-web.md)
+- [r6-terminal-e2e.md](./r6-terminal-e2e.md)

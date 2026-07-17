@@ -6,7 +6,7 @@
 | **Repo (current)** | `github.com/spinupdev/code-server` |
 | **Repo (preferred)** | `github.com/spinupdev/zcode` |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-17 |
+| **Last updated** | 2026-07-17 (M0d/R2c/R6 harness) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -244,12 +244,12 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | R1 | VS Code submodule + quilt | **done** | |
 | R2 | Server/REH build scripts + docs | **done** | scripts exist; full compile rare locally |
 | R2b | CI fat-runner REH artifact (workflow_dispatch) | **done** | skeleton in CI |
-| R2c | Successful owned REH artifact on main CI path | **remaining** | scripts+CI dispatch ready; needs fat disk/runner |
+| R2c | Successful owned REH artifact on main CI path | **in_progress** | CI Node24+token; local `-ci` incomplete without `out/`; quilt copilot type patch; full package still wiring |
 | R3 | Password login + HttpOnly cookie bridge | **done** | no `?tkn=` |
 | R3b | Spawn REH + cookie-authorized WS attach | **done** | cookie→token HTTP/WS proxy; spawn uses `--connection-token` |
 | R4 | Docker image + compose | **done** | single service; polish non-root later |
 | R5 | CLI `zcode serve` | **done** | |
-| R6 | Terminal/LSP verified e2e against REH | **remaining** | needs R2c + R3b |
+| R6 | Terminal/LSP verified e2e against REH | **in_progress** | skip-safe `pnpm e2e:reh` + mock terminal-flow unit tests; full UI needs complete R2c binary |
 
 ### 4.4 Merge — Workbench product
 
@@ -258,7 +258,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | M0a | Stage VS Code Web static assets | **done** | dogfood `vscode-web@1.91.1` via fetch script |
 | M0b | `/ide` host + bootstrap + product.json | **done** | |
 | M0c | Serve `/vscode` + `/extensions` | **done** | |
-| M0d | **Owned** OSS web build at pin 1.129 | **in_progress** | `build-web.sh --package/--spike` + docs; dogfood until Node24 package run |
+| M0d | **Owned** OSS web build at pin 1.129 | **done** | `vscode-web-ci` esbuild → dist/vscode-web source=owned; dual bootstrap (ESM/AMD); CI heavy_build=web |
 | M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
 | M1 | Dual-mode remoteAuthority connect end-to-end | **remaining** | product payload ready; REH missing |
 | M2 | Diagnostics extension, CSP, log redaction | **remaining** | stubs only |
@@ -292,9 +292,9 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 ### P0 — Next 1–2 sessions
 
-1. **M0d** — Run `./scripts/build-web.sh --package` on **Node 24** with ≥30GB free; confirm `dist/vscode-web/.zcode-vscode-web.json` source=owned.
-2. **R2c** — Produce `dist/server` REH artifact (local fat machine or CI `vscode-reh-build` workflow_dispatch).
-3. **R6** — Terminal `echo ok` e2e against REH via cookie proxy (needs R2c).
+1. **R2c** — Complete REH package with `out/server-main.js` (without-mangling compile + bundle + `-ci` or CI `heavy_build=reh`). Never commit binaries.
+2. **R6** — With complete artifact: `ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh` for terminal `echo ok`.
+3. **M1** — Dual-mode remoteAuthority dogfood once REH works.
 
 ### P1 — Product polish
 
@@ -375,6 +375,9 @@ pnpm smoke            # lighter checks
 | [`docs/vscode-web.md`](./docs/vscode-web.md) | `/ide` integration |
 | [`docs/hosting.md`](./docs/hosting.md) | Static + edge proxy |
 | [`docs/building-vscode.md`](./docs/building-vscode.md) | REH/web compile requirements |
+| [`docs/m0d-owned-web-spike.md`](./docs/m0d-owned-web-spike.md) | Owned web package spike + session log |
+| [`docs/reh-cookie-proxy.md`](./docs/reh-cookie-proxy.md) | R3b cookie → REH token proxy |
+| [`docs/r6-terminal-e2e.md`](./docs/r6-terminal-e2e.md) | R6 terminal e2e / skip policy |
 | [`docs/vscode-pin.md`](./docs/vscode-pin.md) | Pin SHA / upgrade |
 | [`docs/quilt-workflow.md`](./docs/quilt-workflow.md) | Patch discipline |
 | [`deploy/cloudflare/README.md`](./deploy/cloudflare/README.md) | Worker deploy |
@@ -390,5 +393,7 @@ pnpm smoke            # lighter checks
 | 2026-07-17 | B7 done: shared IDB `zcode-fs-v1` between SPA and `zcode-browser-fs`; Open in IDE |
 | 2026-07-17 | M3 Playwright e2e package + CI job (routes, SPA clone, IDE product); monorepo-root static paths; Buffer polyfill for isomorphic-git worker |
 | 2026-07-17 | B8 workbench SCM (`zcode-git`); R3b cookie→REH HTTP/WS proxy; M0d `build-web.sh --package/--spike` + spike docs |
+| 2026-07-17 | M0d: Node24 check/spike; deps blocked by ripgrep 403; CI `heavy_build=web`. R2c CI Node24+token+disk. R6 `pnpm e2e:reh` skip-safe + mock terminal-flow tests |
+| 2026-07-17 | **M0d done**: `vscode-web-ci` owned esbuild staged; workbench dual bootstrap; quilt copilot type patch for compile; R2c/R6 harness continue |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

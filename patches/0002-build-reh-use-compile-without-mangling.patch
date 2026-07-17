@@ -1,0 +1,13 @@
+diff --git a/build/gulpfile.reh.ts b/build/gulpfile.reh.ts
+index a40ff6f6..3e5b7d41 100644
+--- a/build/gulpfile.reh.ts
++++ b/build/gulpfile.reh.ts
+@@ -22,7 +22,7 @@ import * as fs from 'fs';
+ import glob from 'glob';
+ import { promisify } from 'util';
+ import rceditCallback from 'rcedit';
+-import { compileBuildWithManglingTask } from './gulpfile.compile.ts';
++import { compileBuildWithoutManglingTask as compileBuildWithManglingTask } from './gulpfile.compile.ts';
+ import { cleanExtensionsBuildTask, compileNonNativeExtensionsBuildTask, compileNativeExtensionsBuildTask, compileExtensionMediaBuildTask, compileCopilotExtensionBuildTask } from './gulpfile.extensions.ts';
+ import { vscodeWebResourceIncludes, createVSCodeWebFileContentMapper } from './gulpfile.vscode.web.ts';
+ import * as cp from 'child_process';
