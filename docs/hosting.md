@@ -30,7 +30,7 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 ### Cloudflare
 
-See [deploy/cloudflare/README.md](../deploy/cloudflare/README.md).
+See [deploy/cloudflare/README.md](../deploy/cloudflare/README.md) and the production checklist **[hosting-production.md](./hosting-production.md)** (H3).
 
 ### Self-host with login
 

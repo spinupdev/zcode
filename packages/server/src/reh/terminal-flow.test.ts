@@ -17,12 +17,13 @@ describe('R6 terminal proxy flow (mock REH)', () => {
     const connectionToken = 'internal-reh-token-r6';
     const bridge = new CookieTokenBridge('r6-test-secret');
 
-    // Mock REH: answers /version (used by workbench / health probes)
+    // Mock REH: answers /version (loopback REH uses --without-connection-token)
     const reh = http.createServer((req, res) => {
       const url = req.url ?? '';
       if (url.startsWith('/version')) {
-        if (!url.includes('connectionToken=')) {
-          res.writeHead(403).end('missing token');
+        // Must not forward client secrets to REH
+        if (url.includes('connectionToken=') || /[?&]tkn=/.test(url)) {
+          res.writeHead(403).end('client token must be stripped');
           return;
         }
         res.writeHead(200, { 'content-type': 'application/json' });

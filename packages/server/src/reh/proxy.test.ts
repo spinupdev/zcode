@@ -56,10 +56,45 @@ describe('tryProxyHttp', () => {
       });
       assert.equal(res.status, 200);
       assert.equal(await res.text(), 'reh-ok');
-      assert.ok(seen.url?.includes('connectionToken='));
-      assert.ok(seen.url?.includes(encodeURIComponent('tok-secret-xyz')) || seen.url?.includes('tok-secret-xyz'));
-      // Cookie value itself must not be the raw token path confusion
+      // Default: no mandatory REH token — client tkn stripped, none re-injected
+      assert.equal(seen.url?.includes('tok-secret-xyz'), false);
       assert.equal(cookie.includes('tok-secret-xyz'), false);
+    } finally {
+      await new Promise<void>((r) => front.close(() => r()));
+      await new Promise<void>((r) => reh.close(() => r()));
+    }
+  });
+
+  it('strips client-supplied tkn/connectionToken on upstream hop', async () => {
+    const seen: { url?: string } = {};
+    const reh = http.createServer((req, res) => {
+      seen.url = req.url;
+      res.writeHead(200).end('ok');
+    });
+    await new Promise<void>((r) => reh.listen(0, '127.0.0.1', () => r()));
+    const rehPort = (reh.address() as { port: number }).port;
+    const bridge = new CookieTokenBridge('proxy-test-secret-2');
+    const session = bridge.createSession('server-token-real');
+    const cookie = `zcode_sess=${session.cookieValue}`;
+    const front = http.createServer((req, res) => {
+      tryProxyHttp(req, res, {
+        bridge,
+        getTarget: () => ({
+          endpoint: `http://127.0.0.1:${rehPort}`,
+          connectionToken: 'server-token-real',
+        }),
+      });
+    });
+    await new Promise<void>((r) => front.listen(0, '127.0.0.1', () => r()));
+    const frontPort = (front.address() as { port: number }).port;
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:${frontPort}/version?tkn=wrong-client-token&connectionToken=also-wrong`,
+        { headers: { cookie } },
+      );
+      assert.equal(res.status, 200);
+      assert.equal(seen.url?.includes('wrong-client-token'), false);
+      assert.equal(seen.url?.includes('also-wrong'), false);
     } finally {
       await new Promise<void>((r) => front.close(() => r()));
       await new Promise<void>((r) => reh.close(() => r()));

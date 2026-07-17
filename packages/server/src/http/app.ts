@@ -32,6 +32,8 @@ export interface AppContext {
   productOverlay?: Record<string, unknown>;
   /** When true and REH is up, unauthenticated shell still serves login; REH via cookie proxy */
   rehProxyEnabled?: boolean;
+  /** Absolute workspace path opened on REH (for remote folderUri) */
+  workspacePath?: string;
 }
 
 export function createRequestHandler(ctx: AppContext) {
@@ -79,12 +81,24 @@ export function createRequestHandler(ctx: AppContext) {
           reh: ctx.rehMode ?? 'none',
           rehProxy: Boolean(ctx.rehEndpoint),
           workbench: Boolean(ctx.workbenchDir || ctx.staticDir),
+          /** Absolute path REH opened — use as vscode-remote folderUri.path */
+          workspacePath: authed ? ctx.workspacePath ?? null : null,
         });
         return;
       }
 
       if (req.method === 'POST' && url.pathname === '/login') {
         await handleLogin(req, res, ctx);
+        return;
+      }
+
+      // Login form always available (SPA may own `/` when staticDir is set)
+      if (req.method === 'GET' && (url.pathname === '/login' || url.pathname === '/login/')) {
+        html(
+          res,
+          200,
+          loginPage(ctx.bridge.isAuthenticated(req.headers.cookie), ctx.authority, ctx),
+        );
         return;
       }
 
@@ -246,11 +260,15 @@ function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
   const mode =
     modeParam === 'remote' || (modeParam !== 'browser' && remoteAuth) ? 'remote' : 'browser';
   const origin = `${url.protocol}//${url.host}`;
+  const remotePath =
+    url.searchParams.get('path') ||
+    ctx.workspacePath ||
+    '/home/workspace';
   const body = buildWorkbenchCreateOptions({
     mode,
     remoteAuthority: mode === 'remote' ? remoteAuth ?? ctx.authority : undefined,
     workspaceId: url.searchParams.get('workspace') || 'default',
-    remoteWorkspacePath: url.searchParams.get('path') || '/home/workspace',
+    remoteWorkspacePath: remotePath,
     productOverlay: ctx.productOverlay as
       | import('@zcode/shell').ProductOverlay
       | undefined,
@@ -284,6 +302,7 @@ function loginPage(authenticated: boolean, authority: string, ctx: AppContext): 
       <button type="submit">Sign in</button>
     </form>
     <p>Session cookie is HttpOnly. Connection token never appears in the URL.</p>
+    <p>After sign-in, open <a href="/ide/">browser IDE</a> or remote mode from the next screen.</p>
   </body></html>`;
 }
 

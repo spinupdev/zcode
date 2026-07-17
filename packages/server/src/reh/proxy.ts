@@ -42,6 +42,7 @@ const DEFAULT_RESERVED = [
   '/app.js',
   '/app.css',
   '/git-worker.js',
+  // SPA owns / when staticDir set; login form is /login
 ];
 
 export function isReservedPath(pathname: string, reserved = DEFAULT_RESERVED): boolean {
@@ -60,11 +61,27 @@ export function isReservedPath(pathname: string, reserved = DEFAULT_RESERVED): b
   return false;
 }
 
+/**
+ * Normalize upstream query for REH.
+ * - Strip client-supplied tkn/connectionToken (never trust browser for secrets).
+ * - When REH runs with a mandatory token (ZCODE_REH_REQUIRE_TOKEN=1), inject
+ *   VS Code's query name `tkn` (see connectionTokenQueryName).
+ * - Default REH uses --without-connection-token (loopback + cookie proxy).
+ */
 function injectToken(pathAndQuery: string, token: string): string {
-  const q = pathAndQuery.includes('?') ? '&' : '?';
-  // Prefer connectionToken (VS Code server); avoid advertising as client `tkn`
-  if (/[?&]connectionToken=/.test(pathAndQuery)) return pathAndQuery;
-  return `${pathAndQuery}${q}connectionToken=${encodeURIComponent(token)}`;
+  const qIndex = pathAndQuery.indexOf('?');
+  const pathname = qIndex === -1 ? pathAndQuery : pathAndQuery.slice(0, qIndex);
+  const search = qIndex === -1 ? '' : pathAndQuery.slice(qIndex + 1);
+  const params = new URLSearchParams(search);
+  params.delete('connectionToken');
+  params.delete('tkn');
+  params.delete('token');
+  // Only inject when we still use a mandatory token on REH
+  if (process.env.ZCODE_REH_REQUIRE_TOKEN === '1' && token) {
+    params.set('tkn', token);
+  }
+  const qs = params.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
 }
 
 /**
@@ -97,8 +114,10 @@ export function tryProxyHttp(
   const path = injectToken(url.pathname + url.search, target.connectionToken);
   const headers = { ...req.headers, host: upstream.host } as http.OutgoingHttpHeaders;
   delete headers['connection'];
-  // Never forward client connection-token if present
   delete headers['x-vscode-connection-token'];
+  if (process.env.ZCODE_REH_REQUIRE_TOKEN === '1') {
+    headers['x-vscode-connection-token'] = target.connectionToken;
+  }
 
   const proxyReq = http.request(
     {
@@ -166,6 +185,9 @@ export function handleRehUpgrade(
       ...headers,
       connection: 'Upgrade',
       upgrade: 'websocket',
+      ...(process.env.ZCODE_REH_REQUIRE_TOKEN === '1'
+        ? { 'x-vscode-connection-token': target.connectionToken }
+        : {}),
     },
   });
 

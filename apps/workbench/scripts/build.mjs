@@ -142,10 +142,21 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
           const s = await sess.json();
           if (!s.authenticated && !s.ready) {
             const next = encodeURIComponent(location.pathname + location.search);
-            location.replace('/?login=1&redirect=' + next);
+            location.replace('/login?redirect=' + next);
             return;
           }
           if (s.authority) authority = s.authority;
+          // Align folder path with REH workspace (absolute host path)
+          if (s.workspacePath && !params.get('path')) {
+            window.product = {
+              ...window.product,
+              folderUri: {
+                scheme: 'vscode-remote',
+                authority: authority,
+                path: s.workspacePath,
+              },
+            };
+          }
           window.product = {
             ...window.product,
             connectionReady: true,
@@ -155,6 +166,10 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
       } catch (_) {
         /* static web may not expose /v1/session — still allow dogfood */
       }
+      const remotePath =
+        params.get('path') ||
+        window.product?.folderUri?.path ||
+        '/home/workspace';
       window.product = {
         ...window.product,
         zcodeMode: 'remote',
@@ -162,7 +177,7 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
         folderUri: {
           scheme: 'vscode-remote',
           authority: authority,
-          path: params.get('path') || window.product?.folderUri?.path || '/home/workspace',
+          path: remotePath,
         },
         windowIndicator: {
           label: '$(remote) ZCode remote',

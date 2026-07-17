@@ -8,6 +8,7 @@ import type { ServerOptions } from '../index.js';
 import { monorepoRoot } from '../paths.js';
 import { handleRehUpgrade } from '../reh/proxy.js';
 import { spawnReh, type RehHandle } from '../reh/spawn.js';
+import { waitForUrl } from '../reh/wait.js';
 import { createRequestHandler } from './app.js';
 
 export interface StartedServer {
@@ -53,7 +54,7 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
     reh = spawnReh({
       connectionToken,
       rehPort,
-      workspace: path.resolve(options.workspace),
+      workspace: path.resolve(options.workspace), // must match product folderUri.path
       root,
     });
     if (reh.mode === 'none') {
@@ -61,6 +62,7 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
     }
   }
 
+  const workspaceAbs = path.resolve(options.workspace);
   const handler = createRequestHandler({
     bridge,
     passwords,
@@ -77,6 +79,7 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
     rehMode: reh?.mode ?? 'none',
     rehProxyEnabled: Boolean(reh?.endpoint),
     gitProxy: options.gitProxy !== false,
+    workspacePath: workspaceAbs,
   });
 
   const server = http.createServer((req, res) => {
@@ -102,6 +105,23 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
     server.listen(options.port, options.host, () => resolve());
     server.on('error', reject);
   });
+
+  // Wait for REH *after* listen so /healthz is up for Playwright webServer probes.
+  if (reh?.endpoint) {
+    const waitMs = Number(process.env.ZCODE_REH_READY_MS ?? 45_000);
+    try {
+      await waitForUrl(`${reh.endpoint}/version`, {
+        timeoutMs: waitMs,
+        intervalMs: 400,
+        okStatuses: [200, 204],
+      });
+    } catch (err) {
+      console.warn(
+        `[zcode] REH not ready within ${waitMs}ms:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
 
   const addr = server.address();
   const port = typeof addr === 'object' && addr ? addr.port : options.port;

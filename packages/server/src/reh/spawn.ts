@@ -28,15 +28,24 @@ export function spawnReh(opts: RehSpawnOptions): RehHandle {
   const root = opts.root ?? monorepoRoot();
   const host = opts.rehHost ?? '127.0.0.1';
 
+  // Security model (R3b / KD12):
+  // - REH listens on loopback only; the shell cookie proxy is the sole client path.
+  // - VS Code WS handshake requires the *browser* to know connectionToken for msg1.auth.
+  // - Putting that token in the workbench would put it in JS memory / risk URL leaks.
+  // - Therefore default REH with --without-connection-token when secured by our proxy.
+  // - Set ZCODE_REH_REQUIRE_TOKEN=1 to force --connection-token (then expose token via
+  //   authenticated session API — not the default).
+  const requireToken = process.env.ZCODE_REH_REQUIRE_TOKEN === '1';
+  const tokenArgs = requireToken
+    ? (['--connection-token', opts.connectionToken] as string[])
+    : (['--without-connection-token'] as string[]);
+
   const artifactServer = findRehBinary(path.join(root, 'dist', 'server'));
   if (artifactServer) {
-    // Prefer explicit connection-token so the shell proxy can inject it after cookie auth (R3b).
-    // Fallback env vars keep older OSS builds working.
     const child = spawn(
       artifactServer,
       [
-        '--connection-token',
-        opts.connectionToken,
+        ...tokenArgs,
         '--accept-server-license-terms',
         '--host',
         host,
@@ -47,8 +56,12 @@ export function spawnReh(opts: RehSpawnOptions): RehHandle {
       {
         env: {
           ...process.env,
-          VSCODE_CONNECTION_TOKEN: opts.connectionToken,
-          CONNECTION_TOKEN: opts.connectionToken,
+          ...(requireToken
+            ? {
+                VSCODE_CONNECTION_TOKEN: opts.connectionToken,
+                CONNECTION_TOKEN: opts.connectionToken,
+              }
+            : {}),
         },
         stdio: ['ignore', 'pipe', 'pipe'],
       },
@@ -67,8 +80,7 @@ export function spawnReh(opts: RehSpawnOptions): RehHandle {
         host,
         '--port',
         String(opts.rehPort),
-        '--connection-token',
-        opts.connectionToken,
+        ...tokenArgs,
         opts.workspace,
       ],
       {

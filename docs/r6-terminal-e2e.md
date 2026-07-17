@@ -29,8 +29,12 @@ bash scripts/e2e-reh-terminal.sh
 # Hard fail without artifact (CI after REH job):
 ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh
 
-# Strict: require terminal output to match "ok"
+# STRICT (M1 polish): require terminal UI + echo ok
+# Needs: dist/server REH, owned or dogfood vscode-web, Chromium
 ZCODE_E2E_REH_STRICT=1 ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh
+
+# Optional: longer REH boot wait (default 45–60s)
+ZCODE_REH_READY_MS=90000 ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh
 ```
 
 Manual dogfood:

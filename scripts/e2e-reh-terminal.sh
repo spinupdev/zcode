@@ -53,8 +53,12 @@ pnpm --filter @zcode/e2e install-browsers
 export ZCODE_E2E_PASSWORD="${ZCODE_E2E_PASSWORD:-zcode-e2e}"
 export ZCODE_E2E_REH_PORT="${ZCODE_E2E_REH_PORT:-15020}"
 export ZCODE_SPAWN_REH=1
+# Optional STRICT: require terminal UI + echo ok (M1 polish)
+#   ZCODE_E2E_REH_STRICT=1 bash scripts/e2e-reh-terminal.sh
+export ZCODE_REH_READY_MS="${ZCODE_REH_READY_MS:-60000}"
+export PATH="/tmp/zcode-node24/node-v24.18.0-darwin-arm64/bin:/opt/homebrew/bin:${PATH}"
 
-log "run Playwright R6 suite"
+log "run Playwright R6 suite (STRICT=${ZCODE_E2E_REH_STRICT:-0})"
 pnpm --filter @zcode/e2e exec playwright test -c playwright.reh.config.ts
 
 log "e2e-reh-terminal OK"

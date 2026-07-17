@@ -47,10 +47,26 @@ Reserved shell paths (`/login`, `/ide`, `/git-proxy`, `/vscode`, …) are **not*
 ZCODE_SPAWN_REH=1 node apps/cli/dist/cli.js serve --password secret --port 8080
 
 # Login in browser, then:
-# /ide/?mode=remote&authority=127.0.0.1:8080&ready=1
+# /login → /ide/?mode=remote&authority=127.0.0.1:8080&ready=1
 ```
 
 Without `dist/server` artifact, REH mode is `none` and proxy is idle (browser mode still works).
+
+## REH token model
+
+VS Code’s WebSocket handshake requires the **browser client** to send
+`msg1.auth === connectionToken`. Putting that token in the workbench risks
+leaks (URL/query). ZCode’s default:
+
+| Layer | Behavior |
+| --- | --- |
+| REH process | `--without-connection-token` (loopback only) |
+| Shell proxy | Requires HttpOnly `zcode_sess` for REH paths |
+| Browser | Never receives a REH connection token |
+
+Optional: `ZCODE_REH_REQUIRE_TOKEN=1` forces `--connection-token` and proxy
+injection of `tkn=` (then the workbench must also obtain the token via an
+authenticated channel — not the default path).
 
 ## R2c — REH artifact
 
