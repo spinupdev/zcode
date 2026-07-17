@@ -1,5 +1,7 @@
 # ZCode
 
+> **Agents / new contributors:** start with **[`PLAN.md`](./PLAN.md)** (architecture + work tracker) and **[`AGENTS.md`](./AGENTS.md)**.
+
 **ZCode** is a dual-mode IDE based on [VS Code OSS](https://github.com/microsoft/vscode):
 
 | Mode | Description |
