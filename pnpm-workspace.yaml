@@ -2,7 +2,7 @@ packages:
   - "packages/*"
   - "apps/*"
   - "extensions/*"
-  # apps/workbench included via apps/*
+  - "e2e"
 
 # pnpm 11: allow lifecycle scripts for native bundler
 allowBuilds:

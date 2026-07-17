@@ -37,7 +37,14 @@ export interface BootstrapResult {
   allowTestWebHarness: boolean;
 }
 
-export function isTestWebHarnessAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+/** Safe env for Node + browser bundles (SPA must not touch bare `process`). */
+function currentEnv(): NodeJS.ProcessEnv {
+  return (
+    typeof process !== 'undefined' && process.env ? process.env : {}
+  ) as NodeJS.ProcessEnv;
+}
+
+export function isTestWebHarnessAllowed(env: NodeJS.ProcessEnv = currentEnv()): boolean {
   if (env.NODE_ENV === 'production') {
     return false;
   }

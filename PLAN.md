@@ -262,7 +262,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
 | M1 | Dual-mode remoteAuthority connect end-to-end | **remaining** | product payload ready; REH missing |
 | M2 | Diagnostics extension, CSP, log redaction | **remaining** | stubs only |
-| M3 | Playwright e2e: SPA clone + IDE open + remote terminal | **remaining** | `e2e-browser.sh` covers SPA only |
+| M3 | Playwright e2e: routes + SPA clone + IDE product handoff | **done** | `e2e/` + CI job; Buffer polyfill for worker clone; remote terminal still R6 |
 
 ### 4.5 Hosting / ops
 
@@ -293,8 +293,8 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 ### P0 — Next 1–2 sessions
 
 1. **M0d** — Spike owned `gulp vscode-web` on Node **24** (see vendor `.nvmrc`); document exact tasks that succeed.
-2. **M3** — Playwright: clone SPA → open IDE with workspace id → file visible.
-3. **R2c / R3b** — REH artifact + cookie-auth attach.
+2. **R2c / R3b** — REH artifact + cookie-auth attach.
+3. **B8** — Browser SCM via `zcode-git` (status/diff/commit in IDE, not only SPA).
 
 ### P1 — Remote dogfood
 
@@ -304,9 +304,8 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 ### P2 — Product polish
 
-7. **M3** Playwright.  
-8. **M2** CSP + diagnostics.  
-9. **F6** Rename repo when ready.
+7. **M2** CSP + diagnostics.  
+8. **F6** Rename repo when ready.
 
 ---
 
@@ -337,8 +336,9 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 ```bash
 pnpm test
-pnpm e2e:browser    # SPA clone via same-origin proxy
-pnpm smoke          # lighter checks
+pnpm e2e:browser      # Node harness: agent clone via same-origin proxy
+pnpm e2e:playwright   # Browser UI: routes + SPA clone + IDE product (M3)
+pnpm smoke            # lighter checks
 ```
 
 ---
@@ -388,5 +388,6 @@ pnpm smoke          # lighter checks
 | --- | --- |
 | 2026-07-17 | Initial master plan + status snapshot after SPA git, same-origin proxy, `/ide` dogfood VS Code Web, PAT push |
 | 2026-07-17 | B7 done: shared IDB `zcode-fs-v1` between SPA and `zcode-browser-fs`; Open in IDE |
+| 2026-07-17 | M3 Playwright e2e package + CI job (routes, SPA clone, IDE product); monorepo-root static paths; Buffer polyfill for isomorphic-git worker |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

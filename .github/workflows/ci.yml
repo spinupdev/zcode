@@ -42,6 +42,53 @@ jobs:
       - name: Guard against test-web in release paths
         run: bash scripts/check-no-test-web-in-release.sh
 
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build surfaces
+        run: |
+          pnpm --filter @zcode/cli build
+          pnpm --filter @zcode/web build
+          pnpm --filter zcode-browser-fs build
+          pnpm --filter zcode-git build
+          pnpm --filter @zcode/workbench build
+
+      - name: Stage vscode-web (dogfood)
+        run: bash scripts/fetch-vscode-web.sh
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @zcode/e2e install-browsers
+
+      - name: Run Playwright
+        run: pnpm --filter @zcode/e2e test
+        env:
+          CI: true
+          ZCODE_E2E_PORT: 15010
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          if-no-files-found: ignore
+
   vscode-patches:
     name: VS Code patches (quilt)
     runs-on: ubuntu-latest

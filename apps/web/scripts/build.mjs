@@ -18,7 +18,10 @@ const common = {
   sourcemap: true,
   logLevel: 'info',
   define: {
+    // Keep browser bundles free of bare `process` references from workspace packages.
     'process.env.NODE_ENV': '"production"',
+    'process.env': '{"NODE_ENV":"production"}',
+    global: 'globalThis',
   },
   alias: {
     'node:crypto': shim,

@@ -94,7 +94,8 @@ zcode git-proxy --port 8787                        # optional standalone
 ```bash
 pnpm test
 pnpm smoke
-pnpm e2e:browser   # same-origin proxy + real clone
+pnpm e2e:browser      # node harness: proxy + clone
+pnpm e2e:playwright   # browser UI: routes + SPA clone + IDE product
 ```
 
 ## Layout

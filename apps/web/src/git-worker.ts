@@ -1,6 +1,7 @@
 /**
  * Web Worker: run isomorphic-git clone off the main thread so the UI can paint.
  */
+import './shims/buffer-polyfill.js';
 import { createBrowserAgent, MemoryFs } from '@zcode/browser-agent';
 import type { CloneProgress, GitAuth } from '@zcode/protocol';
 

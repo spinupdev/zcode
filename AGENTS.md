@@ -30,7 +30,7 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 ## Highest-priority remaining work
 
-See **PLAN.md §5**. B7 (shared IDB workspace) is **done**. Default next: **M0d** owned web build, **M3** Playwright, or **R3b** REH attach.
+See **PLAN.md §5**. B7 and M3 (Playwright) are **done**. Default next: **M0d** owned web build or **R3b** REH attach.
 
 ## Rules
 
@@ -44,4 +44,5 @@ See **PLAN.md §5**. B7 (shared IDB workspace) is **done**. Default next: **M0d*
 ```bash
 pnpm test
 pnpm e2e:browser
+pnpm e2e:playwright   # needs Chromium: pnpm --filter @zcode/e2e install-browsers
 ```

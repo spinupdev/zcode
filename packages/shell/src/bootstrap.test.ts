@@ -46,6 +46,11 @@ describe('isTestWebHarnessAllowed', () => {
       true,
     );
   });
+
+  it('does not throw when process.env is unavailable (browser-style)', () => {
+    // Explicit empty env mimics browser default from currentEnv()
+    assert.equal(isTestWebHarnessAllowed({}), false);
+  });
 });
 
 describe('formatBootstrapSummary', () => {

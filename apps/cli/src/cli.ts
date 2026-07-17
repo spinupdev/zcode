@@ -101,7 +101,8 @@ switch (cmd) {
       port,
       dir,
       gitProxy: !hasFlag(args, '--no-git-proxy'),
-      repoRoot: process.cwd(),
+      // Leave repoRoot unset so static-server discovers monorepo root from --dir
+      // (Playwright and other tools may start the server with a non-repo cwd).
     });
     console.log(`zcode web ${srv.url} → ${dir}`);
     if (srv.gitProxyUrl) console.log(`git-proxy ${srv.gitProxyUrl}`);

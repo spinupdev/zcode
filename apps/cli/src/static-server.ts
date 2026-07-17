@@ -51,21 +51,32 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
     throw new Error(`static dir not found: ${spaRoot} (run pnpm --filter @zcode/web build)`);
   }
 
+  // Discover monorepo root so `zcode web` works when cwd is not the repo
+  // (e.g. Playwright webServer with cwd=e2e/, or --dir with absolute paths).
+  const repoRoot =
+    (opts.repoRoot ? path.resolve(opts.repoRoot) : undefined) ??
+    findMonorepoRoot(spaRoot) ??
+    findMonorepoRoot(process.cwd()) ??
+    process.cwd();
+
   const vscodeWebDir = opts.vscodeWebDir
     ? path.resolve(opts.vscodeWebDir)
     : findFirst([
+        path.join(repoRoot, 'dist/vscode-web'),
         path.join(process.cwd(), 'dist/vscode-web'),
-        path.join(spaRoot, '../../dist/vscode-web'),
+        path.join(spaRoot, '../../../dist/vscode-web'),
       ]);
   const workbenchDir = opts.workbenchDir
     ? path.resolve(opts.workbenchDir)
     : findFirst([
+        path.join(repoRoot, 'apps/workbench/dist'),
         path.join(process.cwd(), 'apps/workbench/dist'),
-        path.join(spaRoot, '../workbench/dist'),
+        path.join(spaRoot, '../../workbench/dist'),
       ]);
   const extensionsDir = opts.extensionsDir
     ? path.resolve(opts.extensionsDir)
     : findFirst([
+        path.join(repoRoot, 'extensions'),
         path.join(process.cwd(), 'extensions'),
         workbenchDir ? path.join(workbenchDir, 'extensions') : '',
       ].filter(Boolean));
@@ -91,7 +102,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
 
       // Dynamic product for dual-mode IDE
       if (pathname === '/ide/product.json' || pathname === '/product.json') {
-        serveIdeProduct(res, url, opts.repoRoot ?? process.cwd());
+        serveIdeProduct(res, url, repoRoot);
         return;
       }
 
@@ -157,6 +168,23 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
 function findFirst(paths: string[]): string | undefined {
   for (const p of paths) {
     if (p && fs.existsSync(p)) return p;
+  }
+  return undefined;
+}
+
+/** Walk up from `from` until pnpm-workspace.yaml or product/ is found. */
+function findMonorepoRoot(from: string): string | undefined {
+  let dir = path.resolve(from);
+  for (let i = 0; i < 10; i++) {
+    if (
+      fs.existsSync(path.join(dir, 'pnpm-workspace.yaml')) ||
+      fs.existsSync(path.join(dir, 'product', 'product.json'))
+    ) {
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
   return undefined;
 }

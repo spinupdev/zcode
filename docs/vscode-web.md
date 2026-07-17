@@ -60,6 +60,14 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 Or: `pnpm dev:ide`
 
+## E2E
+
+```bash
+pnpm e2e:playwright
+```
+
+Covers same-origin routes, SPA clone (Hello-World), and `/ide/product.json?workspace=` handoff.
+
 ## Product branding
 
 [`product/product.json`](../product/product.json) — Open VSX gallery, ZCode names.

@@ -2,6 +2,7 @@
  * ZCode browser workspace app.
  * Clone via worker + isomorphic-git + same-origin /git-proxy; durable IDB FS.
  */
+import './shims/buffer-polyfill.js';
 import { createBrowserAgent, type ZCodeBrowserAgent } from '@zcode/browser-agent';
 import type { CloneProgress } from '@zcode/protocol';
 import { bootstrapFromUrl } from '@zcode/shell';
