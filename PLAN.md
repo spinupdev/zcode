@@ -6,7 +6,7 @@
 | **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
 | **Local path** | may still be checked out as `code-server` — product is **ZCode** |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-18 (H4 Docker harden + R6 PTY polish) |
+| **Last updated** | 2026-07-18 (B8 open-repo in-IDE clone + Zeish favicon) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -153,7 +153,7 @@ zcode/  (repo may still be named code-server)
 │   └── workbench/                   ← / host page + bootstrap
 ├── extensions/
 │   ├── zcode-browser-fs/            ← zcode-opfs FileSystemProvider
-│   ├── zcode-git/                   ← SCM status/commit/push + SPA clone
+│   ├── zcode-git/                   ← SCM + Open Repository (HTTPS clone in-IDE) |
 │   ├── zcode-diagnostics/
 │   └── zcode-remote-upgrade/        ← post-MVP stub
 ├── deploy/
@@ -234,6 +234,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | B6 | Git Web Worker for responsive clone | **done** | `git-worker.js` |
 | B7 | Bridge SPA IDB workspace ↔ workbench `zcode-opfs` | **done** | Same IDB `zcode-fs-v1`; `/?workspace=<id>`; Open in IDE |
 | B8 | Full SCM inside workbench (not only SPA) | **done** | `zcode-git` status/commit/push via IDB + isomorphic-git |
+| B8b | Welcome Open Repository → in-IDE HTTPS clone | **done** | `zcode.git.openRepository` + `remoteHub.openRepository` alias; notification progress; any public HTTPS host via `/git-proxy` `*`; Zeish favicon |
 | B9 | SSH remotes / LFS / submodules | **deferred** | non-goals MVP |
 | B10 | Offline PWA | **deferred** | OQ7 |
 
@@ -402,5 +403,6 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | Product IDE moved to **`/`**; debug SPA at **`/debug/`** |
 | 2026-07-18 | Removed legacy `/ide` routes (IDE is only `/`) |
 | 2026-07-18 | **H3 live**: Cloudflare Pages + Worker + same-origin Pages Function; `scripts/deploy-cloudflare.sh` |
+| 2026-07-18 | **B8b**: Welcome **Open Repository** → in-IDE HTTPS clone (`zcode.git.openRepository` + `remoteHub.openRepository`); notification progress/errors; git-proxy default allow `*` (SSRF still blocked); Zeish favicon (`product/icon.svg`) replaces VS Code `favicon.ico` |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

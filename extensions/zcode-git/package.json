@@ -1,8 +1,8 @@
 {
   "name": "zcode-git",
   "displayName": "ZCode Git (Browser)",
-  "description": "SCM provider: status, commit, push via isomorphic-git + shared OPFS/IDB (browser mode)",
-  "version": "0.2.0",
+  "description": "SCM + open/clone any HTTPS git repo via isomorphic-git and /git-proxy (browser mode)",
+  "version": "0.3.0",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
@@ -14,16 +14,28 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:zcode.git.clone",
+    "onCommand:zcode.git.openRepository",
     "onCommand:zcode.git.commit",
     "onCommand:zcode.git.push",
-    "onCommand:zcode.git.refresh"
+    "onCommand:zcode.git.refresh",
+    "onCommand:remoteHub.openRepository"
   ],
   "contributes": {
     "commands": [
       {
+        "command": "zcode.git.openRepository",
+        "title": "ZCode: Open Repository…",
+        "icon": "$(repo-clone)"
+      },
+      {
         "command": "zcode.git.clone",
-        "title": "ZCode: Clone Repository (Browser SPA)",
+        "title": "ZCode: Clone Repository…",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "remoteHub.openRepository",
+        "title": "Open Repository…",
+        "icon": "$(repo-clone)"
       },
       {
         "command": "zcode.git.commit",
@@ -54,9 +66,20 @@
           "when": "scmProvider == zcode-git"
         },
         {
-          "command": "zcode.git.clone",
+          "command": "zcode.git.openRepository",
           "group": "navigation",
           "when": "scmProvider == zcode-git"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "zcode.git.openRepository"
+        },
+        {
+          "command": "zcode.git.clone"
+        },
+        {
+          "command": "remoteHub.openRepository"
         }
       ]
     },

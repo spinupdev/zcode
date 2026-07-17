@@ -19,4 +19,4 @@ compatibility_date = "2024-11-01"
 
 [vars]
 # Comma-separated allowlist (optional; defaults baked into worker)
-# ALLOW_HOSTS = "github.com,gitlab.com,bitbucket.org"
+# ALLOW_HOSTS = "*"  # any public host (default); or pin e.g. "github.com,gitlab.com,bitbucket.org"

@@ -1,6 +1,6 @@
 /**
- * ZCode browser SCM: isomorphic-git over shared IDB (same as SPA / zcode-browser-fs).
- * Provides status, commit, push inside VS Code Web — not only the SPA tools surface.
+ * ZCode browser SCM: isomorphic-git over shared IDB/OPFS (same as SPA / zcode-browser-fs).
+ * Provides status, commit, push, and in-IDE clone (HTTPS → /git-proxy) with VS Code notifications.
  */
 import { Buffer } from 'buffer';
 import {
@@ -11,6 +11,14 @@ import {
   type ZCodeBrowserAgent,
 } from '@zcode/browser-agent';
 import type * as vscode from 'vscode';
+
+/** Mirrors @zcode/protocol CloneProgress — kept local to avoid extra dep. */
+type CloneProgress = {
+  phase: 'negotiating' | 'receiving' | 'resolving' | 'done';
+  receivedObjects?: number;
+  totalObjects?: number;
+  message?: string;
+};
 
 declare const vscode: typeof import('vscode');
 
@@ -63,6 +71,61 @@ function decorations(kind: GitChange['kind']): vscode.SourceControlResourceDecor
   };
 }
 
+function newWorkspaceId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeGitUrl(raw: string): string {
+  let url = raw.trim();
+  // owner/repo → github.com shorthand
+  if (/^[\w.-]+\/[\w.-]+(?:\.git)?$/.test(url) && !url.includes('://')) {
+    url = `https://github.com/${url.replace(/\.git$/, '')}.git`;
+  }
+  // Accept git@host:path → convert to https when possible
+  const scp = url.match(/^git@([^:]+):(.+)$/);
+  if (scp) {
+    const host = scp[1]!;
+    const path = scp[2]!.replace(/\.git$/, '');
+    url = `https://${host}/${path}.git`;
+  }
+  // Strip trailing slash; ensure .git is optional (isomorphic-git accepts both)
+  return url.replace(/\/+$/, '');
+}
+
+function validateGitUrl(raw: string): string | undefined {
+  const t = raw.trim();
+  if (!t) return 'URL required';
+  const normalized = normalizeGitUrl(t);
+  if (!/^https:\/\//i.test(normalized)) {
+    return 'Use an https:// URL (browser clone does not support SSH remotes)';
+  }
+  try {
+    const u = new URL(normalized);
+    if (!u.hostname) return 'Invalid URL host';
+  } catch {
+    return 'Invalid URL';
+  }
+  return undefined;
+}
+
+function formatCloneProgress(p: CloneProgress): string {
+  const loaded = p.receivedObjects ?? 0;
+  const total = p.totalObjects ?? 0;
+  if (p.phase === 'done') return 'clone complete';
+  if (total > 0) return `${p.phase} ${loaded}/${total}`;
+  if (p.message) return `${p.phase}: ${p.message}`;
+  if (loaded) return `${p.phase} ${loaded}`;
+  return p.phase;
+}
+
+function isAuthError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /401|403|auth|credential|Authentication|unauthorized|denied/i.test(msg);
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   // Start on IDB so SCM is live immediately; upgrade to OPFS (B2b) when ready.
   let agent = createBrowserAgent({
@@ -82,7 +145,6 @@ export function activate(context: vscode.ExtensionContext): void {
   scm.quickDiffProvider = {
     provideOriginalResource(uri: vscode.Uri): vscode.Uri | undefined {
       if (uri.scheme !== SCHEME) return undefined;
-      // No blob store yet — skip original for quickDiff
       return undefined;
     },
   };
@@ -96,7 +158,6 @@ export function activate(context: vscode.ExtensionContext): void {
   const ensureWorkspace = async (id: string): Promise<void> => {
     const existing = await agent.listWorkspaces();
     if (existing.some((w) => w.id === id)) return;
-    // SPA clone may predate meta file; register id pointing at IDB root
     if (!agent.store.get(id)) {
       agent.store.create(id, id);
     }
@@ -112,9 +173,9 @@ export function activate(context: vscode.ExtensionContext): void {
         changesGroup.resourceStates = [];
         scm.statusBarCommands = [
           {
-            command: 'zcode.git.clone',
-            title: '$(cloud-download) Clone…',
-            tooltip: 'Clone into browser workspace (SPA)',
+            command: 'zcode.git.openRepository',
+            title: '$(cloud-download) Open Repository…',
+            tooltip: 'Clone any HTTPS git repo into the browser workspace',
           },
         ];
         return;
@@ -151,6 +212,11 @@ export function activate(context: vscode.ExtensionContext): void {
           title: '$(cloud-upload) Push',
           tooltip: 'Push to origin via /git-proxy',
         },
+        {
+          command: 'zcode.git.openRepository',
+          title: '$(repo-clone) Clone…',
+          tooltip: 'Open / clone another HTTPS repository',
+        },
       ];
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -178,6 +244,110 @@ export function activate(context: vscode.ExtensionContext): void {
     const username =
       vscode.workspace.getConfiguration('zcode').get<string>('gitUsername')?.trim() || 'git';
     return { username, password: password.trim() };
+  };
+
+  /**
+   * Modal-style open/clone flow:
+   * 1) paste HTTPS URL (any git host)
+   * 2) clone via isomorphic-git + /git-proxy
+   * 3) progress + errors via VS Code notifications
+   * 4) open zcode-opfs workspace
+   */
+  const openRepository = async (): Promise<void> => {
+    const urlRaw = await vscode.window.showInputBox({
+      title: 'Open Git Repository',
+      prompt:
+        'Paste an HTTPS git URL — GitHub, GitLab, Bitbucket, Codeberg, or any HTTPS git host',
+      placeHolder: 'https://github.com/org/repo.git  ·  or  owner/repo',
+      ignoreFocusOut: true,
+      validateInput: validateGitUrl,
+    });
+    if (urlRaw == null) return;
+
+    const url = normalizeGitUrl(urlRaw);
+    let auth = tokenAuth();
+
+    const runClone = async (authForClone?: { username: string; password: string }) => {
+      const workspaceId = newWorkspaceId();
+      const shortName =
+        url.replace(/\/$/, '').split('/').pop()?.replace(/\.git$/, '') ?? workspaceId.slice(0, 8);
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Cloning ${shortName}`,
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ message: 'connecting via /git-proxy…' });
+          await agent.clone({
+            workspaceId,
+            url,
+            corsProxyUrl: proxyUrl(),
+            depth: 1,
+            auth: authForClone,
+            onProgress: (p) => {
+              progress.report({ message: formatCloneProgress(p) });
+            },
+          });
+          progress.report({ message: 'opening workspace…' });
+        },
+      );
+
+      const folderUri = vscode.Uri.from({
+        scheme: SCHEME,
+        path: `/workspace/${workspaceId}`,
+      });
+
+      void vscode.window.showInformationMessage(
+        `Cloned ${shortName} into browser workspace`,
+      );
+
+      await vscode.commands.executeCommand('vscode.openFolder', folderUri, {
+        forceReuseWindow: true,
+      });
+    };
+
+    try {
+      await runClone(auth);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+
+      if (isAuthError(err) && !auth) {
+        const token = await vscode.window.showInputBox({
+          title: 'Private repository — authentication required',
+          prompt: 'Paste a personal access token (HTTPS). Stored only for this clone.',
+          password: true,
+          ignoreFocusOut: true,
+          placeHolder: 'ghp_…  ·  glpat-…  ·  bitbucket app password',
+        });
+        if (token == null) {
+          void vscode.window.showErrorMessage(`Clone cancelled: ${msg}`);
+          return;
+        }
+        if (!token.trim()) {
+          void vscode.window.showErrorMessage(`Clone failed: ${msg}`);
+          return;
+        }
+        auth = {
+          username:
+            vscode.workspace.getConfiguration('zcode').get<string>('gitUsername')?.trim() ||
+            'git',
+          password: token.trim(),
+        };
+        try {
+          await runClone(auth);
+          return;
+        } catch (retryErr) {
+          void vscode.window.showErrorMessage(
+            `Clone failed: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+          );
+          return;
+        }
+      }
+
+      void vscode.window.showErrorMessage(`Clone failed: ${msg}`);
+    }
   };
 
   context.subscriptions.push(
@@ -233,36 +403,11 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       }
     }),
-    vscode.commands.registerCommand('zcode.git.clone', async () => {
-      const origin = globalThis.location?.origin ?? '';
-      const proxy = proxyUrl();
-      const url = await vscode.window.showInputBox({
-        title: 'Clone Git repository (browser)',
-        prompt: 'HTTPS git URL — clone runs in SPA with shared IDB, then reopen IDE',
-        placeHolder: 'https://github.com/org/repo.git',
-        ignoreFocusOut: true,
-        validateInput: (v) => {
-          if (!v.trim()) return 'URL required';
-          if (!/^https:\/\//i.test(v.trim())) return 'Use an https:// URL';
-          return undefined;
-        },
-      });
-      if (!url) return;
-
-      const spa = new URL('/', origin || 'http://127.0.0.1:5000');
-      spa.searchParams.set('clone', url.trim());
-      spa.searchParams.set('proxy', proxy);
-      spa.searchParams.set('autoclone', '1');
-
-      const pick = await vscode.window.showInformationMessage(
-        `Clone uses the ZCode browser workspace (isomorphic-git + /git-proxy).\nProxy: ${proxy}`,
-        'Open clone UI',
-        'Cancel',
-      );
-      if (pick === 'Open clone UI') {
-        await vscode.env.openExternal(vscode.Uri.parse(spa.toString()));
-      }
-    }),
+    // Primary open/clone entry (welcome "Open Repository", SCM, command palette)
+    vscode.commands.registerCommand('zcode.git.openRepository', () => void openRepository()),
+    vscode.commands.registerCommand('zcode.git.clone', () => void openRepository()),
+    // VS Code Getting Started "Open Repository..." points at remoteHub — replace with ZCode clone.
+    vscode.commands.registerCommand('remoteHub.openRepository', () => void openRepository()),
   );
 
   context.subscriptions.push(
@@ -273,7 +418,6 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   void refresh();
-  // Periodic refresh (IDB edits from SPA / other tabs)
   const timer = setInterval(() => void refresh(), 8_000);
   context.subscriptions.push({ dispose: () => clearInterval(timer) });
 }

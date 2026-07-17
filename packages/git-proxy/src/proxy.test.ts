@@ -14,11 +14,23 @@ describe('resolveUpstream', () => {
     assert.equal(u.searchParams.get('service'), 'git-upload-pack');
   });
 
-  it('rejects non-allowlisted hosts', () => {
+  it('rejects non-allowlisted hosts when * is not in the list', () => {
     assert.throws(
-      () => resolveUpstream('/evil.example.com/repo.git/info/refs', DEFAULT_ALLOW_HOSTS),
+      () =>
+        resolveUpstream('/evil.example.com/repo.git/info/refs', [
+          'github.com',
+          'gitlab.com',
+        ]),
       /allowlisted/,
     );
+  });
+
+  it('allows arbitrary public hosts when * is allowlisted', () => {
+    const u = resolveUpstream(
+      '/git.example.com/org/repo.git/info/refs',
+      DEFAULT_ALLOW_HOSTS,
+    );
+    assert.equal(u.hostname, 'git.example.com');
   });
 
   it('blocks private IPs', () => {

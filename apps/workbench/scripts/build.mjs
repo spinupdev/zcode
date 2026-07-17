@@ -15,6 +15,13 @@ const productOverlay = JSON.parse(
   readFileSync(join(monorepo, 'product/product.json'), 'utf8'),
 );
 
+// Zeish / ZCode brand favicon (from website) — replace VS Code favicon.ico
+const brandIconSrc = join(monorepo, 'product/icon.svg');
+if (existsSync(brandIconSrc)) {
+  cpSync(brandIconSrc, join(dist, 'favicon.svg'));
+  cpSync(brandIconSrc, join(dist, 'icon.svg'));
+}
+
 const defaultProduct = {
   productConfiguration: {
     ...productOverlay,
@@ -77,7 +84,8 @@ const indexHtml = `<!DOCTYPE html>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>ZCode IDE</title>
-  <link rel="icon" href="/vscode/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
   <!-- Stylesheet href is finalized by bootstrap.js (dogfood AMD vs owned esbuild). -->
   <link id="zcode-workbench-css" data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="/vscode/out/vs/workbench/workbench.web.main.css" />
   <style class="initialShellColors">

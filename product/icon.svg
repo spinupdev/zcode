@@ -1,0 +1,32 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" rx="72" fill="url(#bg)" />
+  <rect x="24" y="24" width="208" height="208" rx="48" fill="url(#panel)" stroke="url(#stroke)" stroke-width="4" />
+  <path
+    d="M79 82H179L112 128H177V174H77L144 128H79V82Z"
+    fill="url(#z)"
+  />
+  <circle cx="194" cy="62" r="10" fill="#22D3EE" fill-opacity="0.9" />
+  <circle cx="62" cy="193" r="8" fill="#FB7185" fill-opacity="0.85" />
+  <defs>
+    <linearGradient id="bg" x1="20" y1="18" x2="236" y2="238" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#05070D" />
+      <stop offset="0.55" stop-color="#11142A" />
+      <stop offset="1" stop-color="#220C18" />
+    </linearGradient>
+    <linearGradient id="panel" x1="40" y1="40" x2="214" y2="214" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A0D16" />
+      <stop offset="1" stop-color="#120B12" />
+    </linearGradient>
+    <linearGradient id="stroke" x1="44" y1="36" x2="214" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE" stop-opacity="0.7" />
+      <stop offset="0.52" stop-color="#F97316" stop-opacity="0.5" />
+      <stop offset="1" stop-color="#FB7185" stop-opacity="0.7" />
+    </linearGradient>
+    <linearGradient id="z" x1="87" y1="82" x2="170" y2="174" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FACC15" />
+      <stop offset="0.38" stop-color="#22D3EE" />
+      <stop offset="0.72" stop-color="#A78BFA" />
+      <stop offset="1" stop-color="#FB7185" />
+    </linearGradient>
+  </defs>
+</svg>

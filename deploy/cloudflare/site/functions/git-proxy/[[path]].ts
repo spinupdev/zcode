@@ -3,7 +3,8 @@
  * Mirrors deploy/cloudflare/git-proxy Worker so the SPA default {origin}/git-proxy works.
  */
 
-const DEFAULT_ALLOW = ['github.com', 'gitlab.com', 'bitbucket.org'];
+/** `*` = any public host; private/link-local still blocked in resolveUpstream. */
+const DEFAULT_ALLOW = ['*', 'github.com', 'gitlab.com', 'bitbucket.org', 'codeberg.org'];
 const PREFIX = '/git-proxy';
 
 interface Env {
@@ -68,6 +69,7 @@ function stripPrefix(pathAndQuery: string): string {
 
 function isHostAllowed(hostname: string, allowHosts: string[]): boolean {
   const host = hostname.toLowerCase();
+  if (allowHosts.some((a) => a === '*')) return true;
   return allowHosts.some((a) => host === a.toLowerCase() || host.endsWith(`.${a.toLowerCase()}`));
 }
 

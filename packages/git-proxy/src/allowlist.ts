@@ -1,12 +1,27 @@
-export const DEFAULT_ALLOW_HOSTS = ['github.com', 'gitlab.com', 'bitbucket.org'] as const;
+/**
+ * Default allowlist for browser git CORS proxy.
+ * `*` = any public HTTPS host (private/link-local still blocked by {@link isBlockedHostname}).
+ * Pin a tighter list via --allow-hosts / ALLOW_HOSTS when exposing the proxy publicly.
+ */
+export const DEFAULT_ALLOW_HOSTS = [
+  '*',
+  'github.com',
+  'gitlab.com',
+  'bitbucket.org',
+  'codeberg.org',
+  'gitea.com',
+  'git.sr.ht',
+] as const;
 
 /** Default same-origin mount path (isomorphic-git corsProxy base). */
 export const DEFAULT_GIT_PROXY_PREFIX = '/git-proxy';
 
 export function isHostAllowed(hostname: string, allowHosts: readonly string[]): boolean {
   const host = hostname.toLowerCase();
+  if (allowHosts.some((a) => a === '*')) return true;
   return allowHosts.some((allowed) => {
     const a = allowed.toLowerCase();
+    if (a === '*') return true;
     return host === a || host.endsWith(`.${a}`);
   });
 }

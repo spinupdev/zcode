@@ -18,9 +18,32 @@ describe('isHostAllowed', () => {
     assert.equal(isHostAllowed('api.github.com', DEFAULT_ALLOW_HOSTS), true);
   });
 
-  it('denies unrelated hosts (SSRF)', () => {
-    assert.equal(isHostAllowed('169.254.169.254', DEFAULT_ALLOW_HOSTS), false);
-    assert.equal(isHostAllowed('evil.example.com', DEFAULT_ALLOW_HOSTS), false);
+  it('default list includes * so any public host is allowed at the allowlist layer', () => {
+    assert.equal(isHostAllowed('git.example.com', DEFAULT_ALLOW_HOSTS), true);
+    assert.equal(isHostAllowed('codeberg.org', DEFAULT_ALLOW_HOSTS), true);
+  });
+
+  it('tight list without * still denies unrelated hosts', () => {
+    const tight = ['github.com', 'gitlab.com'] as const;
+    assert.equal(isHostAllowed('evil.example.com', tight), false);
+    assert.equal(isHostAllowed('github.com', tight), true);
+  });
+
+  it('* alone allows any hostname string (SSRF still blocked in resolveUpstream)', () => {
+    assert.equal(isHostAllowed('anything.example', ['*']), true);
+  });
+});
+
+describe('resolveUpstream SSRF', () => {
+  it('still blocks link-local / private even when * is allowlisted', () => {
+    assert.throws(
+      () => resolveUpstream('/169.254.169.254/latest/meta-data', DEFAULT_ALLOW_HOSTS),
+      /blocked host|not allowlisted/,
+    );
+    assert.throws(
+      () => resolveUpstream('/127.0.0.1/repo.git/info/refs', DEFAULT_ALLOW_HOSTS),
+      /blocked host|not allowlisted/,
+    );
   });
 });
 
