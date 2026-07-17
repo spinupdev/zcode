@@ -1,6 +1,8 @@
 /**
  * Auth helpers: password self-host (MVP), OIDC / connect codes (SaaS).
  * Never return long-lived connection tokens from list/GET APIs.
+ *
+ * Runtime password verify + cookie bridge live in @zcode/server (R3).
  */
 
 export interface PasswordAuthConfig {
@@ -25,3 +27,6 @@ export function assertNoSecretInUrl(url: string): void {
     }
   }
 }
+
+/** Alias used by shell/product docs */
+export const assertCleanIdeUrl = assertNoSecretInUrl;

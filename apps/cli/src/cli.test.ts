@@ -23,8 +23,8 @@ describe('zcode cli', () => {
     assert.match(r.stdout, /0\.0\.0/);
   });
 
-  it('exits non-zero for unimplemented serve', () => {
-    const r = run(['serve']);
+  it('exits non-zero for unimplemented git-proxy', () => {
+    const r = run(['git-proxy']);
     assert.notEqual(r.status, 0);
   });
 });

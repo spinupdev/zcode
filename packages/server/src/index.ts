@@ -1,8 +1,9 @@
 /**
  * Node wrapper around VS Code server / REH: cookie↔token bridge, static co-serve.
- * Full implementation: PR R3+.
  *
- * REH artifacts are produced by scripts/build-server.sh into dist/server (R2).
+ * R2: REH artifacts via scripts/build-server.sh → dist/server
+ * R3: password login + HttpOnly session cookie mapping (this package)
+ * Later: spawn REH with --connection-token and co-serve workbench assets
  */
 
 import fs from 'node:fs';
@@ -10,13 +11,22 @@ import path from 'node:path';
 import { monorepoRoot, serverArtifactDir, vscodeVendorDir } from './paths.js';
 
 export { monorepoRoot, serverArtifactDir, webArtifactDir, vscodeVendorDir } from './paths.js';
+export { CookieTokenBridge, SESSION_COOKIE } from './auth/cookie-bridge.js';
+export {
+  hashPassword,
+  verifyPassword,
+  createPasswordVerifier,
+  LoginRateLimiter,
+} from './auth/password.js';
+export { startServer } from './http/start.js';
+export type { StartedServer } from './http/start.js';
 
 export interface ServerOptions {
   host: string;
   port: number;
   /** Workspace root on disk */
   workspace: string;
-  /** Password auth for self-host MVP */
+  /** Password auth for self-host MVP (plaintext only for bootstrap; prefer hash env later) */
   password?: string;
   /** Directory of co-served workbench static assets (same-origin MVP) */
   staticDir?: string;
@@ -49,15 +59,4 @@ export function hasRehArtifact(root = monorepoRoot()): boolean {
 
 export function hasVscodeVendor(root = monorepoRoot()): boolean {
   return fs.existsSync(path.join(vscodeVendorDir(root), 'package.json'));
-}
-
-export async function startServer(_options: ServerOptions): Promise<never> {
-  if (!hasRehArtifact() && !hasVscodeVendor()) {
-    throw new Error(
-      '@zcode/server: no REH artifact and no vendor/vscode — run scripts/add-vscode-submodule.sh and scripts/build-server.sh',
-    );
-  }
-  throw new Error(
-    '@zcode/server: startServer not implemented yet (cookie bridge + co-serve is PR R3). Build with scripts/build-server.sh first.',
-  );
 }

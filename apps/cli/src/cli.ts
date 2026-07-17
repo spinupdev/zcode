@@ -29,6 +29,12 @@ Docs: docs/design-dual-mode-vscode-ide.md
 const args = process.argv.slice(2);
 const cmd = args[0];
 
+function flag(argv: string[], name: string): string | undefined {
+  const i = argv.indexOf(name);
+  if (i === -1) return undefined;
+  return argv[i + 1];
+}
+
 switch (cmd) {
   case undefined:
   case 'help':
@@ -43,7 +49,19 @@ switch (cmd) {
     console.log('0.0.0-dev');
     process.exit(0);
     break;
-  case 'serve':
+  case 'serve': {
+    // Delegate to @zcode/server when built (R3 skeleton HTTP wrapper).
+    const { startServer } = await import('@zcode/server');
+    const port = Number(flag(args, '--port') ?? 8080);
+    const host = flag(args, '--host') ?? '127.0.0.1';
+    const password = flag(args, '--password') ?? process.env.ZCODE_PASSWORD ?? 'zcode';
+    const workspace = args[1] && !args[1].startsWith('-') ? args[1] : process.cwd();
+    const srv = await startServer({ host, port, password, workspace });
+    console.log(`ZCode serve ${srv.url}`);
+    console.log(`authority=${srv.authority}`);
+    console.log('Password login at /login — session cookie is HttpOnly (no token in URL).');
+    break;
+  }
   case 'git-proxy':
   case 'web':
     console.error(

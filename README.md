@@ -65,12 +65,14 @@ pnpm build:server:check
 
 **Dev vs production:** `@vscode/test-web` is never a production path. Set `ZCODE_ALLOW_TEST_WEB=1` only for local extension experiments. Owned web assets come from the OSS web build (M0).
 
-## Planned CLI
+## CLI
 
 ```bash
-zcode serve ./my-project --port 8080 --auth password
-zcode git-proxy --port 8787 --allow-hosts github.com,gitlab.com
-zcode web --dir dist/web --port 3000
+# HTTP wrapper: password login + HttpOnly session cookie (REH attach next)
+node apps/cli/dist/cli.js serve . --port 8080 --password secret
+
+zcode git-proxy --port 8787 --allow-hosts github.com,gitlab.com   # B4
+zcode web --dir dist/web --port 3000                               # later
 ```
 
 ## Implementation tracks
