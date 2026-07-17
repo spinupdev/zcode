@@ -52,6 +52,8 @@ const defaultProduct = {
 
 writeFileSync(join(dist, 'product.json'), JSON.stringify(defaultProduct, null, 2));
 
+// Pre-workbench skeleton mirrors VS Code's monaco-parts-splash (electron workbench.ts)
+// so production loads show IDE chrome instead of a debug/error "app page" blip.
 const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,27 +63,101 @@ const indexHtml = `<!DOCTYPE html>
   <link rel="icon" href="/vscode/favicon.ico" type="image/x-icon" />
   <!-- Stylesheet href is finalized by bootstrap.js (dogfood AMD vs owned esbuild). -->
   <link id="zcode-workbench-css" data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="/vscode/out/vs/workbench/workbench.web.main.css" />
-  <style>
-    html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #1e1e1e; }
+  <style class="initialShellColors">
+    html, body {
+      width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+      background-color: #1e1e1e; color: #cccccc;
+    }
+    /* VS Code parts splash (see vendor/vscode .../workbench/workbench.ts #monaco-parts-splash) */
+    #monaco-parts-splash {
+      position: fixed; inset: 0; z-index: 100;
+      background-color: #1e1e1e; color: #cccccc;
+      pointer-events: none; user-select: none;
+    }
+    #monaco-parts-splash.hidden { display: none !important; }
+    #monaco-parts-splash .part { position: absolute; box-sizing: border-box; }
+    #monaco-parts-splash .titlebar {
+      top: 0; left: 0; right: 0; height: 35px;
+      background: #3c3c3c;
+      border-bottom: 1px solid #2b2b2b;
+    }
+    #monaco-parts-splash .activitybar {
+      top: 35px; left: 0; bottom: 22px; width: 48px;
+      background: #333333;
+      border-right: 1px solid #2b2b2b;
+    }
+    #monaco-parts-splash .sidebar {
+      top: 35px; left: 48px; bottom: 22px; width: min(300px, 28vw);
+      background: #252526;
+      border-right: 1px solid #2b2b2b;
+    }
+    #monaco-parts-splash .sidebar-lines {
+      position: absolute; top: 48px; left: 16px; right: 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    #monaco-parts-splash .sidebar-lines i {
+      display: block; height: 8px; border-radius: 4px;
+      background: rgba(255,255,255,0.08);
+    }
+    #monaco-parts-splash .sidebar-lines i:nth-child(1) { width: 55%; }
+    #monaco-parts-splash .sidebar-lines i:nth-child(2) { width: 78%; }
+    #monaco-parts-splash .sidebar-lines i:nth-child(3) { width: 42%; }
+    #monaco-parts-splash .sidebar-lines i:nth-child(4) { width: 66%; }
+    #monaco-parts-splash .sidebar-lines i:nth-child(5) { width: 50%; }
+    #monaco-parts-splash .editor {
+      top: 35px; left: calc(48px + min(300px, 28vw)); right: 0; bottom: 22px;
+      background: #1e1e1e;
+    }
+    #monaco-parts-splash .tabs {
+      position: absolute; top: 0; left: 0; right: 0; height: 35px;
+      background: #252526;
+      border-bottom: 1px solid #2b2b2b;
+    }
+    #monaco-parts-splash .tab {
+      position: absolute; top: 0; left: 0; width: 120px; height: 35px;
+      background: #1e1e1e;
+      border-right: 1px solid #2b2b2b;
+    }
+    #monaco-parts-splash .statusbar {
+      left: 0; right: 0; bottom: 0; height: 22px;
+      background: #007acc;
+    }
+    /* Error surface only when bootstrap fails (not shown during normal load) */
     #fallback {
+      display: none;
       font-family: system-ui, sans-serif; padding: 2rem; max-width: 42rem; margin: 0 auto;
       color: #e6edf3; background: #0d1117; min-height: 100%; box-sizing: border-box;
+      position: relative; z-index: 200;
     }
+    #fallback.visible { display: block; }
     #fallback a { color: #58a6ff; }
     #fallback code { background: #21262d; padding: 0.1rem 0.35rem; border-radius: 4px; }
-    #fallback.hidden { display: none; }
     #fallback pre { background: #161b22; padding: 0.75rem; border-radius: 6px; overflow: auto; }
   </style>
 </head>
 <body>
-  <div id="fallback">
-    <h1>ZCode IDE (VS Code Web)</h1>
-    <p>VS Code Web static assets are not staged yet.</p>
+  <!-- Early shell skeleton (VS Code monaco-parts-splash). Removed when workbench paints. -->
+  <div id="monaco-parts-splash" class="vs-dark" aria-hidden="true">
+    <div class="part titlebar"></div>
+    <div class="part activitybar"></div>
+    <div class="part sidebar">
+      <div class="sidebar-lines" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+    <div class="part editor">
+      <div class="tabs"><div class="tab"></div></div>
+    </div>
+    <div class="part statusbar"></div>
+  </div>
+  <div id="fallback" role="alert">
+    <h1>ZCode IDE</h1>
+    <p>VS Code Web could not start. Check that assets are staged:</p>
     <pre>./scripts/fetch-vscode-web.sh
 pnpm --filter @zcode/workbench build
 pnpm --filter zcode-browser-fs build
-node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000</pre>
-    <p>Product IDE is <a href="/">/</a>. Optional git dogfood: <a href="/debug/">/debug/</a>.</p>
+pnpm deploy:cloudflare   # or: zcode web / zcode serve</pre>
+    <p>Optional git dogfood: <a href="/debug/">/debug/</a></p>
   </div>
   <script>
     window.product = ${JSON.stringify(defaultProduct)};
@@ -95,10 +171,17 @@ writeFileSync(join(dist, 'index.html'), indexHtml);
 
 const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject extension URIs */
 (async function () {
+  const splash = document.getElementById('monaco-parts-splash');
   const fallback = document.getElementById('fallback');
+  function hideSplash() {
+    if (splash) splash.classList.add('hidden');
+    // Match VS Code PartsSplash: drop initial shell color style once workbench owns the page
+    document.head.querySelectorAll('style.initialShellColors').forEach((el) => el.remove());
+  }
   function showFallback(msg) {
+    hideSplash();
     if (!fallback) return;
-    fallback.classList.remove('hidden');
+    fallback.classList.add('visible');
     if (msg) {
       const p = document.createElement('p');
       p.textContent = msg;
@@ -311,7 +394,20 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     return;
   }
 
-  if (fallback) fallback.classList.add('hidden');
+  // Keep splash visible while scripts load; hide once workbench DOM appears or create() returns.
+  function watchWorkbenchPaint() {
+    const start = Date.now();
+    const tick = () => {
+      if (document.querySelector('.monaco-workbench')) {
+        hideSplash();
+        return;
+      }
+      if (Date.now() - start > 120_000) return;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  watchWorkbenchPaint();
 
   const baseUrl = new URL('/vscode', location.origin).toString();
   globalThis._VSCODE_FILE_ROOT = baseUrl + '/out/';
@@ -329,6 +425,8 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
       throw new Error('owned workbench.web.main.internal.js missing create() export');
     }
     mod.create(document.body, window.product || {});
+    // create() has returned; workbench may paint next frames
+    setTimeout(hideSplash, 0);
     return;
   }
 
@@ -356,11 +454,14 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
   await loadScript('/vscode/out/vs/workbench/workbench.web.main.nls.js');
   await loadScript('/vscode/out/vs/workbench/workbench.web.main.js');
   await loadScript('/vscode/out/vs/code/browser/workbench/workbench.js');
+  setTimeout(hideSplash, 0);
 })().catch((err) => {
   console.error(err);
+  const splash = document.getElementById('monaco-parts-splash');
+  if (splash) splash.classList.add('hidden');
   const fallback = document.getElementById('fallback');
   if (fallback) {
-    fallback.classList.remove('hidden');
+    fallback.classList.add('visible');
     const p = document.createElement('p');
     p.textContent = String(err && err.message ? err.message : err);
     fallback.appendChild(p);
