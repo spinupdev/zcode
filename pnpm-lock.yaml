@@ -43,6 +43,8 @@ importers:
         specifier: ^0.25.5
         version: 0.25.12
 
+  apps/workbench: {}
+
   extensions/zcode-browser-fs:
     devDependencies:
       '@types/vscode':
