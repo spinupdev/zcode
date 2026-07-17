@@ -5,6 +5,17 @@ on:
     branches: [main, master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      heavy_build:
+        description: "Optional fat VS Code build (manual only)"
+        type: choice
+        required: false
+        default: none
+        options:
+          - none
+          - reh
+          - web
+          - reh-and-e2e
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -127,10 +138,15 @@ jobs:
         if: steps.sub.outputs.present == 'true'
         run: bash scripts/build-web.sh --check
 
-  # Full REH compile is intentionally manual — multi-hour, large disk.
+  # Full REH / owned web compile is intentionally manual — multi-hour, large disk.
+  # Node 24 matches vendor/vscode/.nvmrc (pin 1.129).
+  # Trigger: Actions → CI → Run workflow → heavy_build = reh | web | reh-and-e2e
   vscode-reh-build:
     name: VS Code REH build (manual)
-    if: github.event_name == 'workflow_dispatch'
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.heavy_build == 'reh' ||
+       github.event.inputs.heavy_build == 'reh-and-e2e')
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -140,18 +156,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
 
       - name: Free disk
         run: |
           df -h
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/powershell /usr/share/swift || true
+          # Drop large preinstalled toolchains used by GitHub runners
+          sudo docker system prune -af || true
           df -h
 
       - name: Build REH
         env:
           ZCODE_REH_PLATFORM: linux
           ZCODE_REH_ARCH: x64
+          # Helps @vscode/ripgrep postinstall avoid anonymous GitHub 403s
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/build-server.sh
 
       - name: Upload dist/server
@@ -160,3 +180,108 @@ jobs:
           name: zcode-reh-linux-x64
           path: dist/server
           if-no-files-found: error
+          retention-days: 14
+
+  vscode-web-build:
+    name: Owned vscode-web build (manual)
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.heavy_build == 'web'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Free disk
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/powershell /usr/share/swift || true
+          sudo docker system prune -af || true
+          df -h
+
+      - name: build-web check
+        run: bash scripts/build-web.sh --check
+
+      - name: Package owned vscode-web
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/build-web.sh --package
+
+      - name: Verify owned marker
+        run: |
+          test -f dist/vscode-web/.zcode-vscode-web.json
+          grep -q '"source": "owned"' dist/vscode-web/.zcode-vscode-web.json
+          test -f dist/vscode-web/out/vs/loader.js
+
+      - name: Upload dist/vscode-web
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-vscode-web
+          path: dist/vscode-web
+          if-no-files-found: error
+          retention-days: 14
+
+  # R6 after REH artifact exists — not on default PR path.
+  vscode-reh-e2e:
+    name: R6 REH terminal e2e (manual)
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.heavy_build == 'reh-and-e2e'
+    needs: [vscode-reh-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Download REH artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: zcode-reh-linux-x64
+          path: dist/server
+
+      - name: Build surfaces
+        run: |
+          pnpm --filter @zcode/cli build
+          pnpm --filter @zcode/server build
+          pnpm --filter @zcode/web build
+          pnpm --filter zcode-browser-fs build
+          pnpm --filter zcode-git build
+          pnpm --filter @zcode/workbench build
+          bash scripts/fetch-vscode-web.sh
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @zcode/e2e install-browsers
+
+      - name: R6 e2e (required)
+        env:
+          CI: true
+          ZCODE_E2E_REH_REQUIRED: "1"
+          ZCODE_E2E_PASSWORD: zcode-e2e
+          ZCODE_SPAWN_REH: "1"
+        run: bash scripts/e2e-reh-terminal.sh
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-reh-report
+          path: e2e/playwright-report
+          if-no-files-found: ignore

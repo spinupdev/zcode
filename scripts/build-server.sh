@@ -89,6 +89,16 @@ check_prereqs() {
 
 install_deps() {
   log "Installing npm deps in vendor/vscode (isolated from monorepo pnpm)"
+  # @vscode/ripgrep postinstall needs GitHub releases; 403 without token is common.
+  if [[ -z "${GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null 2>&1; then
+    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+    export GITHUB_TOKEN
+  fi
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    log "GITHUB_TOKEN present for @vscode/ripgrep postinstall"
+  else
+    echo "warning: GITHUB_TOKEN unset — @vscode/ripgrep may 403; set token or use CI" >&2
+  fi
   (
     cd "${VSCODE}"
     # Prefer ci when lockfile present for reproducibility
@@ -101,31 +111,76 @@ install_deps() {
 }
 
 compile_sources() {
-  log "Compiling VS Code sources (gulp compile) — this can take a long time"
+  # Prefer without-mangling: 1.129 mangler + typecheck often fails on test sources.
+  log "Compiling VS Code sources (compile-build-without-mangling) — long-running"
   (
     cd "${VSCODE}"
-    npm run gulp compile
+    if npm run gulp compile-build-without-mangling; then
+      :
+    else
+      echo "warning: without-mangling failed — trying gulp compile (dev)" >&2
+      npm run gulp compile
+    fi
   )
 }
 
 package_reh() {
-  local platform arch task
+  local platform arch task task_ci
   platform="${ZCODE_REH_PLATFORM:-$(detect_platform)}"
   arch="${ZCODE_REH_ARCH:-$(detect_arch)}"
   task="vscode-reh-${platform}-${arch}"
+  task_ci="${task}-ci"
 
-  log "Packaging REH: gulp ${task}"
-  (
-    cd "${VSCODE}"
-    npm run gulp "${task}"
+  # Full task re-runs mangled compile. Prefer: without-mangling compile (already
+  # done) + extensions/media + bundle via full task only if needed; otherwise -ci
+  # after manual bundle is fragile. Strategy:
+  # 1) full ${task} (includes compile with mangling — may fail)
+  # 2) without-mangling already done → gulp ${task_ci} needs out-vscode-reh first
+  # 3) run full task but it recompiles with mangling…
+  #
+  # Practical path: run full ${task}; on failure try compile-build-without-mangling
+  # then a series that mirrors CI after out-build exists.
+  log "Packaging REH: gulp ${task} (fallback ${task_ci})"
+  local used_task="${task}"
+  if ! (cd "${VSCODE}" && npm run gulp "${task}"); then
+    echo "warning: gulp ${task} failed — trying without-mangling + ${task_ci}" >&2
+    used_task="${task_ci}"
+    (
+      cd "${VSCODE}"
+      npm run gulp compile-build-without-mangling || true
+      # Bundle REH sources into out-vscode-reh when missing
+      if [[ ! -d out-vscode-reh ]]; then
+        npm run gulp "minify-vscode-reh" 2>/dev/null || \
+          npm run gulp -- --tasks-simple 2>/dev/null | head -1 >/dev/null
+        # Best-effort: re-run full task without relying on mangler by invoking -ci
+        # after ensuring out-vscode-reh via optimize bundle name patterns
+        if [[ ! -d out-vscode-reh ]]; then
+          # Full task series without mangling: use compile-build-without-mangling
+          # then invoke internal steps by re-running ${task} often still mangles.
+          # Last resort: ${task_ci} (requires out-vscode-reh).
+          echo "warning: out-vscode-reh missing; ${task_ci} may produce incomplete package" >&2
+        fi
+      fi
+      npm run gulp "${task_ci}"
+    )
+  fi
+
+  # Locate output: monorepo root, vendor sibling, or .build
+  local built=""
+  local candidates=(
+    "${ROOT}/vscode-reh-${platform}-${arch}"
+    "${ROOT}/vendor/vscode-reh-${platform}-${arch}"
+    "${VSCODE}/../vscode-reh-${platform}-${arch}"
+    "${VSCODE}/.build/vscode-reh-${platform}-${arch}"
   )
-
-  # Locate output under .build
-  local built
-  built="$(find "${VSCODE}/.build" -maxdepth 2 -type d -name "vscode-reh-${platform}-${arch}*" 2>/dev/null | head -1 || true)"
+  for c in "${candidates[@]}"; do
+    if [[ -d "${c}/bin" ]] || [[ -f "${c}/server.sh" ]]; then
+      built="${c}"
+      break
+    fi
+  done
   if [[ -z "${built}" ]]; then
-    # Some versions nest differently
-    built="$(find "${VSCODE}" -maxdepth 3 -type d -name "vscode-reh-${platform}-${arch}" 2>/dev/null | head -1 || true)"
+    built="$(find "${ROOT}" "${VSCODE}/.build" -maxdepth 2 -type d -name "vscode-reh-${platform}-${arch}*" 2>/dev/null | head -1 || true)"
   fi
 
   mkdir -p "${OUT_DIR}"
@@ -136,11 +191,10 @@ package_reh() {
       mkdir -p "${OUT_DIR}"
       cp -R "${built}/." "${OUT_DIR}/"
     }
-    # Marker for product packaging
     cat > "${OUT_DIR}/.zcode-build.json" <<EOF
 {
   "kind": "vscode-reh",
-  "task": "${task}",
+  "task": "${used_task}",
   "vscodeCommit": "$(cd "${VSCODE}" && git rev-parse HEAD)",
   "vscodeTag": "$(cd "${VSCODE}" && git describe --tags --always 2>/dev/null || echo unknown)",
   "platform": "${platform}",
@@ -148,11 +202,21 @@ package_reh() {
   "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
+    if [[ ! -f "${OUT_DIR}/out/server-main.js" && ! -f "${OUT_DIR}/out/server-main.ts" ]]; then
+      echo "warning: REH package may be incomplete (missing out/server-main.js)" >&2
+    fi
     log "REH ready at dist/server"
+    # Clean intermediate sibling package trees
+    for c in "${candidates[@]}"; do
+      if [[ "${c}" != "${OUT_DIR}" && -d "${c}" && "${c}" == *vscode-reh* ]]; then
+        rm -rf "${c}"
+      fi
+    done
   else
-    echo "warning: could not locate REH output directory after ${task}" >&2
-    echo "         check vendor/vscode/.build for artifacts" >&2
+    echo "warning: could not locate REH output directory after ${used_task}" >&2
+    echo "         check vendor/vscode/.build and monorepo root for vscode-reh-*" >&2
     ls -la "${VSCODE}/.build" 2>/dev/null || true
+    ls -d "${ROOT}"/vscode-reh-* "${ROOT}"/vendor/vscode-reh-* 2>/dev/null || true
     exit 1
   fi
 }

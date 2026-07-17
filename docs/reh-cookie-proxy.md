@@ -55,12 +55,24 @@ Without `dist/server` artifact, REH mode is `none` and proxy is idle (browser mo
 ## R2c — REH artifact
 
 ```bash
+export GITHUB_TOKEN="$(gh auth token)"  # avoids @vscode/ripgrep 403
 ./scripts/build-server.sh --check
-./scripts/build-server.sh          # multi-hour; 40GB+ disk
-# CI: workflow_dispatch job vscode-reh-build
+./scripts/build-server.sh          # multi-hour; 40GB+ disk; Node 24
+# CI: Actions → CI → Run workflow → heavy_build=reh
+# Artifact: zcode-reh-linux-x64 → extract to dist/server/
 ```
 
 Marker: `dist/server/.zcode-build.json`. Binaries are **not** committed.
+
+## R6 — Terminal e2e
+
+See [r6-terminal-e2e.md](./r6-terminal-e2e.md).
+
+```bash
+pnpm e2e:reh                         # skips if no artifact
+ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh
+# CI: heavy_build=reh-and-e2e
+```
 
 ## Security notes
 
@@ -73,4 +85,6 @@ Marker: `dist/server/.zcode-build.json`. Binaries are **not** committed.
 ```bash
 pnpm --filter @zcode/server test
 # proxy.test.ts: reserved paths, HTTP inject token, 401 without cookie
+# terminal-flow.test.ts: login → mock REH /version (R6 contract without binary)
+# artifact.test.ts: dist/server marker/binary detection
 ```
