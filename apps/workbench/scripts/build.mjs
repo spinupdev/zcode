@@ -58,6 +58,11 @@ const defaultProduct = {
   initialColorTheme: {
     themeType: 'dark',
   },
+  // Top-level create() defaults (VS Code Web reads these in addition to productConfiguration)
+  configurationDefaults: {
+    'workbench.colorTheme': 'Default Dark Modern',
+    'window.autoDetectColorScheme': false,
+  },
   // Workspace is trusted so FS provider can write without prompts
   workspaceProvider: undefined, // filled by workbench.js from folderUri
 };
@@ -357,15 +362,22 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
   } catch (_) { /* ignore */ }
 
   window.product = withHostAuthority(window.product || {});
-  // Ensure dark shell even if user storage later overrides; first paint matches splash
-  window.product.initialColorTheme = window.product.initialColorTheme || { themeType: 'dark' };
+  // Ensure dark shell: VS Code Web honors top-level configurationDefaults on create()
+  // as well as productConfiguration.configurationDefaults.
+  window.product.initialColorTheme = { themeType: 'dark' };
+  const darkDefaults = {
+    'workbench.colorTheme': 'Default Dark Modern',
+    'window.autoDetectColorScheme': false,
+  };
+  window.product.configurationDefaults = {
+    ...(window.product.configurationDefaults || {}),
+    ...darkDefaults,
+  };
   if (window.product.productConfiguration) {
-    const defs = window.product.productConfiguration.configurationDefaults || {};
-    if (!defs['workbench.colorTheme']) {
-      defs['workbench.colorTheme'] = 'Default Dark Modern';
-    }
-    defs['window.autoDetectColorScheme'] = false;
-    window.product.productConfiguration.configurationDefaults = defs;
+    window.product.productConfiguration.configurationDefaults = {
+      ...(window.product.productConfiguration.configurationDefaults || {}),
+      ...darkDefaults,
+    };
   }
 
   function loadScript(src, type) {
