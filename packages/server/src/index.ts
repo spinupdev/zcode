@@ -18,6 +18,7 @@ export {
 export { startServer } from './http/start.js';
 export type { StartedServer } from './http/start.js';
 export { spawnReh } from './reh/spawn.js';
+export { handleRehUpgrade, tryProxyHttp, isReservedPath } from './reh/proxy.js';
 
 export interface ServerOptions {
   host: string;

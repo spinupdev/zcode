@@ -6,6 +6,7 @@ import { CookieTokenBridge } from '../auth/cookie-bridge.js';
 import { createPasswordVerifier, LoginRateLimiter } from '../auth/password.js';
 import type { ServerOptions } from '../index.js';
 import { monorepoRoot } from '../paths.js';
+import { handleRehUpgrade } from '../reh/proxy.js';
 import { spawnReh, type RehHandle } from '../reh/spawn.js';
 import { createRequestHandler } from './app.js';
 
@@ -74,11 +75,27 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
     productOverlay,
     rehEndpoint: reh?.endpoint,
     rehMode: reh?.mode ?? 'none',
+    rehProxyEnabled: Boolean(reh?.endpoint),
     gitProxy: options.gitProxy !== false,
   });
 
   const server = http.createServer((req, res) => {
     void handler(req, res);
+  });
+
+  // R3b: WebSocket upgrades → REH with cookie → connection-token injection
+  server.on('upgrade', (req, socket, head) => {
+    const handled = handleRehUpgrade(req, socket, head, {
+      bridge,
+      getTarget: () =>
+        reh?.endpoint
+          ? { endpoint: reh.endpoint, connectionToken }
+          : null,
+    });
+    if (!handled) {
+      socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+    }
   });
 
   await new Promise<void>((resolve, reject) => {

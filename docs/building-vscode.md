@@ -28,10 +28,14 @@ Upstream uses **npm** (not pnpm) inside `vendor/vscode`. Keep that environment i
 ./scripts/build-server.sh --compile-only
 ./scripts/build-server.sh --skip-package
 
-# Web compile (M0 path; not production CDN yet)
+# Web compile / package (M0d owned assets)
 ./scripts/build-web.sh --check
-./scripts/build-web.sh --compile-only
+./scripts/build-web.sh --spike          # list web gulp tasks + Node hints
+./scripts/build-web.sh --compile-only   # gulp compile-web
+./scripts/build-web.sh --package        # gulp vscode-web → dist/vscode-web
 ```
+
+See also [m0d-owned-web-spike.md](./m0d-owned-web-spike.md) and [reh-cookie-proxy.md](./reh-cookie-proxy.md).
 
 Artifacts (when packaging succeeds):
 
@@ -63,6 +67,10 @@ docker pull gitpod/openvscode-server:latest
 ```
 
 GA must use **owned** `microsoft/vscode` artifacts (KD19).
+
+## Cookie-auth REH attach
+
+Once `dist/server` exists, `zcode serve` spawns REH and reverse-proxies with HttpOnly cookies — see [reh-cookie-proxy.md](./reh-cookie-proxy.md).
 
 ## CI policy
 

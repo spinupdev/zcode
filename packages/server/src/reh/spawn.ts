@@ -30,10 +30,13 @@ export function spawnReh(opts: RehSpawnOptions): RehHandle {
 
   const artifactServer = findArtifactBinary(artifact);
   if (artifactServer) {
+    // Prefer explicit connection-token so the shell proxy can inject it after cookie auth (R3b).
+    // Fallback env vars keep older OSS builds working.
     const child = spawn(
       artifactServer,
       [
-        '--without-connection-token', // we inject via wrapper later; use token flag when binary supports it
+        '--connection-token',
+        opts.connectionToken,
         '--accept-server-license-terms',
         '--host',
         host,

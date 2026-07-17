@@ -6,6 +6,7 @@ import {
 } from '@zcode/git-proxy';
 import { CookieTokenBridge, SESSION_COOKIE } from '../auth/cookie-bridge.js';
 import { type PasswordVerifier, LoginRateLimiter } from '../auth/password.js';
+import { tryProxyHttp } from '../reh/proxy.js';
 import { tryServeStatic } from './static.js';
 
 export interface AppContext {
@@ -27,6 +28,8 @@ export interface AppContext {
   /** Mount isomorphic-git corsProxy at this path (default /git-proxy). Set false to disable. */
   gitProxy?: boolean | { prefix?: string; allowHosts?: string[] };
   productOverlay?: Record<string, unknown>;
+  /** When true and REH is up, unauthenticated shell still serves login; REH via cookie proxy */
+  rehProxyEnabled?: boolean;
 }
 
 export function createRequestHandler(ctx: AppContext) {
@@ -68,9 +71,12 @@ export function createRequestHandler(ctx: AppContext) {
         const authed = ctx.bridge.isAuthenticated(req.headers.cookie);
         json(res, 200, {
           authenticated: authed,
+          /** Same-origin authority for remoteAuthority (REH is proxied; no token in body) */
           authority: authed ? ctx.authority : null,
+          ready: authed,
           reh: ctx.rehMode ?? 'none',
-          workbench: ctx.staticDir ? true : false,
+          rehProxy: Boolean(ctx.rehEndpoint),
+          workbench: Boolean(ctx.workbenchDir || ctx.staticDir),
         });
         return;
       }
@@ -125,6 +131,21 @@ export function createRequestHandler(ctx: AppContext) {
           200,
           loginPage(ctx.bridge.isAuthenticated(req.headers.cookie), ctx.authority, ctx),
         );
+        return;
+      }
+
+      // R3b: cookie-authorized reverse proxy to local REH for remote mode
+      if (
+        ctx.rehProxyEnabled !== false &&
+        ctx.rehEndpoint &&
+        tryProxyHttp(req, res, {
+          bridge: ctx.bridge,
+          getTarget: () =>
+            ctx.rehEndpoint
+              ? { endpoint: ctx.rehEndpoint, connectionToken: ctx.connectionToken }
+              : null,
+        })
+      ) {
         return;
       }
 
@@ -271,7 +292,7 @@ function loginPage(authenticated: boolean, authority: string, ctx: AppContext): 
       ? `<p><a href="/index.html">Open browser workspace (SPA)</a></p>`
       : '';
     const ideLink = ctx.workbenchDir
-      ? `<p><a href="/ide/">Open VS Code Web IDE</a> · <a href="/ide/?mode=remote&authority=${encodeURIComponent(authority)}">Remote mode</a></p>`
+      ? `<p><a href="/ide/">Open VS Code Web IDE (browser)</a> · <a href="/ide/?mode=remote&authority=${encodeURIComponent(authority)}&ready=1">Remote mode (cookie-auth REH proxy)</a></p>`
       : `<p>IDE: run <code>./scripts/fetch-vscode-web.sh</code> and rebuild workbench.</p>`;
     return `<!DOCTYPE html><html><body>
       <h1>ZCode server</h1>
