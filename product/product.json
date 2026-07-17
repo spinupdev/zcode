@@ -1,0 +1,38 @@
+{
+  "nameShort": "ZCode",
+  "nameLong": "ZCode",
+  "applicationName": "zcode",
+  "dataFolderName": ".zcode",
+  "win32MutexName": "zcode",
+  "licenseName": "MIT",
+  "licenseUrl": "https://github.com/spinupdev/zcode",
+  "serverLicenseUrl": "https://github.com/spinupdev/zcode",
+  "serverGreeting": [],
+  "serverLicense": [],
+  "serverLicensePrompt": "",
+  "serverApplicationName": "zcode-server",
+  "serverDataFolderName": ".zcode-server",
+  "tunnelApplicationName": "zcode-tunnel",
+  "win32DirName": "ZCode",
+  "win32NameVersion": "ZCode",
+  "win32RegValueName": "ZCode",
+  "win32AppUserModelId": "spinupdev.ZCode",
+  "win32ShellNameShort": "Z&Code",
+  "darwinBundleIdentifier": "dev.spinup.zcode",
+  "linuxIconName": "zcode",
+  "licenseFileName": "LICENSE.txt",
+  "reportIssueUrl": "https://github.com/spinupdev/zcode/issues/new",
+  "urlProtocol": "zcode",
+  "quality": "stable",
+  "extensionsGallery": {
+    "serviceUrl": "https://open-vsx.org/vscode/gallery",
+    "itemUrl": "https://open-vsx.org/vscode/item",
+    "resourceUrlTemplate": "https://openvsxorg.blob.core.windows.net/resources/{publisher}/{name}/{version}/{path}"
+  },
+  "extensionAllowedProposedApi": [],
+  "linkProtectionTrustedDomains": [
+    "https://open-vsx.org",
+    "https://github.com",
+    "https://gitlab.com"
+  ]
+}

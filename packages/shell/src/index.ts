@@ -37,3 +37,13 @@ export {
   assertAuthorityShape,
 } from './url.js';
 export type { BootstrapUrlInput } from './url.js';
+
+export {
+  buildWorkbenchCreateOptions,
+  workbenchProductScript,
+} from './workbench-product.js';
+export type {
+  ProductOverlay,
+  WorkbenchCreateOptions,
+  BuildWorkbenchProductInput,
+} from './workbench-product.js';
