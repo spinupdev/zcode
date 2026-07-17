@@ -6,12 +6,16 @@
   "publisher": "spinupdev",
   "private": true,
   "engines": {
-    "vscode": "^1.129.0"
+    "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "browser": "./dist/web/extension.js",
   "main": "./dist/extension.js",
-  "activationEvents": ["onCommand:zcode.diagnostics.copyReport"],
+  "activationEvents": [
+    "onCommand:zcode.diagnostics.copyReport"
+  ],
   "contributes": {
     "commands": [
       {

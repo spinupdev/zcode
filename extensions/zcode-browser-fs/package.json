@@ -1,28 +1,43 @@
 {
   "name": "zcode-browser-fs",
   "displayName": "ZCode Browser FS",
-  "description": "OPFS / virtual FileSystemProvider for ZCode browser mode",
-  "version": "0.0.1",
+  "description": "Virtual FileSystemProvider (zcode-opfs) for ZCode browser / VS Code Web",
+  "version": "0.1.0",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
-    "vscode": "^1.129.0"
+    "vscode": "^1.85.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "categories": ["Other"],
+  "extensionKind": ["ui", "workspace"],
   "browser": "./dist/web/extension.js",
   "activationEvents": [
+    "onStartupFinished",
     "onFileSystem:zcode-opfs",
-    "onCommand:zcode.fs.openWorkspace"
+    "onCommand:zcode.fs.openWorkspace",
+    "onCommand:zcode.fs.seedSample"
   ],
   "contributes": {
     "commands": [
       {
         "command": "zcode.fs.openWorkspace",
         "title": "ZCode: Open Virtual Workspace"
+      },
+      {
+        "command": "zcode.fs.seedSample",
+        "title": "ZCode: Seed Sample Files"
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "zcode.fs.openWorkspace"
+        },
+        {
+          "command": "zcode.fs.seedSample"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node ./scripts/build.mjs",
@@ -32,7 +47,7 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.95.0",
-    "typescript": "^5.8.3",
-    "esbuild": "^0.25.5"
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
   }
 }

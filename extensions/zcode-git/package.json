@@ -2,25 +2,21 @@
   "name": "zcode-git",
   "displayName": "ZCode Git (Browser)",
   "description": "SCM provider + clone commands for ZCode browser mode",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
-    "vscode": "^1.129.0"
+    "vscode": "^1.85.0"
   },
-  "categories": [
-    "SCM Providers"
-  ],
+  "categories": ["SCM Providers"],
+  "extensionKind": ["ui"],
   "browser": "./dist/web/extension.js",
-  "activationEvents": [
-    "onStartupFinished",
-    "onCommand:zcode.git.clone"
-  ],
+  "activationEvents": ["onStartupFinished", "onCommand:zcode.git.clone"],
   "contributes": {
     "commands": [
       {
         "command": "zcode.git.clone",
-        "title": "ZCode: Clone Repository (Browser)"
+        "title": "ZCode: Clone Repository (Browser SPA)"
       }
     ],
     "configuration": {
@@ -28,8 +24,8 @@
       "properties": {
         "zcode.gitProxyUrl": {
           "type": "string",
-          "default": "http://127.0.0.1:8787",
-          "description": "isomorphic-git corsProxy base URL"
+          "default": "",
+          "description": "isomorphic-git corsProxy base URL (empty = same-origin /git-proxy)"
         }
       }
     }
@@ -42,7 +38,7 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.95.0",
-    "typescript": "^5.8.3",
-    "esbuild": "^0.25.5"
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
   }
 }
