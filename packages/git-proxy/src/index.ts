@@ -1,7 +1,6 @@
 /**
  * HTTP CORS proxy for isomorphic-git (browser mode).
  * Required for GitHub/GitLab-class hosts. Not a control plane.
- * Implementation: Track B4.
  */
 
 export interface GitProxyOptions {
@@ -21,6 +20,5 @@ export function isHostAllowed(hostname: string, allowHosts: readonly string[]): 
   });
 }
 
-export async function startGitProxy(_options: GitProxyOptions): Promise<never> {
-  throw new Error('@zcode/git-proxy: startGitProxy not implemented yet (Track B4).');
-}
+export { startGitProxy, resolveUpstream } from './proxy.js';
+export type { StartedGitProxy } from './proxy.js';
