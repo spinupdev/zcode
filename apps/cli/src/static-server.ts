@@ -1,6 +1,11 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  createGitProxyHandler,
+  DEFAULT_ALLOW_HOSTS,
+  DEFAULT_GIT_PROXY_PREFIX,
+} from '@zcode/git-proxy';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -16,30 +21,49 @@ export async function startStaticServer(opts: {
   host: string;
   port: number;
   dir: string;
-}): Promise<{ url: string; close(): Promise<void> }> {
+  /** Mount same-origin /git-proxy (default true) */
+  gitProxy?: boolean;
+  gitProxyPrefix?: string;
+  allowHosts?: string[];
+}): Promise<{ url: string; gitProxyUrl: string | null; close(): Promise<void> }> {
   const root = path.resolve(opts.dir);
   if (!fs.existsSync(root)) {
     throw new Error(`static dir not found: ${root} (run pnpm --filter @zcode/web build)`);
   }
 
+  const gitProxyEnabled = opts.gitProxy !== false;
+  const prefix = opts.gitProxyPrefix ?? DEFAULT_GIT_PROXY_PREFIX;
+  const gitProxyHandler = gitProxyEnabled
+    ? createGitProxyHandler({
+        prefix,
+        allowHosts: opts.allowHosts ?? DEFAULT_ALLOW_HOSTS,
+      })
+    : null;
+
   const server = http.createServer((req, res) => {
-    let rel = decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/');
-    if (rel === '/') rel = '/index.html';
-    if (rel.includes('..')) {
-      res.writeHead(400).end('bad path');
-      return;
-    }
-    const file = path.join(root, rel);
-    if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-      res.writeHead(404).end('not found');
-      return;
-    }
-    const data = fs.readFileSync(file);
-    res.writeHead(200, {
-      'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream',
-      'cache-control': 'no-store',
-    });
-    res.end(data);
+    void (async () => {
+      if (gitProxyHandler && (await gitProxyHandler(req, res))) {
+        return;
+      }
+
+      let rel = decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/');
+      if (rel === '/') rel = '/index.html';
+      if (rel.includes('..')) {
+        res.writeHead(400).end('bad path');
+        return;
+      }
+      const file = path.join(root, rel);
+      if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+        res.writeHead(404).end('not found');
+        return;
+      }
+      const data = fs.readFileSync(file);
+      res.writeHead(200, {
+        'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream',
+        'cache-control': 'no-store',
+      });
+      res.end(data);
+    })();
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -50,8 +74,10 @@ export async function startStaticServer(opts: {
   const addr = server.address();
   const port = typeof addr === 'object' && addr ? addr.port : opts.port;
   const host = opts.host === '0.0.0.0' ? '127.0.0.1' : opts.host;
+  const url = `http://${host}:${port}/`;
   return {
-    url: `http://${host}:${port}/`,
+    url,
+    gitProxyUrl: gitProxyEnabled ? `http://${host}:${port}${prefix}` : null,
     close: () =>
       new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));

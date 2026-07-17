@@ -289,9 +289,11 @@ function wire() {
   el.progress.hidden = true;
 
   log('ZCode browser workspace ready.');
-  log(`proxy config: ${config.gitProxyUrl} (persisted in localStorage; override with ?proxy=)`);
-  log('1) Start proxy: node apps/cli/dist/cli.js git-proxy --port 8787');
-  log('2) Click “Test proxy”, then Clone. Large repos may freeze the tab briefly during checkout.');
+  log(`proxy config: ${config.gitProxyUrl}`);
+  log(
+    'Same-origin /git-proxy is preferred (zcode web / zcode serve / Cloudflare Worker). Override with ?proxy=…',
+  );
+  log('Click “Test proxy”, then Clone. Large repos may freeze briefly during checkout.');
   void checkProxy();
 }
 

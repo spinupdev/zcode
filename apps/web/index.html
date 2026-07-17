@@ -30,8 +30,9 @@
         <button id="btn-clone" type="button" class="primary">Clone</button>
       </div>
       <p class="hint">
-        Proxy is required for GitHub/GitLab (CORS). Saved in <code>localStorage</code>.
-        Override: <code>?proxy=http://127.0.0.1:8787&amp;clone=https://…</code>
+        Default is same-origin <code>/git-proxy</code> (stateless CORS bridge for GitHub/GitLab).
+        Saved in <code>localStorage</code>. Override:
+        <code>?proxy=https://your.app/git-proxy&amp;clone=https://github.com/…</code>
       </p>
     </section>
 

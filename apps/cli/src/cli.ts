@@ -2,9 +2,9 @@
 /**
  * ZCode CLI
  *
- *   zcode serve [dir] [--port] [--password] [--host] [--static-dir] [--no-reh]
+ *   zcode serve [dir] [--port] [--password] [--host] [--static-dir] [--no-reh] [--no-git-proxy]
  *   zcode git-proxy [--port] [--host] [--allow-hosts]
- *   zcode web --dir dist [--port] [--host]
+ *   zcode web --dir dist [--port] [--host] [--no-git-proxy]
  */
 
 const HELP = `
@@ -14,18 +14,24 @@ Usage:
   zcode <command> [options]
 
 Commands:
-  serve       Self-hosted server (login + static workspace + optional REH)
-  git-proxy   HTTP CORS proxy for browser isomorphic-git
-  web         Serve a static directory (dev)
+  serve       Login + static workspace + same-origin /git-proxy + optional REH
+  git-proxy   Standalone CORS proxy (usually unnecessary if you use serve/web)
+  web         Static SPA + same-origin /git-proxy (dev / simple host)
 
   help        Show this help
   version     Print version
 
 Examples:
-  zcode git-proxy --port 8787
-  zcode serve . --port 8080 --password secret
+  # One process: SPA + /git-proxy on :5000
   zcode web --dir apps/web/dist --port 5000
 
+  # Self-host with password
+  zcode serve . --port 8080 --password secret --no-reh
+
+  # Standalone proxy only (optional)
+  zcode git-proxy --port 8787
+
+Browser config default: {origin}/git-proxy
 Not affiliated with coder/code-server.
 `.trim();
 
@@ -70,10 +76,12 @@ switch (cmd) {
       workspace,
       staticDir,
       spawnReh: !hasFlag(args, '--no-reh'),
+      gitProxy: !hasFlag(args, '--no-git-proxy'),
     });
     console.log(`ZCode serve ${srv.url}`);
     console.log(`authority=${srv.authority} reh=${srv.rehMode}`);
-    console.log('Login at /login — then open /index.html for browser workspace (if built).');
+    console.log(`git-proxy ${new URL('git-proxy', srv.url).href} (same-origin, stateless)`);
+    console.log('Login at /login — workspace at /index.html when apps/web/dist is present.');
     break;
   }
   case 'git-proxy': {
@@ -85,9 +93,9 @@ switch (cmd) {
       .map((s) => s.trim())
       .filter(Boolean);
     const proxy = await startGitProxy({ host, port, allowHosts: allow });
-    console.log(`zcode git-proxy ${proxy.url}`);
+    console.log(`zcode git-proxy ${proxy.url} (standalone root mount)`);
     console.log(`allow-hosts: ${allow.join(', ')}`);
-    console.log(`Use as isomorphic-git corsProxy: ${proxy.url}`);
+    console.log(`Prefer same-origin: zcode web … → {origin}/git-proxy`);
     break;
   }
   case 'web': {
@@ -95,8 +103,16 @@ switch (cmd) {
     const dir = flag(args, '--dir') ?? 'apps/web/dist';
     const port = Number(flag(args, '--port') ?? 5000);
     const host = flag(args, '--host') ?? '127.0.0.1';
-    const srv = await startStaticServer({ host, port, dir });
+    const srv = await startStaticServer({
+      host,
+      port,
+      dir,
+      gitProxy: !hasFlag(args, '--no-git-proxy'),
+    });
     console.log(`zcode web ${srv.url} → ${dir}`);
+    if (srv.gitProxyUrl) {
+      console.log(`git-proxy ${srv.gitProxyUrl} (same-origin, stateless)`);
+    }
     break;
   }
   default:
