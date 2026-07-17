@@ -46,6 +46,10 @@ importers:
   apps/workbench: {}
 
   extensions/zcode-browser-fs:
+    dependencies:
+      '@zcode/browser-agent':
+        specifier: workspace:*
+        version: link:../../packages/browser-agent
     devDependencies:
       '@types/vscode':
         specifier: ^1.95.0

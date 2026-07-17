@@ -206,6 +206,7 @@ function serveIdeProduct(res: http.ServerResponse, url: URL, repoRoot: string): 
     const configurationDefaults = {
       'security.workspace.trust.enabled': false,
       'security.workspace.trust.startupPrompt': 'never',
+      'files.exclude': { '**/.git': true, '**/.git/**': true },
     };
     const body =
       mode === 'remote' && remoteAuth
@@ -232,7 +233,7 @@ function serveIdeProduct(res: http.ServerResponse, url: URL, repoRoot: string): 
             additionalBuiltinExtensions: builtins,
             windowIndicator: {
               label: '$(remote) ZCode browser',
-              tooltip: 'Browser mode — zcode-opfs virtual FS',
+              tooltip: 'Browser mode — shared IDB with SPA',
             },
           };
     const data = JSON.stringify(body);

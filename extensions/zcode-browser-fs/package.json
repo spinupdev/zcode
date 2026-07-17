@@ -1,8 +1,8 @@
 {
   "name": "zcode-browser-fs",
   "displayName": "ZCode Browser FS",
-  "description": "Virtual FileSystemProvider (zcode-opfs) for ZCode browser / VS Code Web",
-  "version": "0.1.0",
+  "description": "Shared IndexedDB FileSystemProvider (zcode-opfs) for SPA + VS Code Web",
+  "version": "0.2.0",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
@@ -15,7 +15,8 @@
     "onStartupFinished",
     "onFileSystem:zcode-opfs",
     "onCommand:zcode.fs.openWorkspace",
-    "onCommand:zcode.fs.seedSample"
+    "onCommand:zcode.fs.seedSample",
+    "onCommand:zcode.fs.openSpa"
   ],
   "contributes": {
     "commands": [
@@ -26,24 +27,21 @@
       {
         "command": "zcode.fs.seedSample",
         "title": "ZCode: Seed Sample Files"
+      },
+      {
+        "command": "zcode.fs.openSpa",
+        "title": "ZCode: Open Browser Git SPA"
       }
-    ],
-    "menus": {
-      "commandPalette": [
-        {
-          "command": "zcode.fs.openWorkspace"
-        },
-        {
-          "command": "zcode.fs.seedSample"
-        }
-      ]
-    }
+    ]
   },
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node -e \"process.exit(0)\"",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@zcode/browser-agent": "workspace:*"
   },
   "devDependencies": {
     "@types/vscode": "^1.95.0",

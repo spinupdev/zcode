@@ -232,7 +232,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | B4c | Private HTTPS (PAT) + push | **done** | sessionStorage token |
 | B5 | Best-effort text search | **done** | SPA search |
 | B6 | Git Web Worker for responsive clone | **done** | `git-worker.js` |
-| B7 | Bridge SPA IDB workspace ↔ workbench `zcode-opfs` | **remaining** | **High priority** — single shared workspace |
+| B7 | Bridge SPA IDB workspace ↔ workbench `zcode-opfs` | **done** | Same IDB `zcode-fs-v1`; `/ide/?workspace=<id>`; Open in IDE |
 | B8 | Full SCM inside workbench (not only SPA) | **remaining** | |
 | B9 | SSH remotes / LFS / submodules | **deferred** | non-goals MVP |
 | B10 | Offline PWA | **deferred** | OQ7 |
@@ -259,7 +259,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | M0b | `/ide` host + bootstrap + product.json | **done** | |
 | M0c | Serve `/vscode` + `/extensions` | **done** | |
 | M0d | **Owned** OSS web build at pin 1.129 | **remaining** | replace dogfood package |
-| M0e | Bundle/verify zcode-* extensions in workbench | **in_progress** | loaded as additionalBuiltinExtensions; needs activation smoke |
+| M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
 | M1 | Dual-mode remoteAuthority connect end-to-end | **remaining** | product payload ready; REH missing |
 | M2 | Diagnostics extension, CSP, log redaction | **remaining** | stubs only |
 | M3 | Playwright e2e: SPA clone + IDE open + remote terminal | **remaining** | `e2e-browser.sh` covers SPA only |
@@ -290,13 +290,11 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 
 Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared agent.
 
-### P0 — Unblock real IDE+git unity (next 1–2 sessions)
+### P0 — Next 1–2 sessions
 
-1. **B7** — Shared workspace between SPA IDB and workbench `zcode-opfs`  
-   - Options: (a) workbench FS provider talks to SharedWorker/IDB used by browser-agent; (b) export/import snapshot; (c) open SPA-cloned tree via custom provider API.  
-   - Success: clone in SPA → open `/ide/?workspace=<id>` → same files in Explorer.
-2. **M0e** — Browser smoke checklist: extension activates, Explorer shows seeded + cloned files, save works.
-3. **M0d** — Spike owned `gulp vscode-web` on Node **24** (see vendor `.nvmrc`); document exact tasks that succeed.
+1. **M0d** — Spike owned `gulp vscode-web` on Node **24** (see vendor `.nvmrc`); document exact tasks that succeed.
+2. **M3** — Playwright: clone SPA → open IDE with workspace id → file visible.
+3. **R2c / R3b** — REH artifact + cookie-auth attach.
 
 ### P1 — Remote dogfood
 
@@ -389,5 +387,6 @@ pnpm smoke          # lighter checks
 | Date | Change |
 | --- | --- |
 | 2026-07-17 | Initial master plan + status snapshot after SPA git, same-origin proxy, `/ide` dogfood VS Code Web, PAT push |
+| 2026-07-17 | B7 done: shared IDB `zcode-fs-v1` between SPA and `zcode-browser-fs`; Open in IDE |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

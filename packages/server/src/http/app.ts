@@ -249,7 +249,13 @@ function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
           additionalBuiltinExtensions: builtins,
         }
       : {
-          productConfiguration: overlay,
+          productConfiguration: {
+            ...overlay,
+            configurationDefaults: {
+              ...(overlay.configurationDefaults as object),
+              'files.exclude': { '**/.git': true, '**/.git/**': true },
+            },
+          },
           folderUri: {
             scheme: 'zcode-opfs',
             path: `/workspace/${url.searchParams.get('workspace') || 'default'}`,

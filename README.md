@@ -44,8 +44,11 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 3. Click **Test proxy** → green **proxy ok**
 4. Set **Clone URL**, e.g. `https://github.com/isomorphic-git/isomorphic-git.git`
 5. *(Private repos)* paste a **PAT** in **Token** (session only)
-6. Click **Clone** → progress + file tree
-7. Edit → **Save** → **Commit** → **Push** (token needs write access)
+6. Click **Clone** → progress + file tree  
+7. **Open in IDE** (or confirm dialog) → `/ide/?workspace=<id>` shows the **same files** in VS Code Web  
+8. Edit → **Save** → **Commit** → **Push** (token needs write access)
+
+Shared storage: IndexedDB database **`zcode-fs-v1`** (SPA + workbench).
 
 Deep link (auto-start after proxy check):
 

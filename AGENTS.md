@@ -30,7 +30,7 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 ## Highest-priority remaining work
 
-See **PLAN.md §5**. Default next: **B7** (share SPA IDB workspace with workbench `zcode-opfs`), then **M0d** owned web build / **R3b** REH attach.
+See **PLAN.md §5**. B7 (shared IDB workspace) is **done**. Default next: **M0d** owned web build, **M3** Playwright, or **R3b** REH attach.
 
 ## Rules
 

@@ -265,6 +265,12 @@ async function doClone() {
     setStatus(`${st.branch} · ready · ${allFiles.length} files`);
     log(`ready on branch ${st.branch} (persisted in IndexedDB)`);
     log('Next: edit → Save → Commit → Push (token required for private remotes)');
+    const ideUrl = `${location.origin}/ide/?workspace=${encodeURIComponent(ws.id)}`;
+    log(`Open in VS Code Web: ${ideUrl}`);
+    // Offer navigation
+    if (confirm(`Clone complete (${allFiles.length} files).\n\nOpen in VS Code Web IDE?`)) {
+      location.href = ideUrl;
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log(`clone failed: ${message}`);
@@ -360,6 +366,10 @@ function wire() {
   document.getElementById('btn-commit')!.addEventListener('click', () => void doCommit());
   document.getElementById('btn-push')?.addEventListener('click', () => void doPush());
   document.getElementById('btn-push-toolbar')?.addEventListener('click', () => void doPush());
+  document.getElementById('btn-open-ide')?.addEventListener('click', () => {
+    const id = workspaceId || 'default';
+    location.href = `${location.origin}/ide/?workspace=${encodeURIComponent(id)}`;
+  });
   document.getElementById('btn-refresh')!.addEventListener('click', () => void refreshTree());
   document.getElementById('btn-save-config')!.addEventListener('click', () => {
     persistConfig();

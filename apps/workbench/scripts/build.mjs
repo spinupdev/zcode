@@ -23,9 +23,10 @@ const defaultProduct = {
       'security.workspace.trust.enabled': false,
       'security.workspace.trust.startupPrompt': 'never',
       'workbench.startupEditor': 'readme',
+      'files.exclude': { '**/.git': true, '**/.git/**': true },
     },
   },
-  // Open virtual workspace; zcode-browser-fs registers this scheme
+  // Open virtual workspace; shared IndexedDB with SPA (browser-agent IdbFs)
   folderUri: {
     scheme: 'zcode-opfs',
     path: '/workspace/default',
@@ -145,6 +146,10 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
         folderUri: {
           scheme: 'zcode-opfs',
           path: '/workspace/' + ws,
+        },
+        windowIndicator: {
+          label: '$(folder) ' + ws.slice(0, 8),
+          tooltip: 'zcode-opfs workspace ' + ws + ' (shared IDB with SPA)',
         },
       };
     }
