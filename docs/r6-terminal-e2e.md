@@ -14,7 +14,8 @@ Prove remote mode works end-to-end:
 | Item | Source |
 | --- | --- |
 | REH artifact | `./scripts/build-server.sh` → `dist/server/` + `.zcode-build.json` |
-| Or CI | `workflow_dispatch` job **vscode-reh-build** → download artifact into `dist/server` |
+| Or CI download | `./scripts/fetch-reh-artifact.sh` / `pnpm fetch:reh` (Linux artifact from Actions) |
+| Or CI job | `workflow_dispatch` **heavy_build=reh-and-e2e** downloads artifact → normalize → e2e |
 | Staged web | dogfood or owned `dist/vscode-web` |
 | Node | monorepo Node 20+ for ZCode; REH build used Node 24 |
 
@@ -69,8 +70,9 @@ node apps/cli/dist/cli.js serve ./workspace --port 8080 --password secret
 ## CI policy
 
 - **Default PR**: M3 Playwright only (no multi-hour REH).
-- **workflow_dispatch** `vscode-reh-build`: package REH artifact.
-- **workflow_dispatch** `vscode-reh-e2e` (optional): download artifact → `ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh`.
+- **workflow_dispatch** `heavy_build=reh`: package REH → artifact `zcode-reh-linux-x64`.
+- **workflow_dispatch** `heavy_build=reh-and-e2e`: package + download into `dist/server` + normalize (+x) + `ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh`.
+- **Local Linux agents**: `pnpm fetch:reh` then `ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh`.
 
 ## Blockers (agent host notes)
 

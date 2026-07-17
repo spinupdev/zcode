@@ -97,6 +97,29 @@ Artifacts:
 | vscode-reh-build | `zcode-reh-linux-x64` | → `dist/server/` |
 | vscode-web-build | `zcode-vscode-web` | → `dist/vscode-web/` |
 
+### Download Linux REH into `dist/server` (optional e2e)
+
+After a successful **heavy_build=reh** (or **reh-and-e2e**) run, pull the artifact locally:
+
+```bash
+# Requires: gh auth + jq
+./scripts/fetch-reh-artifact.sh
+# or:
+pnpm fetch:reh
+
+# Pin a run:
+./scripts/fetch-reh-artifact.sh --run-id 123456789
+./scripts/fetch-reh-artifact.sh --repo spinupdev/code-server --force
+```
+
+This stages `dist/server/` (marker + binaries; **not committed**). On **Linux**, follow with:
+
+```bash
+ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh
+```
+
+On **macOS**, a Linux REH binary will not execute; use a local `./scripts/build-server.sh` (darwin-arm64) or CI job **vscode-reh-e2e**.
+
 ## Failure modes
 
 | Symptom | Mitigation |

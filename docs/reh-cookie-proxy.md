@@ -76,6 +76,7 @@ export GITHUB_TOKEN="$(gh auth token)"  # avoids @vscode/ripgrep 403
 ./scripts/build-server.sh          # multi-hour; 40GB+ disk; Node 24
 # CI: Actions → CI → Run workflow → heavy_build=reh
 # Artifact: zcode-reh-linux-x64 → extract to dist/server/
+# Or: pnpm fetch:reh   # scripts/fetch-reh-artifact.sh via gh
 ```
 
 Marker: `dist/server/.zcode-build.json`. Binaries are **not** committed.

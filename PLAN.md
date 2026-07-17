@@ -6,7 +6,7 @@
 | **Repo (current)** | `github.com/spinupdev/code-server` |
 | **Repo (preferred)** | `github.com/spinupdev/zcode` |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-17 (M0d/R2c/R6 harness) |
+| **Last updated** | 2026-07-18 (REH artifact fetch + B2b OPFS) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -244,7 +244,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | R1 | VS Code submodule + quilt | **done** | |
 | R2 | Server/REH build scripts + docs | **done** | scripts exist; full compile rare locally |
 | R2b | CI fat-runner REH artifact (workflow_dispatch) | **done** | skeleton in CI |
-| R2c | Successful owned REH artifact on main CI path | **done** | local `vscode-reh-darwin-arm64` → dist/server + server-main.js; quilt without-mangling; CI heavy_build=reh |
+| R2c | Successful owned REH artifact on main CI path | **done** | local `vscode-reh-darwin-arm64` → dist/server + server-main.js; quilt without-mangling; CI heavy_build=reh; `pnpm fetch:reh` for Linux CI artifact |
 | R3 | Password login + HttpOnly cookie bridge | **done** | no `?tkn=` |
 | R3b | Spawn REH + cookie-authorized WS attach | **done** | cookie→token HTTP/WS proxy; spawn uses `--connection-token` |
 | R4 | Docker image + compose | **done** | single service; polish non-root later |
@@ -293,8 +293,8 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 ### P0 — Next 1–2 sessions
 
 1. **F6** Rename repo → `spinupdev/zcode` when ready (ops).
-2. CI Linux REH artifact download into `dist/server` for optional e2e.
-3. **B2b** ZenFS + OPFS primary store.
+2. ~~CI Linux REH artifact download~~ **done** — `scripts/fetch-reh-artifact.sh` / `pnpm fetch:reh`; CI normalize step on reh-and-e2e.
+3. **B2b** ZenFS + OPFS primary store (in progress if unfinished).
 
 ### P1 — Product polish
 
@@ -395,5 +395,6 @@ pnpm smoke            # lighter checks
 | 2026-07-17 | **R2c done**: owned REH `dist/server` (darwin-arm64) with server-main.js. **R6 done**: Playwright REH suite green; preserve owned web in fetch/e2e |
 | 2026-07-17 | **M1 done**: dual-mode product + capabilities + session gate. **M2 done**: diagnostics extension, CSP HTML headers, log redaction |
 | 2026-07-17 | STRICT remote e2e green; REH without-connection-token; `/login` route; workspacePath alignment; H3 production runbook |
+| 2026-07-18 | CI Linux REH download: `scripts/fetch-reh-artifact.sh` + `pnpm fetch:reh`; reh-and-e2e normalize (+x/flatten) |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

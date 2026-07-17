@@ -257,6 +257,36 @@ jobs:
           name: zcode-reh-linux-x64
           path: dist/server
 
+      # Artifact zips often drop +x; also flatten accidental nesting from upload path.
+      - name: Normalize dist/server layout
+        run: |
+          set -euo pipefail
+          # Flatten if artifact was nested (dist/server/dist/server or artifact name folder)
+          for nested in dist/server/dist/server "dist/server/zcode-reh-linux-x64"; do
+            if [[ -d "${nested}" ]] && [[ -f "${nested}/.zcode-build.json" || -d "${nested}/bin" ]]; then
+              echo "Flattening nested REH layout from ${nested}"
+              shopt -s dotglob
+              tmp="$(mktemp -d)"
+              mv "${nested}"/* "${tmp}/"
+              rm -rf dist/server
+              mkdir -p dist/server
+              mv "${tmp}"/* dist/server/
+              rmdir "${tmp}" 2>/dev/null || true
+            fi
+          done
+          if [[ -d dist/server/bin ]]; then
+            chmod +x dist/server/bin/* 2>/dev/null || true
+            find dist/server/bin -type f -exec chmod +x {} + 2>/dev/null || true
+          fi
+          [[ -f dist/server/node ]] && chmod +x dist/server/node || true
+          [[ -f dist/server/server.sh ]] && chmod +x dist/server/server.sh || true
+          test -f dist/server/.zcode-build.json
+          test -f dist/server/bin/code-server-oss \
+            -o -f dist/server/bin/code-server \
+            -o -f dist/server/server.sh
+          echo "REH marker:" && cat dist/server/.zcode-build.json
+          ls -la dist/server/bin 2>/dev/null | head -20
+
       - name: Build surfaces
         run: |
           pnpm --filter @zcode/cli build
