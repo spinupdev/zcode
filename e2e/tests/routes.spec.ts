@@ -10,8 +10,9 @@ test.describe('same-origin routes', () => {
     expect(body.mode).toBe('stateless');
   });
 
-  test('SPA index loads', async ({ page }) => {
+  test('SPA index loads (debug / DEV only)', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByText('DEBUG', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Clone' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Test proxy' })).toBeVisible();
   });

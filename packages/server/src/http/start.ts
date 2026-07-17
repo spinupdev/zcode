@@ -5,6 +5,7 @@ import path from 'node:path';
 import { CookieTokenBridge } from '../auth/cookie-bridge.js';
 import { createPasswordVerifier, LoginRateLimiter } from '../auth/password.js';
 import type { ServerOptions } from '../index.js';
+import { isSpaDebugEnabled, spaDebugStatus } from '../spa-debug.js';
 import { monorepoRoot } from '../paths.js';
 import { handleRehUpgrade } from '../reh/proxy.js';
 import { spawnReh, type RehHandle } from '../reh/spawn.js';
@@ -29,7 +30,18 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
   );
   const displayHost = options.host === '0.0.0.0' ? '127.0.0.1' : options.host;
 
-  const staticDir = resolveStaticDir(options.staticDir);
+  const spaDebug =
+    options.spaDebug !== undefined ? options.spaDebug : isSpaDebugEnabled();
+  // SPA at `/` is debug dogfood only — never auto-mount in production.
+  const staticDir = spaDebug ? resolveStaticDir(options.staticDir) : undefined;
+  if (!spaDebug && options.staticDir) {
+    console.warn(
+      `[zcode] SPA debug UI disabled (${spaDebugStatus().reason}); not serving ${options.staticDir}`,
+    );
+  } else if (spaDebug && staticDir) {
+    console.log(`[zcode] SPA debug UI enabled at / (${spaDebugStatus().reason})`);
+  }
+
   const root = options.repoRoot ?? monorepoRoot();
   const vscodeWebDir = resolveDir(path.join(root, 'dist/vscode-web'), 'out/vs');
   const workbenchDir = resolveDir(path.join(root, 'apps/workbench/dist'), 'index.html');

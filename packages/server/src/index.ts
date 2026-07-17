@@ -33,6 +33,8 @@ export {
   cspHeaderName,
 } from './http/csp.js';
 export { redactSecrets, redactString, safeJsonStringify } from './log/redact.js';
+export { isSpaDebugEnabled, spaDebugStatus } from './spa-debug.js';
+export type { SpaDebugEnv } from './spa-debug.js';
 // Dual-mode product builder (M1) — re-exported for CLI static server
 export { buildWorkbenchCreateOptions } from '@zcode/shell';
 
@@ -42,6 +44,12 @@ export interface ServerOptions {
   workspace: string;
   password?: string;
   staticDir?: string;
+  /**
+   * Serve the SPA debug workspace UI at `/` (apps/web).
+   * Default: on only when not production (`isSpaDebugEnabled`).
+   * Force with `ZCODE_SPA_DEBUG=1` or CLI `--spa-debug`.
+   */
+  spaDebug?: boolean;
   /** monorepo root for locating dist/server and vendor/vscode */
   repoRoot?: string;
   /** Internal REH listen port (default port+1) */

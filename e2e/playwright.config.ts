@@ -23,10 +23,16 @@ export default defineConfig({
   },
   webServer: {
     // Always start from monorepo root so cwd-based asset discovery works.
-    command: `node apps/cli/dist/cli.js web --dir apps/web/dist --port ${port}`,
+    // SPA at / is DEV-only dogfood — force on for e2e even if CI sets NODE_ENV=production.
+    command: `node apps/cli/dist/cli.js web --dir apps/web/dist --port ${port} --spa-debug`,
     url: `${baseURL}/git-proxy/healthz`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     cwd: repoRoot,
+    env: {
+      ...process.env,
+      NODE_ENV: process.env.NODE_ENV === 'production' ? 'development' : (process.env.NODE_ENV ?? 'development'),
+      ZCODE_SPA_DEBUG: '1',
+    },
   },
 });

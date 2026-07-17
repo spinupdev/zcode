@@ -14,8 +14,10 @@ pnpm --filter @zcode/browser-agent build
 pnpm --filter @zcode/cli build
 pnpm --filter @zcode/web build
 
-log "start zcode web on :${PORT}"
-node apps/cli/dist/cli.js web --dir apps/web/dist --port "${PORT}" &
+log "start zcode web on :${PORT} (SPA debug forced for harness)"
+# SPA at / is DEV-only; e2e must force it even if NODE_ENV=production in CI.
+NODE_ENV=development ZCODE_SPA_DEBUG=1 \
+  node apps/cli/dist/cli.js web --dir apps/web/dist --port "${PORT}" --spa-debug &
 PID=$!
 cleanup() { kill "${PID}" 2>/dev/null || true; }
 trap cleanup EXIT

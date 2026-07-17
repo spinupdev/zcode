@@ -19,27 +19,27 @@ pnpm build
 ./scripts/fetch-vscode-web.sh          # stage VS Code Web static assets
 pnpm --filter @zcode/workbench build
 
-# SPA + /git-proxy + /ide (VS Code Web) on one origin
-node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
+# /ide + /git-proxy; SPA debug UI at / only in DEV
+NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
 # or: pnpm dev:ide
 ```
 
 | URL | Role |
 | --- | --- |
-| **http://127.0.0.1:5000/ide/** | **VS Code Web workbench (the IDE)** |
-| http://127.0.0.1:5000/ | Lightweight browser git SPA (dogfood tools) |
+| **http://127.0.0.1:5000/ide/** | **VS Code Web workbench (the product IDE)** |
+| http://127.0.0.1:5000/ | Debug SPA (git dogfood) — **DEV only**; off when `NODE_ENV=production` |
 | http://127.0.0.1:5000/git-proxy | Stateless CORS bridge for GitHub/GitLab |
 
-### Clone a Git repo (browser)
+### Clone a Git repo (browser debug SPA)
 
-Git clone is **client-side** (isomorphic-git). The browser needs same-origin **`/git-proxy`** for GitHub/GitLab CORS.
+Git clone is **client-side** (isomorphic-git). The browser needs same-origin **`/git-proxy`** for GitHub/GitLab CORS. The SPA at `/` is **debug dogfood** and is **not served in production**.
 
 ```bash
-# one terminal — SPA + /git-proxy + /ide
-node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
+# one terminal — debug SPA + /git-proxy + /ide
+NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
 ```
 
-1. Open **http://127.0.0.1:5000/** (the SPA, not only `/ide`)
+1. Open **http://127.0.0.1:5000/** (debug SPA; production uses **`/ide/`** only)
 2. Confirm **Git proxy URL** is `http://127.0.0.1:5000/git-proxy` (default)
 3. Click **Test proxy** → green **proxy ok**
 4. Set **Clone URL**, e.g. `https://github.com/isomorphic-git/isomorphic-git.git`
@@ -84,7 +84,7 @@ App default: `gitProxyUrl = {origin}/git-proxy` (saved in `localStorage`; overri
 ## CLI
 
 ```bash
-zcode web --dir apps/web/dist --port 5000          # SPA + /git-proxy
+NODE_ENV=development zcode web --dir apps/web/dist --port 5000 --spa-debug   # DEV SPA + /git-proxy
 zcode serve . --port 8080 --password secret --no-reh
 zcode git-proxy --port 8787                        # optional standalone
 ```

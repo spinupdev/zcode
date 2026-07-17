@@ -136,12 +136,22 @@ export function createRequestHandler(ctx: AppContext) {
         if (tryServeStatic(req, res, ctx.extensionsDir, rel)) return;
       }
 
-      // Static SPA / browser app
+      // Static SPA / browser app (only when spaDebug mounted staticDir — never in production)
       if (ctx.staticDir && tryServeStatic(req, res, ctx.staticDir, url.pathname)) {
         return;
       }
 
       if (req.method === 'GET' && url.pathname === '/') {
+        // Product default: IDE when available; else login shell
+        if (!ctx.staticDir && ctx.workbenchDir) {
+          res.writeHead(302, {
+            Location: '/ide/',
+            'cache-control': 'no-store',
+            'x-zcode-spa-debug': 'off',
+          });
+          res.end();
+          return;
+        }
         html(
           res,
           200,
@@ -281,7 +291,7 @@ function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
 function loginPage(authenticated: boolean, authority: string, ctx: AppContext): string {
   if (authenticated) {
     const appLink = ctx.staticDir
-      ? `<p><a href="/index.html">Open browser workspace (SPA)</a></p>`
+      ? `<p><a href="/index.html">Open debug SPA workspace</a> <small>(DEV only — not in production)</small></p>`
       : '';
     const ideLink = ctx.workbenchDir
       ? `<p><a href="/ide/">Open VS Code Web IDE (browser)</a> · <a href="/ide/?mode=remote&authority=${encodeURIComponent(authority)}&ready=1">Remote mode (cookie-auth REH proxy)</a></p>`

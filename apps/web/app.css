@@ -21,7 +21,8 @@ body {
   color: var(--text);
   height: 100vh;
   display: grid;
-  grid-template-rows: auto auto auto auto auto 1fr 150px;
+  /* header, debug banner, config, progress, toolbar, search, main, log */
+  grid-template-rows: auto auto auto auto auto auto 1fr 150px;
 }
 
 header {
@@ -31,6 +32,33 @@ header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
+}
+
+.debug-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #0d1117;
+  background: #d29922;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.debug-banner {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: #e3b341;
+  background: #3d2e00;
+  border-bottom: 1px solid #9e6a03;
+}
+
+.debug-banner a {
+  color: var(--accent);
+}
+
+.debug-banner code {
+  font-size: 0.8em;
 }
 
 .muted {

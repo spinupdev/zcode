@@ -8,7 +8,9 @@ function usage(): never {
   --port <n>            default 8080
   --password <pw>       default env ZCODE_PASSWORD or "zcode"
   --workspace <dir>     default cwd
-  --static-dir <dir>    co-serve browser app (default: apps/web/dist if present)
+  --static-dir <dir>    co-serve debug SPA (default: apps/web/dist if present; DEV only)
+  --spa-debug           force enable SPA debug UI at /
+  --no-spa-debug        force disable SPA (production default when NODE_ENV=production)
   --no-reh              do not attempt REH spawn
 `);
   process.exit(0);
@@ -28,6 +30,11 @@ const password = arg('--password', process.env.ZCODE_PASSWORD ?? 'zcode')!;
 const workspace = arg('--workspace', process.cwd())!;
 const staticDir = arg('--static-dir');
 const spawnReh = !process.argv.includes('--no-reh');
+const spaDebug = process.argv.includes('--spa-debug')
+  ? true
+  : process.argv.includes('--no-spa-debug')
+    ? false
+    : undefined;
 
 const srv = await startServer({
   host,
@@ -35,8 +42,9 @@ const srv = await startServer({
   password,
   workspace,
   staticDir,
+  spaDebug,
   spawnReh,
 });
 console.log(`ZCode server ${srv.url}`);
 console.log(`authority=${srv.authority} reh=${srv.rehMode}`);
-console.log('POST /login  GET /healthz  static apps/web/dist when built');
+console.log('POST /login  GET /healthz  SPA debug only when not production');

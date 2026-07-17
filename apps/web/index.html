@@ -3,17 +3,23 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ZCode — Browser Workspace</title>
+    <title>ZCode — Debug SPA (DEV only)</title>
+    <meta name="zcode-spa-debug" content="1" />
     <link rel="stylesheet" href="./app.css" />
   </head>
   <body>
     <header>
       <strong>ZCode</strong>
+      <span class="debug-badge" title="apps/web dogfood — not served when NODE_ENV=production">DEBUG</span>
       <a href="/ide/" class="muted" style="color: inherit">VS Code IDE</a>
       <span id="mode" class="muted"></span>
       <span id="proxy-status" class="proxy-status">proxy ?</span>
       <span id="status" class="status">idle</span>
     </header>
+    <p class="debug-banner" role="note">
+      Debug workspace SPA — local dogfood only. Product IDE is
+      <a href="/ide/">/ide/</a>. Disabled when <code>NODE_ENV=production</code>.
+    </p>
 
     <section class="config" aria-label="App config">
       <h2>App config</h2>

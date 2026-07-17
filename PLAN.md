@@ -67,7 +67,7 @@ flowchart TB
 
 | Path | Role | Stateful? |
 | --- | --- | --- |
-| `/` | Lightweight SPA: git clone/commit/push, search, IDB workspaces | Client only |
+| `/` | **Debug SPA only** (DEV): git clone/commit/push; off when `NODE_ENV=production` | Client only |
 | `/ide/` | **Primary IDE** — VS Code Web host page | Client + optional REH |
 | `/vscode/*` | Staged VS Code Web static tree (`dist/vscode-web`) | No |
 | `/extensions/*` | Builtin web extensions (`zcode-*`) | No |
@@ -398,5 +398,6 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | **F6 done**: remote `origin` → `github.com/spinupdev/zcode`; `main` pushed |
 | 2026-07-18 | **R6 PTY polish**: terminal open via shortcuts+palette; `printf zcode_echo_ok`; `ZCODE_E2E_REH_PTY_REQUIRED=1` hard-fail. **H3** `scripts/hosting-dry-run.sh`. **H4 done**: non-root Docker, multi-arch build script, compose harden |
 | 2026-07-18 | Verified M0d (`source=owned` + `--check`), R2c (`dist/server` + `--check`), `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh` 4/4 green |
+| 2026-07-18 | SPA `/` is **debug only**: `isSpaDebugEnabled` gates serve; production redirects `/` → `/ide/`; `ZCODE_SPA_DEBUG` / `--spa-debug` overrides |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

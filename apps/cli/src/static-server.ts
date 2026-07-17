@@ -9,6 +9,8 @@ import {
 import {
   applySecurityHeaders,
   buildWorkbenchCreateOptions,
+  isSpaDebugEnabled,
+  spaDebugStatus,
 } from '@zcode/server';
 
 const TYPES: Record<string, string> = {
@@ -29,8 +31,13 @@ const TYPES: Record<string, string> = {
 export interface StaticServerOptions {
   host: string;
   port: number;
-  /** Browser SPA (apps/web/dist) */
+  /** Browser SPA (apps/web/dist) — debug dogfood only */
   dir: string;
+  /**
+   * Serve SPA debug UI at `/`. Default: `isSpaDebugEnabled()` (off when NODE_ENV=production).
+   * Override with ZCODE_SPA_DEBUG=0|1 or CLI `--spa-debug` / `--no-spa-debug`.
+   */
+  spaDebug?: boolean;
   /** VS Code Web static tree (dist/vscode-web) */
   vscodeWebDir?: string;
   /** Workbench host page (apps/workbench/dist) */
@@ -48,10 +55,13 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
   url: string;
   gitProxyUrl: string | null;
   ideUrl: string | null;
+  spaDebug: boolean;
   close(): Promise<void>;
 }> {
   const spaRoot = path.resolve(opts.dir);
-  if (!fs.existsSync(spaRoot)) {
+  const spaDebug =
+    opts.spaDebug !== undefined ? opts.spaDebug : isSpaDebugEnabled();
+  if (spaDebug && !fs.existsSync(spaRoot)) {
     throw new Error(`static dir not found: ${spaRoot} (run pnpm --filter @zcode/web build)`);
   }
 
@@ -135,7 +145,37 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
         if (extensionsDir && tryStatic(res, extensionsDir, rel)) return;
       }
 
-      // SPA root
+      // SPA at `/` is debug dogfood only (NODE_ENV=development / unset local).
+      // Production: product surface is /ide/.
+      if (!spaDebug) {
+        if (pathname === '/' || pathname === '/index.html') {
+          res.writeHead(302, {
+            Location: workbenchDir ? '/ide/' : '/git-proxy/healthz',
+            'cache-control': 'no-store',
+            'x-zcode-spa-debug': 'off',
+          });
+          res.end();
+          return;
+        }
+        // Block SPA assets so production cannot load the debug app by path
+        if (isSpaAssetPath(pathname)) {
+          res.writeHead(404, {
+            'content-type': 'text/plain; charset=utf-8',
+            'cache-control': 'no-store',
+            'x-zcode-spa-debug': 'off',
+          });
+          res.end(
+            'SPA debug UI is disabled (NODE_ENV/ZCODE_ENV is not development).\n' +
+              'Product IDE: /ide/\n' +
+              'Enable dogfood: NODE_ENV=development or ZCODE_SPA_DEBUG=1\n',
+          );
+          return;
+        }
+        res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found\n');
+        return;
+      }
+
+      // SPA root (debug only)
       let rel = pathname === '/' ? '/index.html' : pathname;
       if (rel.includes('..')) {
         res.writeHead(400).end('bad path');
@@ -157,16 +197,40 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
   const port = typeof addr === 'object' && addr ? addr.port : opts.port;
   const host = opts.host === '0.0.0.0' ? '127.0.0.1' : opts.host;
   const url = `http://${host}:${port}/`;
+  const status = spaDebugStatus();
+  if (spaDebug) {
+    console.log(`[zcode] SPA debug UI enabled at / (${status.reason})`);
+  } else {
+    console.log(
+      `[zcode] SPA debug UI disabled (${status.reason}); / redirects to /ide/`,
+    );
+  }
 
   return {
     url,
     gitProxyUrl: gitProxyEnabled ? `http://${host}:${port}${prefix}` : null,
     ideUrl: workbenchDir ? `http://${host}:${port}/ide/` : null,
+    spaDebug,
     close: () =>
       new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
       }),
   };
+}
+
+/** Paths that belong only to the apps/web debug SPA. */
+function isSpaAssetPath(pathname: string): boolean {
+  if (pathname === '/' || pathname === '/index.html') return true;
+  const base = pathname.split('/').pop() ?? '';
+  return (
+    base === 'app.js' ||
+    base === 'app.css' ||
+    base === 'app.js.map' ||
+    base === 'git-worker.js' ||
+    base === 'git-worker.js.map' ||
+    pathname.startsWith('/app.') ||
+    pathname.startsWith('/git-worker')
+  );
 }
 
 function findFirst(paths: string[]): string | undefined {
