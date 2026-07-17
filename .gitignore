@@ -9,6 +9,12 @@ out/
 *.tsbuildinfo
 .turbo/
 
+# Upstream VS Code build products (never commit)
+vendor/vscode/node_modules/
+vendor/vscode/out/
+vendor/vscode/out-*/
+vendor/vscode/.build/
+
 # VS Code local / product data
 .zcode/
 .vscode-test/

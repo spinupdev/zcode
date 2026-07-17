@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -70,3 +71,45 @@ jobs:
         run: |
           git submodule update --init --depth 1 vendor/vscode
           bash scripts/sync-vscode.sh
+
+      - name: build-server prerequisites
+        if: steps.sub.outputs.present == 'true'
+        run: bash scripts/build-server.sh --check
+
+      - name: build-web prerequisites
+        if: steps.sub.outputs.present == 'true'
+        run: bash scripts/build-web.sh --check
+
+  # Full REH compile is intentionally manual — multi-hour, large disk.
+  vscode-reh-build:
+    name: VS Code REH build (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Free disk
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          df -h
+
+      - name: Build REH
+        env:
+          ZCODE_REH_PLATFORM: linux
+          ZCODE_REH_ARCH: x64
+        run: bash scripts/build-server.sh
+
+      - name: Upload dist/server
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-reh-linux-x64
+          path: dist/server
+          if-no-files-found: error

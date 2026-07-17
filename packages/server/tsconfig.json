@@ -6,6 +6,6 @@
     "composite": true
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "dist"],
+  "exclude": ["src/**/*.test.ts", "dist", "dist-test"],
   "references": [{ "path": "../protocol" }]
 }

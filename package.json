@@ -16,6 +16,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "sync-vscode": "bash scripts/sync-vscode.sh",
+    "build:server": "bash scripts/build-server.sh",
+    "build:server:check": "bash scripts/build-server.sh --check",
+    "build:web": "bash scripts/build-web.sh",
+    "build:web:check": "bash scripts/build-web.sh --check",
+    "dev:shell": "pnpm --filter @zcode/shell dev",
+    "smoke": "bash scripts/smoke.sh",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {

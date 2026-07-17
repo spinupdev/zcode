@@ -33,6 +33,10 @@ cd ../..
 - Do **not** use `patch-package` on the submodule.
 - Production web assets must be built from this pin (or a later intentional bump), never from `@vscode/test-web`.
 
+## Builds
+
+See [building-vscode.md](./building-vscode.md) for `scripts/build-server.sh` / `scripts/build-web.sh`.
+
 ## Upgrade procedure
 
 1. Read VS Code release notes for web/server changes.

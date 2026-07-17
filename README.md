@@ -48,12 +48,22 @@ pnpm build
 pnpm test
 
 # CLI skeleton
-pnpm --filter @zcode/cli exec node dist/cli.js help
+node apps/cli/dist/cli.js help
 
-# VS Code submodule (large download; shallow)
+# Shell bootstrap harness (Track B1 — not the full workbench)
+pnpm dev:shell
+# open http://127.0.0.1:4173/?mode=browser
+
+# VS Code submodule (already pinned on main; re-init if needed)
 ./scripts/add-vscode-submodule.sh
 ./scripts/sync-vscode.sh
+
+# Server build prerequisites (full REH compile is long — see docs/building-vscode.md)
+pnpm build:server:check
+# ./scripts/build-server.sh          # full package when ready
 ```
+
+**Dev vs production:** `@vscode/test-web` is never a production path. Set `ZCODE_ALLOW_TEST_WEB=1` only for local extension experiments. Owned web assets come from the OSS web build (M0).
 
 ## Planned CLI
 
