@@ -1,7 +1,7 @@
 /**
  * Web extension: zcode-opfs FileSystemProvider.
  * B2b: prefers OPFS (ZenFS) when available; falls back to shared IndexedDB (B7).
- * Clone in SPA → open /ide/?workspace=<id>.
+ * Clone in debug SPA (/debug/) → open /?workspace=<id>.
  */
 import { createDefaultFsInfo, IdbFs, type AgentFs } from '@zcode/browser-agent';
 import type * as vscode from 'vscode';

@@ -8,7 +8,7 @@ test.describe('SPA clone flow', () => {
   test('test proxy then clone Hello-World', async ({ page }) => {
     test.setTimeout(180_000);
 
-    await page.goto('/');
+    await page.goto('/debug/');
 
     // Wait for app.js to apply default same-origin proxy into the form
     const proxyInput = page.locator('#proxy-url');

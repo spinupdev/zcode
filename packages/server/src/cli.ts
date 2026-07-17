@@ -8,8 +8,8 @@ function usage(): never {
   --port <n>            default 8080
   --password <pw>       default env ZCODE_PASSWORD or "zcode"
   --workspace <dir>     default cwd
-  --static-dir <dir>    co-serve debug SPA (default: apps/web/dist if present; DEV only)
-  --spa-debug           force enable SPA debug UI at /
+  --static-dir <dir>    co-serve debug SPA at /debug/ (default: apps/web/dist if present; DEV only)
+  --spa-debug           force enable SPA debug UI at /debug/
   --no-spa-debug        force disable SPA (production default when NODE_ENV=production)
   --no-reh              do not attempt REH spawn
 `);

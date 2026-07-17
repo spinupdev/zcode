@@ -282,7 +282,7 @@ async function doClone() {
     setStatus(`${st.branch} · ready · ${allFiles.length} files`);
     log(`ready on branch ${st.branch} (persisted in browser FS: OPFS or IndexedDB)`);
     log('Next: edit → Save → Commit → Push (token required for private remotes)');
-    const ideUrl = `${location.origin}/ide/?workspace=${encodeURIComponent(ws.id)}`;
+    const ideUrl = `${location.origin}/?workspace=${encodeURIComponent(ws.id)}`;
     log(`Open in VS Code Web: ${ideUrl}`);
     // Offer navigation
     if (confirm(`Clone complete (${allFiles.length} files).\n\nOpen in VS Code Web IDE?`)) {
@@ -385,7 +385,7 @@ function wire() {
   document.getElementById('btn-push-toolbar')?.addEventListener('click', () => void doPush());
   document.getElementById('btn-open-ide')?.addEventListener('click', () => {
     const id = workspaceId || 'default';
-    location.href = `${location.origin}/ide/?workspace=${encodeURIComponent(id)}`;
+    location.href = `${location.origin}/?workspace=${encodeURIComponent(id)}`;
   });
   document.getElementById('btn-refresh')!.addEventListener('click', () => void refreshTree());
   document.getElementById('btn-save-config')!.addEventListener('click', () => {

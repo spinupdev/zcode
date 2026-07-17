@@ -19,33 +19,34 @@ pnpm build
 ./scripts/fetch-vscode-web.sh          # stage VS Code Web static assets
 pnpm --filter @zcode/workbench build
 
-# /ide + /git-proxy; SPA debug UI at / only in DEV
+# product IDE at / + /git-proxy; SPA debug at /debug/ in DEV
 NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
 # or: pnpm dev:ide
 ```
 
 | URL | Role |
 | --- | --- |
-| **http://127.0.0.1:5000/ide/** | **VS Code Web workbench (the product IDE)** |
-| http://127.0.0.1:5000/ | Debug SPA (git dogfood) — **DEV only**; off when `NODE_ENV=production` |
+| **http://127.0.0.1:5000/** | **VS Code Web workbench (the product IDE)** |
+| http://127.0.0.1:5000/debug/ | Debug SPA (git dogfood) — **DEV only**; off when `NODE_ENV=production` |
 | http://127.0.0.1:5000/git-proxy | Stateless CORS bridge for GitHub/GitLab |
+| http://127.0.0.1:5000/ide/ | Legacy alias → redirects to `/` |
 
 ### Clone a Git repo (browser debug SPA)
 
-Git clone is **client-side** (isomorphic-git). The browser needs same-origin **`/git-proxy`** for GitHub/GitLab CORS. The SPA at `/` is **debug dogfood** and is **not served in production**.
+Git clone is **client-side** (isomorphic-git). The browser needs same-origin **`/git-proxy`** for GitHub/GitLab CORS. The SPA at `/debug/` is **debug dogfood** and is **not served in production**.
 
 ```bash
-# one terminal — debug SPA + /git-proxy + /ide
+# one terminal — product IDE + /git-proxy + optional /debug
 NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
 ```
 
-1. Open **http://127.0.0.1:5000/** (debug SPA; production uses **`/ide/`** only)
+1. Open **http://127.0.0.1:5000/debug/** (debug SPA; product IDE is **`/`**)
 2. Confirm **Git proxy URL** is `http://127.0.0.1:5000/git-proxy` (default)
 3. Click **Test proxy** → green **proxy ok**
 4. Set **Clone URL**, e.g. `https://github.com/isomorphic-git/isomorphic-git.git`
 5. *(Private repos)* paste a **PAT** in **Token** (session only)
 6. Click **Clone** → progress + file tree  
-7. **Open in IDE** (or confirm dialog) → `/ide/?workspace=<id>` shows the **same files** in VS Code Web  
+7. **Open in IDE** (or confirm dialog) → `/?workspace=<id>` shows the **same files** in VS Code Web  
 8. Edit → **Save** → **Commit** → **Push** (token needs write access)
 
 Shared storage: **OPFS** (ZenFS, primary) with IndexedDB **`zcode-fs-v1`** fallback (SPA + workbench).
@@ -53,19 +54,20 @@ Shared storage: **OPFS** (ZenFS, primary) with IndexedDB **`zcode-fs-v1`** fallb
 Deep link (auto-start after proxy check):
 
 ```text
-http://127.0.0.1:5000/?clone=https://github.com/org/repo.git&autoclone=1
+http://127.0.0.1:5000/debug/?clone=https://github.com/org/repo.git&autoclone=1
 ```
 
-From **VS Code Web** (`/ide/`): Command Palette → **“ZCode: Clone Repository (Browser SPA)”**.
+From **VS Code Web** (`/`): Command Palette → **“ZCode: Clone Repository (Browser SPA)”**.
 
 **Notes:** HTTPS only (no SSH in browser). Token lives in `sessionStorage`, not `localStorage`.
 
-### VS Code IDE (`/ide/`)
+### VS Code IDE (`/`)
 
 Real workbench from staged `dist/vscode-web`. Dual mode:
 
-- Browser: `/ide/`
-- Remote: `/ide/?mode=remote&authority=127.0.0.1:8080`
+- Browser: `/` or `/?workspace=<id>`
+- Remote: `/?mode=remote&authority=127.0.0.1:8080`
+- Legacy: `/ide/` redirects to `/`
 
 See [docs/vscode-web.md](./docs/vscode-web.md).
 

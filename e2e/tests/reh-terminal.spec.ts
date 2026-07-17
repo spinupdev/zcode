@@ -90,7 +90,7 @@ test.describe('R6 REH terminal (cookie proxy)', () => {
     const sess = await (await request.get('/v1/session')).json();
 
     const product = await request.get(
-      `/ide/product.json?mode=remote&authority=${encodeURIComponent(authority)}`,
+      `/product.json?mode=remote&authority=${encodeURIComponent(authority)}`,
     );
     expect(product.ok()).toBeTruthy();
     const p = await product.json();
@@ -130,7 +130,7 @@ test.describe('R6 REH terminal (cookie proxy)', () => {
 
     const pathQ = wsPath ? `&path=${encodeURIComponent(wsPath)}` : '';
     await page.goto(
-      `/ide/?mode=remote&authority=${encodeURIComponent(authority)}&ready=1${pathQ}`,
+      `/?mode=remote&authority=${encodeURIComponent(authority)}&ready=1${pathQ}`,
     );
 
     await expect(page.locator('body')).toBeVisible();
@@ -150,8 +150,7 @@ test.describe('R6 REH terminal (cookie proxy)', () => {
     await page.waitForTimeout(3_000);
 
     const product = await request.get(
-      `/ide/product.json?mode=remote&authority=${encodeURIComponent(authority)}${pathQ}`,
-    );
+      `/product.json?mode=remote&authority=${encodeURIComponent(authority)}${pathQ}`,    );
     const p = await product.json();
     expect(p.remoteAuthority).toBe(authority);
     expect(p.zcodeCapabilities?.terminal).toBe(true);

@@ -32,14 +32,14 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
 
   const spaDebug =
     options.spaDebug !== undefined ? options.spaDebug : isSpaDebugEnabled();
-  // SPA at `/` is debug dogfood only — never auto-mount in production.
+  // SPA at `/debug/` is debug dogfood only — never auto-mount in production.
   const staticDir = spaDebug ? resolveStaticDir(options.staticDir) : undefined;
   if (!spaDebug && options.staticDir) {
     console.warn(
       `[zcode] SPA debug UI disabled (${spaDebugStatus().reason}); not serving ${options.staticDir}`,
     );
   } else if (spaDebug && staticDir) {
-    console.log(`[zcode] SPA debug UI enabled at / (${spaDebugStatus().reason})`);
+    console.log(`[zcode] SPA debug UI enabled at /debug/ (${spaDebugStatus().reason})`);
   }
 
   const root = options.repoRoot ?? monorepoRoot();

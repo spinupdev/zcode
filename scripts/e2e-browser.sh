@@ -31,7 +31,8 @@ done
 
 curl -sf "http://127.0.0.1:${PORT}/git-proxy/healthz" | tee /tmp/zcode-e2e-health.json
 echo
-curl -sf -o /dev/null -w "spa %{http_code}\n" "http://127.0.0.1:${PORT}/"
+curl -sf -o /dev/null -w "ide %{http_code}\n" "http://127.0.0.1:${PORT}/"
+curl -sf -o /dev/null -w "spa %{http_code}\n" "http://127.0.0.1:${PORT}/debug/"
 test -f apps/web/dist/git-worker.js
 
 log "clone via agent + same-origin proxy"

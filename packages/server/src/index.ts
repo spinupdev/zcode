@@ -45,7 +45,7 @@ export interface ServerOptions {
   password?: string;
   staticDir?: string;
   /**
-   * Serve the SPA debug workspace UI at `/` (apps/web).
+   * Serve the SPA debug workspace UI at `/debug/` (apps/web).
    * Default: on only when not production (`isSpaDebugEnabled`).
    * Force with `ZCODE_SPA_DEBUG=1` or CLI `--spa-debug`.
    */

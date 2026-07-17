@@ -31,8 +31,8 @@ We do **not** invent a parallel editor RPC. Dual-mode is **workbench configurati
 ```mermaid
 flowchart TB
   subgraph Browser["User browser"]
-    SPA["SPA apps/web\n/  clone · edit · search · push"]
-    IDE["VS Code Web\n/ide/"]
+    SPA["Debug SPA apps/web\n/debug/  (DEV only)"]
+    IDE["VS Code Web\n/"]
     Agent["browser-agent\nIDB / memory FS · isomorphic-git"]
     Ext["Builtin web extensions\nzcode-browser-fs · zcode-git"]
   end
@@ -67,12 +67,13 @@ flowchart TB
 
 | Path | Role | Stateful? |
 | --- | --- | --- |
-| `/` | **Debug SPA only** (DEV): git clone/commit/push; off when `NODE_ENV=production` | Client only |
-| `/ide/` | **Primary IDE** — VS Code Web host page | Client + optional REH |
+| `/` | **Primary IDE** — VS Code Web host page | Client + optional REH |
+| `/debug/` | **Debug SPA only** (DEV): git clone/commit/push; off when `NODE_ENV=production` | Client only |
+| `/ide/` | Legacy alias → **302** to `/` | No |
 | `/vscode/*` | Staged VS Code Web static tree (`dist/vscode-web`) | No |
 | `/extensions/*` | Builtin web extensions (`zcode-*`) | No |
 | `/git-proxy/*` | CORS proxy for smart HTTP git | **No** (stateless) |
-| `/ide/product.json` | Dual-mode `window.product` / create() options | No |
+| `/product.json` | Dual-mode `window.product` / create() options (`/ide/product.json` alias) | No |
 | `/login` · `/healthz` | Password session (serve) | Session cookie in memory |
 
 ### 2.3 Browser git data path
@@ -104,11 +105,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   participant B as Browser
-  participant H as /ide bootstrap
+  participant H as / bootstrap
   participant V as /vscode out/
   participant E as /extensions/zcode-browser-fs
 
-  B->>H: GET /ide/
+  B->>H: GET /
   H->>H: window.product = dual-mode options
   H->>H: inject extension URIs with location.host
   H->>V: loader.js · workbench.web.main.js
@@ -150,7 +151,7 @@ zcode/  (repo may still be named code-server)
 ├── apps/
 │   ├── cli/                         ← zcode web | serve | git-proxy
 │   ├── web/                         ← SPA clone/edit/search/push
-│   └── workbench/                   ← /ide host page + bootstrap
+│   └── workbench/                   ← / host page + bootstrap
 ├── extensions/
 │   ├── zcode-browser-fs/            ← zcode-opfs FileSystemProvider
 │   ├── zcode-git/                   ← SCM status/commit/push + SPA clone
@@ -170,7 +171,7 @@ One process (preferred local):
   zcode web --port 5000
     ├── static SPA
     ├── /git-proxy  (in-process, stateless)
-    ├── /ide + /vscode + /extensions  (if staged)
+    ├── / + /vscode + /extensions  (if staged; /debug SPA when DEV)
     └── no REH unless --reh or dist/server artifact
 
 Optional:
@@ -314,14 +315,14 @@ pnpm --filter zcode-git build
 # stage VS Code Web static assets (dogfood npm or owned .build)
 ./scripts/fetch-vscode-web.sh
 
-# one process: SPA + /git-proxy + /ide + /vscode
-node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
+# one process: product IDE at / + /git-proxy + /vscode (+ /debug SPA in DEV)
+NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
 ```
 
 | URL | Expect |
 | --- | --- |
-| http://127.0.0.1:5000/ | SPA: Test proxy → Clone → Commit → Push |
-| http://127.0.0.1:5000/ide/ | VS Code Web + `zcode-opfs` sample workspace |
+| http://127.0.0.1:5000/ | VS Code Web + `zcode-opfs` sample workspace |
+| http://127.0.0.1:5000/debug/ | Debug SPA (DEV): Test proxy → Clone → Commit → Push |
 | http://127.0.0.1:5000/git-proxy/healthz | `{"ok":true,"service":"zcode-git-proxy",...}` |
 
 ```bash
@@ -399,5 +400,6 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | **R6 PTY polish**: terminal open via shortcuts+palette; `printf zcode_echo_ok`; `ZCODE_E2E_REH_PTY_REQUIRED=1` hard-fail. **H3** `scripts/hosting-dry-run.sh`. **H4 done**: non-root Docker, multi-arch build script, compose harden |
 | 2026-07-18 | Verified M0d (`source=owned` + `--check`), R2c (`dist/server` + `--check`), `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh` 4/4 green |
 | 2026-07-18 | SPA `/` is **debug only**: `isSpaDebugEnabled` gates serve; production redirects `/` → `/ide/`; `ZCODE_SPA_DEBUG` / `--spa-debug` overrides |
+| 2026-07-18 | Product IDE moved to **`/`**; debug SPA at **`/debug/`**; legacy `/ide/` → `/` |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

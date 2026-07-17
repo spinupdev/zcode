@@ -11,7 +11,8 @@ No custom `zcode+` resolver in MVP. Cookie session maps to REH connection-token 
 
 ## Product payload
 
-`GET /ide/product.json?mode=browser|remote&authority=host:port&workspace=id`
+`GET /product.json?mode=browser|remote&authority=host:port&workspace=id`  
+(Legacy: `/ide/product.json` — same payload.)
 
 Built by `@zcode/shell` `buildWorkbenchCreateOptions`:
 
@@ -24,7 +25,7 @@ Built by `@zcode/shell` `buildWorkbenchCreateOptions`:
 
 `apps/workbench` bootstrap:
 
-1. Fetch `/ide/product.json` + query
+1. Fetch `/product.json` + query
 2. Remote: require `/v1/session` authenticated when serve is used; default authority = host
 3. Load owned esbuild or dogfood AMD workbench
 4. `create(body, window.product)`
@@ -33,11 +34,11 @@ Built by `@zcode/shell` `buildWorkbenchCreateOptions`:
 
 ```bash
 # Browser
-http://127.0.0.1:5000/ide/?workspace=default
+http://127.0.0.1:5000/?workspace=default
 
 # Remote (after login + REH artifact)
 node apps/cli/dist/cli.js serve . --port 8080 --password secret
-# open /ide/?mode=remote&authority=127.0.0.1:8080&ready=1
+# open /?mode=remote&authority=127.0.0.1:8080&ready=1
 ```
 
 ## Related

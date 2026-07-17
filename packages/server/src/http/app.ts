@@ -92,7 +92,7 @@ export function createRequestHandler(ctx: AppContext) {
         return;
       }
 
-      // Login form always available (SPA may own `/` when staticDir is set)
+      // Login form always available
       if (req.method === 'GET' && (url.pathname === '/login' || url.pathname === '/login/')) {
         html(
           res,
@@ -109,24 +109,33 @@ export function createRequestHandler(ctx: AppContext) {
         return;
       }
 
-      // IDE product (dual-mode)
+      // Dual-mode product (canonical /product.json + legacy /ide/product.json)
       if (url.pathname === '/ide/product.json' || url.pathname === '/product.json') {
         serveIdeProduct(res, url, ctx);
         return;
       }
 
+      // Legacy /ide → product root
       if (url.pathname === '/ide' || url.pathname === '/ide/') {
-        if (ctx.workbenchDir && tryServeStatic(req, res, ctx.workbenchDir, '/index.html')) {
-          return;
-        }
-        res.writeHead(503, { 'content-type': 'text/plain' });
-        res.end('Workbench not built. pnpm --filter @zcode/workbench build && ./scripts/fetch-vscode-web.sh\n');
+        res.writeHead(302, {
+          Location: `/${url.search}`,
+          'cache-control': 'no-store',
+          'x-zcode-ide-legacy': '1',
+        });
+        res.end();
         return;
       }
       if (url.pathname.startsWith('/ide/') && ctx.workbenchDir) {
         const rel = url.pathname.slice('/ide'.length);
         if (tryServeStatic(req, res, ctx.workbenchDir, rel)) return;
+        res.writeHead(302, {
+          Location: `${rel}${url.search}`,
+          'cache-control': 'no-store',
+        });
+        res.end();
+        return;
       }
+
       if (url.pathname.startsWith('/vscode/') && ctx.vscodeWebDir) {
         const rel = url.pathname.slice('/vscode'.length);
         if (tryServeStatic(req, res, ctx.vscodeWebDir, rel)) return;
@@ -136,27 +145,31 @@ export function createRequestHandler(ctx: AppContext) {
         if (tryServeStatic(req, res, ctx.extensionsDir, rel)) return;
       }
 
-      // Static SPA / browser app (only when spaDebug mounted staticDir — never in production)
-      if (ctx.staticDir && tryServeStatic(req, res, ctx.staticDir, url.pathname)) {
-        return;
+      // Debug SPA at /debug/ (DEV only — staticDir only set when spaDebug enabled)
+      if (ctx.staticDir && (url.pathname === '/debug' || url.pathname.startsWith('/debug/'))) {
+        const rel =
+          url.pathname === '/debug' || url.pathname === '/debug/'
+            ? '/index.html'
+            : url.pathname.slice('/debug'.length);
+        if (tryServeStatic(req, res, ctx.staticDir, rel)) return;
+        if (tryServeStatic(req, res, ctx.staticDir, '/index.html')) return;
       }
 
-      if (req.method === 'GET' && url.pathname === '/') {
-        // Product default: IDE when available; else login shell
-        if (!ctx.staticDir && ctx.workbenchDir) {
-          res.writeHead(302, {
-            Location: '/ide/',
-            'cache-control': 'no-store',
-            'x-zcode-spa-debug': 'off',
-          });
-          res.end();
+      // Product IDE at `/` + workbench assets (bootstrap.js, …)
+      if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+        if (ctx.workbenchDir && tryServeStatic(req, res, ctx.workbenchDir, '/index.html')) {
           return;
         }
+        // Authenticated shell without workbench: login landing
         html(
           res,
           200,
           loginPage(ctx.bridge.isAuthenticated(req.headers.cookie), ctx.authority, ctx),
         );
+        return;
+      }
+
+      if (ctx.workbenchDir && tryServeStatic(req, res, ctx.workbenchDir, url.pathname)) {
         return;
       }
 
@@ -220,7 +233,8 @@ async function handleLogin(
   );
 
   if (ct.includes('application/x-www-form-urlencoded')) {
-    const dest = ctx.staticDir ? '/index.html' : '/?ready=1';
+    // Product IDE is at /; debug SPA lives under /debug/
+    const dest = '/?ready=1';
     res.writeHead(303, { Location: dest });
     res.end();
     return;
@@ -230,7 +244,7 @@ async function handleLogin(
     ok: true,
     authority: ctx.authority,
     cookie: SESSION_COOKIE,
-    redirect: ctx.staticDir ? '/index.html' : '/?ready=1',
+    redirect: '/?ready=1',
   });
 }
 
@@ -291,10 +305,10 @@ function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
 function loginPage(authenticated: boolean, authority: string, ctx: AppContext): string {
   if (authenticated) {
     const appLink = ctx.staticDir
-      ? `<p><a href="/index.html">Open debug SPA workspace</a> <small>(DEV only — not in production)</small></p>`
+      ? `<p><a href="/debug/">Open debug SPA workspace</a> <small>(DEV only — not in production)</small></p>`
       : '';
     const ideLink = ctx.workbenchDir
-      ? `<p><a href="/ide/">Open VS Code Web IDE (browser)</a> · <a href="/ide/?mode=remote&authority=${encodeURIComponent(authority)}&ready=1">Remote mode (cookie-auth REH proxy)</a></p>`
+      ? `<p><a href="/">Open VS Code Web IDE (browser)</a> · <a href="/?mode=remote&authority=${encodeURIComponent(authority)}&ready=1">Remote mode (cookie-auth REH proxy)</a></p>`
       : `<p>IDE: run <code>./scripts/fetch-vscode-web.sh</code> and rebuild workbench.</p>`;
     return `<!DOCTYPE html><html><body>
       <h1>ZCode server</h1>
@@ -312,7 +326,7 @@ function loginPage(authenticated: boolean, authority: string, ctx: AppContext): 
       <button type="submit">Sign in</button>
     </form>
     <p>Session cookie is HttpOnly. Connection token never appears in the URL.</p>
-    <p>After sign-in, open <a href="/ide/">browser IDE</a> or remote mode from the next screen.</p>
+    <p>After sign-in, open <a href="/">browser IDE</a> or remote mode from the next screen.</p>
   </body></html>`;
 }
 

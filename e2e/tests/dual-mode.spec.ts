@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
  */
 test.describe('dual-mode product (M1)', () => {
   test('browser product has zcode-opfs and no terminal capability', async ({ request }) => {
-    const res = await request.get('/ide/product.json?workspace=m1-ws');
+    const res = await request.get('/product.json?workspace=m1-ws');
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.remoteAuthority).toBeFalsy();
@@ -27,7 +27,7 @@ test.describe('dual-mode product (M1)', () => {
 
   test('remote product sets remoteAuthority and enables terminal', async ({ request }) => {
     const res = await request.get(
-      '/ide/product.json?mode=remote&authority=127.0.0.1:15010',
+      '/product.json?mode=remote&authority=127.0.0.1:15010',
     );
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
@@ -44,7 +44,7 @@ test.describe('dual-mode product (M1)', () => {
   });
 
   test('IDE HTML includes CSP when served', async ({ request }) => {
-    const res = await request.get('/ide/');
+    const res = await request.get('/');
     expect(res.ok()).toBeTruthy();
     // Static web path may not set CSP; when headers present, check shape
     const csp = res.headers()['content-security-policy'];

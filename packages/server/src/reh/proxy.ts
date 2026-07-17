@@ -35,14 +35,14 @@ const DEFAULT_RESERVED = [
   '/logout',
   '/v1/',
   '/git-proxy',
-  '/ide',
+  '/ide', // legacy alias → /
+  '/debug', // DEV SPA dogfood
   '/vscode',
   '/extensions',
+  '/product.json',
+  '/bootstrap.js',
   '/index.html',
-  '/app.js',
-  '/app.css',
-  '/git-worker.js',
-  // SPA owns / when staticDir set; login form is /login
+  // Product workbench owns `/` (static shell); REH remote paths are not reserved
 ];
 
 export function isReservedPath(pathname: string, reserved = DEFAULT_RESERVED): boolean {

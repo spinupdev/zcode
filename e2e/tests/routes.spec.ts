@@ -10,15 +10,15 @@ test.describe('same-origin routes', () => {
     expect(body.mode).toBe('stateless');
   });
 
-  test('SPA index loads (debug / DEV only)', async ({ page }) => {
-    await page.goto('/');
+  test('SPA debug at /debug/ loads (DEV only)', async ({ page }) => {
+    await page.goto('/debug/');
     await expect(page.getByText('DEBUG', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Clone' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Test proxy' })).toBeVisible();
   });
 
   test('IDE product.json dual-mode workspace id', async ({ request }) => {
-    const res = await request.get('/ide/product.json?workspace=e2e-ws-1');
+    const res = await request.get('/product.json?workspace=e2e-ws-1');
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.folderUri).toEqual({
@@ -31,13 +31,20 @@ test.describe('same-origin routes', () => {
     );
     expect(fsExt).toBeTruthy();
     expect(fsExt.authority).toMatch(/127\.0\.0\.1:\d+/);
+    // Legacy alias still works
+    const legacy = await request.get('/ide/product.json?workspace=e2e-ws-1');
+    expect(legacy.ok()).toBeTruthy();
   });
 
-  test('IDE host page and vscode loader when staged', async ({ request }) => {
-    const ide = await request.get('/ide/');
+  test('IDE host page at / and vscode loader when staged', async ({ request }) => {
+    const ide = await request.get('/');
     expect(ide.ok()).toBeTruthy();
     const html = await ide.text();
     expect(html).toMatch(/bootstrap\.js|ZCode IDE/);
+    // Legacy /ide/ still lands on the workbench (redirect followed)
+    const legacy = await request.get('/ide/');
+    expect(legacy.ok()).toBeTruthy();
+    expect(await legacy.text()).toMatch(/bootstrap\.js|ZCode IDE/);
 
     const loader = await request.get('/vscode/out/vs/loader.js');
     // 200 if fetch-vscode-web was run; otherwise 404 — soft assert

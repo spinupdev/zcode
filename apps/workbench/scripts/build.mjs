@@ -81,7 +81,7 @@ const indexHtml = `<!DOCTYPE html>
 pnpm --filter @zcode/workbench build
 pnpm --filter zcode-browser-fs build
 node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000</pre>
-    <p>Then open <a href="/ide/">/ide/</a>. Lightweight git SPA: <a href="/">/</a>.</p>
+    <p>Then open <a href="/">/</a> (product IDE). Debug SPA (DEV): <a href="/debug/">/debug/</a>.</p>
   </div>
   <script>
     window.product = ${JSON.stringify(defaultProduct)};
@@ -128,7 +128,11 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     let authority = params.get('authority') || params.get('remoteAuthority');
     // Prefer server-built dual-mode payload (capabilities, configurationDefaults)
     try {
-      const res = await fetch('/ide/product.json' + location.search, { cache: 'no-store' });
+      // Prefer /product.json; fall back to legacy /ide/product.json
+      let res = await fetch('/product.json' + location.search, { cache: 'no-store' });
+      if (!res.ok) {
+        res = await fetch('/ide/product.json' + location.search, { cache: 'no-store' });
+      }
       if (res.ok) window.product = await res.json();
     } catch (_) { /* embedded product */ }
 

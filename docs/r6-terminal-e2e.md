@@ -48,7 +48,7 @@ Manual dogfood:
 pnpm --filter @zcode/workbench build
 ./scripts/fetch-vscode-web.sh
 node apps/cli/dist/cli.js serve ./workspace --port 8080 --password secret
-# browser: login → /ide/?mode=remote&authority=127.0.0.1:8080&ready=1
+# browser: login → /?mode=remote&authority=127.0.0.1:8080&ready=1
 # Terminal: echo ok
 ```
 

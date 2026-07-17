@@ -1,6 +1,6 @@
 # VS Code Web integration (M0)
 
-ZCode’s **primary IDE UI is VS Code Web**, served at **`/ide/`**.
+ZCode’s **primary IDE UI is VS Code Web**, served at **`/`** (legacy **`/ide/`** redirects here).
 
 The lightweight SPA at `/` remains a dogfood surface for browser git/OPFS without loading the full workbench.
 
@@ -8,19 +8,20 @@ The lightweight SPA at `/` remains a dogfood surface for browser git/OPFS withou
 
 ```text
 /                  → apps/web (SPA: clone/edit/search)
-/ide/              → apps/workbench (loads VS Code Web)
+/                  → apps/workbench (loads VS Code Web)
+/ide/              → 302 → /  (legacy)
 /vscode/*          → dist/vscode-web (static Code-OSS web compile)
 /extensions/*      → extensions/zcode-*
 /git-proxy/*       → stateless CORS bridge
-/ide/product.json  → dual-mode create() options (browser | remote)
+/product.json      → dual-mode create() options (browser | remote; /ide/product.json alias)
 ```
 
 Dual mode (workbench):
 
 | Query | Behavior |
 | --- | --- |
-| `/ide/` or `?mode=browser` | No `remoteAuthority`; folder `zcode-opfs:/workspace/…` |
-| `/ide/?mode=remote&authority=host:port` | Sets `remoteAuthority` + `vscode-remote` folder |
+| `/` or `?mode=browser` | No `remoteAuthority`; folder `zcode-opfs:/workspace/…` |
+| `/?mode=remote&authority=host:port` | Sets `remoteAuthority` + `vscode-remote` folder |
 
 ## Stage VS Code Web assets
 
@@ -53,7 +54,7 @@ pnpm --filter @zcode/cli build
 node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 ```
 
-- http://127.0.0.1:5000/ide/ — **VS Code Web**
+- http://127.0.0.1:5000/ — **VS Code Web**
 - http://127.0.0.1:5000/ — SPA workspace tools
 
 Or: `pnpm dev:ide`
@@ -64,7 +65,7 @@ Or: `pnpm dev:ide`
 pnpm e2e:playwright
 ```
 
-Covers same-origin routes, SPA clone (Hello-World), and `/ide/product.json?workspace=` handoff.
+Covers same-origin routes, SPA clone (Hello-World), and `/product.json?workspace=` handoff.
 
 ## Product branding
 
@@ -74,7 +75,7 @@ Covers same-origin routes, SPA clone (Hello-World), and `/ide/product.json?works
 
 `zcode-browser-fs` registers the `zcode-opfs` scheme and seeds `/workspace/default` with sample files.
 
-`/ide/product.json` points `folderUri` at that folder and loads the extension via:
+`/product.json` points `folderUri` at that folder and loads the extension via:
 
 ```json
 "additionalBuiltinExtensions": [
@@ -88,7 +89,7 @@ Bootstrap injects `location.host` so extension URIs are absolute same-origin.
 
 | Piece | Status |
 | --- | --- |
-| Load VS Code Web workbench | ✅ `/vscode` + `/ide` |
+| Load VS Code Web workbench | ✅ `/vscode` + `/` (legacy `/ide`) |
 | ZCode product.json | ✅ |
 | Dual-mode product payload | ✅ |
 | Built-in extensions served | ✅ `/extensions/*` |
@@ -97,4 +98,4 @@ Bootstrap injects `location.host` so extension URIs are absolute same-origin.
 | Browser SCM (`zcode-git`) | ✅ status / commit / push over IDB |
 | REH cookie proxy (R3b) | ✅ when `dist/server` artifact + `zcode serve` |
 
-**Custom SPA (`/`) is tools/dogfood.** **Primary IDE is `/ide/`.**
+**Custom SPA (`/debug/`) is tools/dogfood (DEV only).** **Primary IDE is `/`.**

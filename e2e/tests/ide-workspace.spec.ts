@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test';
 test.describe('IDE workspace handoff', () => {
   test('product.json workspace id and extension JS load', async ({ page, request }) => {
     const ws = 'playwright-ws';
-    const product = await request.get(`/ide/product.json?workspace=${ws}`);
+    const product = await request.get(`/product.json?workspace=${ws}`);
     expect(product.ok()).toBeTruthy();
     const body = await product.json();
     expect(body.folderUri.path).toBe(`/workspace/${ws}`);
@@ -33,7 +33,7 @@ test.describe('IDE workspace handoff', () => {
       'dist/vscode-web not staged — run ./scripts/fetch-vscode-web.sh or build-web.sh --package',
     );
 
-    await page.goto('/ide/?workspace=default');
+    await page.goto('/?workspace=default');
     // Fallback should hide if assets load; or show fallback message
     await page.waitForTimeout(3000);
     const fallback = page.locator('#fallback');

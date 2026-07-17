@@ -17,7 +17,7 @@ Browser                         ZCode serve                    REH (127.0.0.1:po
    |  POST /login                  |                              |
    |------------------------------>| createSession(token)         |
    |  Set-Cookie: zcode_sess=…     |                              |
-   |  GET /ide/?mode=remote&ready=1|                              |
+   |  GET /?mode=remote&ready=1    |                              |
    |  WS upgrade / …               |                              |
    |------------------------------>| resolve cookie → token       |
    |                               | proxy WS/HTTP + inject       |
@@ -35,7 +35,7 @@ Browser                         ZCode serve                    REH (127.0.0.1:po
 | Spawn with token | `packages/server/src/reh/spawn.ts` `--connection-token` |
 | Session API | `GET /v1/session` → `{ authenticated, ready, authority, rehProxy }` |
 
-Reserved shell paths (`/login`, `/ide`, `/git-proxy`, `/vscode`, …) are **not** proxied.
+Reserved shell paths (`/login`, `/`, `/debug`, `/git-proxy`, `/vscode`, …) are **not** proxied.
 
 ## Run
 
@@ -47,7 +47,7 @@ Reserved shell paths (`/login`, `/ide`, `/git-proxy`, `/vscode`, …) are **not*
 ZCODE_SPAWN_REH=1 node apps/cli/dist/cli.js serve --password secret --port 8080
 
 # Login in browser, then:
-# /login → /ide/?mode=remote&authority=127.0.0.1:8080&ready=1
+# /login → /?mode=remote&authority=127.0.0.1:8080&ready=1
 ```
 
 Without `dist/server` artifact, REH mode is `none` and proxy is idle (browser mode still works).

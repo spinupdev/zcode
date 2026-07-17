@@ -167,7 +167,7 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
     await this.fs.mkdir(root);
     await this.fs.writeFile(
       `${root}/README.md`,
-      `# ZCode workspace\n\nVirtual FS: **${this.storageLabel}** (scheme \`zcode-opfs\`).\n\nClone repos at [/](/) then open \`/ide/?workspace=${workspaceId}\`.\n`,
+      `# ZCode workspace\n\nVirtual FS: **${this.storageLabel}** (scheme \`zcode-opfs\`).\n\nClone repos at [/debug/](/debug/) (DEV) then open \`/?workspace=${workspaceId}\`.\n`,
     );
     await this.fs.writeFile(
       `${root}/hello.ts`,

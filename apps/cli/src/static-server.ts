@@ -28,19 +28,22 @@ const TYPES: Record<string, string> = {
   '.wasm': 'application/wasm',
 };
 
+/** Debug SPA mount (DEV only). Product IDE is at `/`. */
+export const SPA_DEBUG_PREFIX = '/debug';
+
 export interface StaticServerOptions {
   host: string;
   port: number;
-  /** Browser SPA (apps/web/dist) — debug dogfood only */
+  /** Browser SPA (apps/web/dist) — debug dogfood only at /debug/ */
   dir: string;
   /**
-   * Serve SPA debug UI at `/`. Default: `isSpaDebugEnabled()` (off when NODE_ENV=production).
+   * Serve SPA debug UI at `/debug/`. Default: `isSpaDebugEnabled()` (off when NODE_ENV=production).
    * Override with ZCODE_SPA_DEBUG=0|1 or CLI `--spa-debug` / `--no-spa-debug`.
    */
   spaDebug?: boolean;
   /** VS Code Web static tree (dist/vscode-web) */
   vscodeWebDir?: string;
-  /** Workbench host page (apps/workbench/dist) */
+  /** Workbench host page (apps/workbench/dist) — product surface at `/` */
   workbenchDir?: string;
   /** Built-in extensions root */
   extensionsDir?: string;
@@ -56,6 +59,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
   gitProxyUrl: string | null;
   ideUrl: string | null;
   spaDebug: boolean;
+  spaDebugUrl: string | null;
   close(): Promise<void>;
 }> {
   const spaRoot = path.resolve(opts.dir);
@@ -114,23 +118,40 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
       const url = new URL(req.url ?? '/', `http://${host}`);
       const pathname = decodeURIComponent(url.pathname);
 
-      // Dynamic product for dual-mode IDE
-      if (pathname === '/ide/product.json' || pathname === '/product.json') {
+      // Dual-mode product (canonical + legacy /ide/product.json)
+      if (
+        pathname === '/product.json' ||
+        pathname === '/ide/product.json'
+      ) {
         serveIdeProduct(res, url, repoRoot);
         return;
       }
 
-      if (pathname === '/ide' || pathname === '/ide/') {
-        if (workbenchDir && serveFile(res, path.join(workbenchDir, 'index.html'))) return;
-        res.writeHead(503, { 'content-type': 'text/plain' }).end(
-          'Workbench not built. Run: pnpm --filter @zcode/workbench build && ./scripts/fetch-vscode-web.sh\n',
-        );
-        return;
-      }
-
-      if (pathname.startsWith('/ide/')) {
+      // Legacy /ide → product root (preserve query)
+      if (pathname === '/ide' || pathname === '/ide/' || pathname.startsWith('/ide/')) {
+        const dest =
+          pathname === '/ide' || pathname === '/ide/'
+            ? `/${url.search}`
+            : `/${pathname.slice('/ide/'.length)}${url.search}`;
+        // Only redirect bare /ide and /ide/ to /; subpaths like /ide/bootstrap.js → /bootstrap.js
+        if (pathname === '/ide' || pathname === '/ide/') {
+          res.writeHead(302, {
+            Location: `/${url.search}`,
+            'cache-control': 'no-store',
+            'x-zcode-ide-legacy': '1',
+          });
+          res.end();
+          return;
+        }
+        // Map /ide/* assets onto workbench root assets
         const rel = pathname.slice('/ide/'.length);
         if (workbenchDir && tryStatic(res, workbenchDir, rel)) return;
+        res.writeHead(302, {
+          Location: dest.startsWith('/') ? dest : `/${dest}`,
+          'cache-control': 'no-store',
+        });
+        res.end();
+        return;
       }
 
       if (pathname.startsWith('/vscode/')) {
@@ -145,20 +166,9 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
         if (extensionsDir && tryStatic(res, extensionsDir, rel)) return;
       }
 
-      // SPA at `/` is debug dogfood only (NODE_ENV=development / unset local).
-      // Production: product surface is /ide/.
-      if (!spaDebug) {
-        if (pathname === '/' || pathname === '/index.html') {
-          res.writeHead(302, {
-            Location: workbenchDir ? '/ide/' : '/git-proxy/healthz',
-            'cache-control': 'no-store',
-            'x-zcode-spa-debug': 'off',
-          });
-          res.end();
-          return;
-        }
-        // Block SPA assets so production cannot load the debug app by path
-        if (isSpaAssetPath(pathname)) {
+      // Debug SPA at /debug/ (DEV only)
+      if (pathname === SPA_DEBUG_PREFIX || pathname.startsWith(`${SPA_DEBUG_PREFIX}/`)) {
+        if (!spaDebug) {
           res.writeHead(404, {
             'content-type': 'text/plain; charset=utf-8',
             'cache-control': 'no-store',
@@ -166,25 +176,41 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
           });
           res.end(
             'SPA debug UI is disabled (NODE_ENV/ZCODE_ENV is not development).\n' +
-              'Product IDE: /ide/\n' +
+              'Product IDE: /\n' +
               'Enable dogfood: NODE_ENV=development or ZCODE_SPA_DEBUG=1\n',
           );
           return;
         }
-        res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found\n');
+        let rel =
+          pathname === SPA_DEBUG_PREFIX || pathname === `${SPA_DEBUG_PREFIX}/`
+            ? 'index.html'
+            : pathname.slice(`${SPA_DEBUG_PREFIX}/`.length);
+        if (rel.includes('..')) {
+          res.writeHead(400).end('bad path');
+          return;
+        }
+        if (tryStatic(res, spaRoot, rel)) return;
+        if (serveFile(res, path.join(spaRoot, 'index.html'))) return;
+        res.writeHead(404).end('not found');
         return;
       }
 
-      // SPA root (debug only)
-      let rel = pathname === '/' ? '/index.html' : pathname;
-      if (rel.includes('..')) {
-        res.writeHead(400).end('bad path');
+      // Product IDE at `/` — workbench host + its static assets (bootstrap.js, …)
+      if (pathname === '/' || pathname === '/index.html') {
+        if (workbenchDir && serveFile(res, path.join(workbenchDir, 'index.html'))) return;
+        res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' }).end(
+          'Workbench not built. Run: pnpm --filter @zcode/workbench build && ./scripts/fetch-vscode-web.sh\n',
+        );
         return;
       }
-      if (tryStatic(res, spaRoot, rel.replace(/^\//, ''))) return;
-      // SPA fallback
-      if (serveFile(res, path.join(spaRoot, 'index.html'))) return;
-      res.writeHead(404).end('not found');
+
+      // Workbench static (bootstrap.js, etc.) — exclude paths owned above
+      if (workbenchDir) {
+        const rel = pathname.replace(/^\//, '');
+        if (rel && !rel.includes('..') && tryStatic(res, workbenchDir, rel)) return;
+      }
+
+      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found\n');
     })();
   });
 
@@ -199,38 +225,25 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
   const url = `http://${host}:${port}/`;
   const status = spaDebugStatus();
   if (spaDebug) {
-    console.log(`[zcode] SPA debug UI enabled at / (${status.reason})`);
+    console.log(`[zcode] SPA debug UI at ${SPA_DEBUG_PREFIX}/ (${status.reason})`);
   } else {
-    console.log(
-      `[zcode] SPA debug UI disabled (${status.reason}); / redirects to /ide/`,
-    );
+    console.log(`[zcode] SPA debug UI disabled (${status.reason})`);
+  }
+  if (workbenchDir) {
+    console.log(`[zcode] product IDE at / (workbench)`);
   }
 
   return {
     url,
     gitProxyUrl: gitProxyEnabled ? `http://${host}:${port}${prefix}` : null,
-    ideUrl: workbenchDir ? `http://${host}:${port}/ide/` : null,
+    ideUrl: workbenchDir ? `http://${host}:${port}/` : null,
     spaDebug,
+    spaDebugUrl: spaDebug ? `http://${host}:${port}${SPA_DEBUG_PREFIX}/` : null,
     close: () =>
       new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
       }),
   };
-}
-
-/** Paths that belong only to the apps/web debug SPA. */
-function isSpaAssetPath(pathname: string): boolean {
-  if (pathname === '/' || pathname === '/index.html') return true;
-  const base = pathname.split('/').pop() ?? '';
-  return (
-    base === 'app.js' ||
-    base === 'app.css' ||
-    base === 'app.js.map' ||
-    base === 'git-worker.js' ||
-    base === 'git-worker.js.map' ||
-    pathname.startsWith('/app.') ||
-    pathname.startsWith('/git-worker')
-  );
 }
 
 function findFirst(paths: string[]): string | undefined {
@@ -261,7 +274,6 @@ function tryStatic(res: http.ServerResponse, root: string, rel: string): boolean
   const file = path.join(root, rel);
   if (!file.startsWith(path.resolve(root))) return false;
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-    // directory index
     const index = path.join(file, 'index.html');
     if (fs.existsSync(index)) return serveFile(res, index);
     return false;

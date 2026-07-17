@@ -14,13 +14,13 @@ Usage:
   zcode <command> [options]
 
 Commands:
-  web         /ide + /git-proxy + assets; SPA debug UI at / only in DEV
+  web         product IDE at / + /git-proxy; SPA debug at /debug/ in DEV
   serve       Login wrapper + same routes + optional REH
   git-proxy   Standalone CORS proxy (usually unnecessary)
 
   help | version
 
-SPA debug (apps/web at /) is off when NODE_ENV/ZCODE_ENV is production.
+SPA debug (apps/web at /debug/) is off when NODE_ENV/ZCODE_ENV is production.
   Enable:  NODE_ENV=development | ZCODE_SPA_DEBUG=1 | --spa-debug
   Disable: NODE_ENV=production  | ZCODE_SPA_DEBUG=0 | --no-spa-debug
 
@@ -28,8 +28,8 @@ Examples:
   ./scripts/fetch-vscode-web.sh          # stage VS Code Web (dogfood or owned)
   pnpm --filter @zcode/workbench build
   NODE_ENV=development zcode web --dir apps/web/dist --port 5000
-  # open http://127.0.0.1:5000/       → debug SPA (DEV only)
-  # open http://127.0.0.1:5000/ide/   → VS Code Web workbench (product)
+  # open http://127.0.0.1:5000/       → VS Code Web workbench (product)
+  # open http://127.0.0.1:5000/debug/ → debug SPA (DEV only)
 
 Not affiliated with coder/code-server.
 `.trim();
@@ -86,7 +86,7 @@ switch (cmd) {
     console.log(`ZCode serve ${srv.url}`);
     console.log(`authority=${srv.authority} reh=${srv.rehMode}`);
     console.log(`git-proxy ${new URL('git-proxy', srv.url).href}`);
-    console.log(`ide      ${new URL('ide/', srv.url).href}  (VS Code Web when staged)`);
+    console.log(`ide      ${srv.url}  (VS Code Web when staged; legacy /ide/ redirects here)`);
     break;
   }
   case 'git-proxy': {
@@ -121,11 +121,14 @@ switch (cmd) {
       // (Playwright and other tools may start the server with a non-repo cwd).
     });
     console.log(`zcode web ${srv.url}`);
-    if (srv.spaDebug) console.log(`spa-debug ON  → ${dir}  (DEV dogfood only)`);
-    else console.log(`spa-debug OFF → / redirects to /ide/`);
-    if (srv.gitProxyUrl) console.log(`git-proxy ${srv.gitProxyUrl}`);
-    if (srv.ideUrl) console.log(`ide      ${srv.ideUrl}`);
+    if (srv.ideUrl) console.log(`ide      ${srv.ideUrl}  (product)`);
     else console.log('ide      (missing) run: ./scripts/fetch-vscode-web.sh && pnpm --filter @zcode/workbench build');
+    if (srv.spaDebug && srv.spaDebugUrl) {
+      console.log(`spa-debug ON  → ${srv.spaDebugUrl}  (${dir})`);
+    } else {
+      console.log(`spa-debug OFF → /debug/ disabled`);
+    }
+    if (srv.gitProxyUrl) console.log(`git-proxy ${srv.gitProxyUrl}`);
     break;
   }
   default:

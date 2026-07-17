@@ -1,6 +1,6 @@
 /**
- * SPA at `/` is a **debug / dogfood** git workspace UI — not the product IDE.
- * Product surface is `/ide/` (VS Code Web).
+ * SPA at `/debug/` is a **debug / dogfood** git workspace UI — not the product IDE.
+ * Product surface is `/` (VS Code Web workbench).
  *
  * Enabled only in non-production:
  * - `NODE_ENV` / `ZCODE_ENV` ∈ development|dev|test  → on
