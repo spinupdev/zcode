@@ -54,6 +54,10 @@ const defaultProduct = {
     label: '$(folder) ZCode browser',
     tooltip: 'Browser mode — virtual FS (zcode-opfs)',
   },
+  // Paint dark chrome before theme extension finishes loading (matches splash)
+  initialColorTheme: {
+    themeType: 'dark',
+  },
   // Workspace is trusted so FS provider can write without prompts
   workspaceProvider: undefined, // filled by workbench.js from folderUri
 };
@@ -353,6 +357,16 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
   } catch (_) { /* ignore */ }
 
   window.product = withHostAuthority(window.product || {});
+  // Ensure dark shell even if user storage later overrides; first paint matches splash
+  window.product.initialColorTheme = window.product.initialColorTheme || { themeType: 'dark' };
+  if (window.product.productConfiguration) {
+    const defs = window.product.productConfiguration.configurationDefaults || {};
+    if (!defs['workbench.colorTheme']) {
+      defs['workbench.colorTheme'] = 'Default Dark Modern';
+    }
+    defs['window.autoDetectColorScheme'] = false;
+    window.product.productConfiguration.configurationDefaults = defs;
+  }
 
   function loadScript(src, type) {
     return new Promise((resolve, reject) => {
