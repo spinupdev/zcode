@@ -23,8 +23,15 @@ test.describe('IDE workspace handoff', () => {
   });
 
   test('IDE page bootstraps without hard error when vscode-web staged', async ({ page }) => {
+    // Dogfood AMD: loader.js · Owned esbuild: workbench.web.main.internal.js
     const loader = await page.request.get('/vscode/out/vs/loader.js');
-    test.skip(loader.status() !== 200, 'dist/vscode-web not staged — run ./scripts/fetch-vscode-web.sh');
+    const owned = await page.request.get(
+      '/vscode/out/vs/workbench/workbench.web.main.internal.js',
+    );
+    test.skip(
+      loader.status() !== 200 && owned.status() !== 200,
+      'dist/vscode-web not staged — run ./scripts/fetch-vscode-web.sh or build-web.sh --package',
+    );
 
     await page.goto('/ide/?workspace=default');
     // Fallback should hide if assets load; or show fallback message
