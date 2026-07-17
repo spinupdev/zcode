@@ -81,7 +81,7 @@ const indexHtml = `<!DOCTYPE html>
 pnpm --filter @zcode/workbench build
 pnpm --filter zcode-browser-fs build
 node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000</pre>
-    <p>Then open <a href="/">/</a> (product IDE). Debug SPA (DEV): <a href="/debug/">/debug/</a>.</p>
+    <p>Product IDE is <a href="/">/</a>. Optional git dogfood: <a href="/debug/">/debug/</a>.</p>
   </div>
   <script>
     window.product = ${JSON.stringify(defaultProduct)};
@@ -129,16 +129,22 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     // Prefer server-built dual-mode payload (capabilities, configurationDefaults)
     try {
       const res = await fetch('/product.json' + location.search, { cache: 'no-store' });
-      if (res.ok) window.product = await res.json();
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      // Ignore SPA HTML fallbacks on static hosts
+      if (res.ok && ct.includes('json')) window.product = await res.json();
     } catch (_) { /* embedded product */ }
 
     if (mode === 'remote' || window.product?.remoteAuthority || window.product?.zcodeMode === 'remote') {
       mode = 'remote';
       authority = authority || window.product?.remoteAuthority || location.host;
-      // Same-origin cookie session required before remote connect (no token in URL)
+      // Cookie session only exists on zcode serve / Docker. Static hosts (Pages) have no /v1/session —
+      // do not redirect to /login; fall back to browser mode when remote backend is absent.
+      let hasSessionApi = false;
       try {
         const sess = await fetch('/v1/session', { cache: 'no-store', credentials: 'same-origin' });
-        if (sess.ok) {
+        const ct = (sess.headers.get('content-type') || '').toLowerCase();
+        if (sess.ok && ct.includes('json')) {
+          hasSessionApi = true;
           const s = await sess.json();
           if (!s.authenticated && !s.ready) {
             const next = encodeURIComponent(location.pathname + location.search);
@@ -146,7 +152,6 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
             return;
           }
           if (s.authority) authority = s.authority;
-          // Align folder path with REH workspace (absolute host path)
           if (s.workspacePath && !params.get('path')) {
             window.product = {
               ...window.product,
@@ -164,27 +169,34 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
           };
         }
       } catch (_) {
-        /* static web may not expose /v1/session — still allow dogfood */
+        /* static CDN: no session API */
       }
-      const remotePath =
-        params.get('path') ||
-        window.product?.folderUri?.path ||
-        '/home/workspace';
-      window.product = {
-        ...window.product,
-        zcodeMode: 'remote',
-        remoteAuthority: authority,
-        folderUri: {
-          scheme: 'vscode-remote',
-          authority: authority,
-          path: remotePath,
-        },
-        windowIndicator: {
-          label: '$(remote) ZCode remote',
-          tooltip: 'Remote: ' + authority + ' (cookie-auth REH proxy)',
-        },
-      };
-    } else if (window.product) {
+      if (!hasSessionApi && !params.get('authority') && !params.get('remoteAuthority')) {
+        // Explicit remote without a backend → browser mode (production Pages)
+        mode = 'browser';
+      } else if (mode === 'remote') {
+        const remotePath =
+          params.get('path') ||
+          window.product?.folderUri?.path ||
+          '/home/workspace';
+        window.product = {
+          ...window.product,
+          zcodeMode: 'remote',
+          remoteAuthority: authority,
+          connectionReady: hasSessionApi || params.get('ready') === '1',
+          folderUri: {
+            scheme: 'vscode-remote',
+            authority: authority,
+            path: remotePath,
+          },
+          windowIndicator: {
+            label: '$(remote) ZCode remote',
+            tooltip: 'Remote: ' + authority + (hasSessionApi ? ' (cookie-auth REH proxy)' : ' (static host)'),
+          },
+        };
+      }
+    }
+    if (mode !== 'remote' && window.product) {
       const ws = params.get('workspace') || 'default';
       window.product = {
         ...window.product,
@@ -220,19 +232,69 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     if (link) link.href = href;
   }
 
+  // True asset probe: CDNs/SPA hosts often return 200 HTML for missing paths.
+  // Never treat text/html as a successful JS/JSON asset (breaks production Pages).
+  async function assetExists(url, kind) {
+    try {
+      // Prefer HEAD when Content-Type is honest
+      let res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      if (res.ok) {
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (!ct.includes('text/html')) {
+          if (kind === 'js' && (ct.includes('javascript') || ct.includes('ecmascript'))) return true;
+          if (kind === 'json' && ct.includes('json')) return true;
+        } else {
+          return false; // SPA fallback HTML
+        }
+      } else if (res.status === 404 || res.status === 405) {
+        /* fall through to ranged GET */
+      } else if (!res.ok) {
+        return false;
+      }
+      // Ranged GET: small body, works when HEAD is missing/wrong
+      res = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Range: 'bytes=0-255', Accept: kind === 'json' ? 'application/json' : '*/*' },
+      });
+      if (!(res.ok || res.status === 206)) return false;
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (ct.includes('text/html')) return false;
+      const head = (await res.text()).trimStart();
+      if (!head || head.startsWith('<!DOCTYPE') || head.startsWith('<html') || head.startsWith('<')) return false;
+      if (kind === 'js') {
+        return (
+          ct.includes('javascript') ||
+          ct.includes('ecmascript') ||
+          ct.includes('octet-stream') ||
+          ct === '' ||
+          head.startsWith('"use strict"') ||
+          head.startsWith("'use strict'") ||
+          head.startsWith('import') ||
+          head.startsWith('(') ||
+          head.startsWith('var ') ||
+          head.startsWith('const ') ||
+          head.startsWith('function') ||
+          head.startsWith('/*!')
+        );
+      }
+      if (kind === 'json') {
+        return head.startsWith('{') || head.startsWith('[') || ct.includes('json');
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Detect layout: owned pin 1.129 esbuild (workbench.web.main.internal.js)
   // vs dogfood npm vscode-web (AMD loader.js).
   let layout = 'missing';
   try {
-    const owned = await fetch('/vscode/out/vs/workbench/workbench.web.main.internal.js', {
-      method: 'HEAD',
-      cache: 'no-store',
-    });
-    if (owned.ok) {
+    if (await assetExists('/vscode/out/vs/workbench/workbench.web.main.internal.js', 'js')) {
       layout = 'owned-esbuild';
-    } else {
-      const dogfood = await fetch('/vscode/out/vs/loader.js', { method: 'HEAD', cache: 'no-store' });
-      if (dogfood.ok) layout = 'dogfood-amd';
+    } else if (await assetExists('/vscode/out/vs/loader.js', 'js')) {
+      layout = 'dogfood-amd';
     }
     if (layout === 'missing') {
       showFallback(
@@ -240,8 +302,7 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
       );
       return;
     }
-    const ext = await fetch('/extensions/zcode-browser-fs/package.json', { cache: 'no-store' });
-    if (!ext.ok) {
+    if (!(await assetExists('/extensions/zcode-browser-fs/package.json', 'json'))) {
       showFallback('Missing /extensions/zcode-browser-fs — rebuild extensions and workbench');
       return;
     }

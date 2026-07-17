@@ -51,9 +51,24 @@ test -f apps/web/dist/index.html || die "missing web dist"
 log "stage product IDE at / (workbench host)"
 cp apps/workbench/dist/index.html "${STAGE}/"
 cp apps/workbench/dist/bootstrap.js "${STAGE}/"
-# Static product seed (bootstrap also fetches /product.json when present)
+# Product seed: ensure browser-mode capabilities for static production hosts
 if [[ -f apps/workbench/dist/product.json ]]; then
-  cp apps/workbench/dist/product.json "${STAGE}/product.json"
+  node --input-type=module <<'NODE'
+import fs from 'node:fs';
+const p = JSON.parse(fs.readFileSync('apps/workbench/dist/product.json', 'utf8'));
+p.zcodeMode = p.zcodeMode || 'browser';
+p.zcodeCapabilities = p.zcodeCapabilities || {
+  terminal: false,
+  browserGit: true,
+  search: 'client',
+};
+// Never leave a remoteAuthority baked into static product for CDN
+delete p.remoteAuthority;
+if (!p.folderUri) {
+  p.folderUri = { scheme: 'zcode-opfs', path: '/workspace/default' };
+}
+fs.writeFileSync('deploy/cloudflare/site/dist/product.json', JSON.stringify(p, null, 2));
+NODE
 fi
 
 log "stage /extensions (zcode-* package.json + dist only, no node_modules)"
@@ -144,17 +159,39 @@ else
   log "skip debug SPA (ZCODE_CF_SKIP_DEBUG_SPA=1)"
 fi
 
-# Pages routing: do NOT blanket-rewrite /* to index (would break /vscode).
+# Pages routing: do NOT blanket-rewrite /* to index (would break /vscode asset 404s).
 # Only SPA client routes under /debug.
 cat > "${STAGE}/_redirects" <<'EOF'
 /debug/*   /debug/index.html   200
 EOF
 
-# Optional security headers
+# Run Pages Functions only for git-proxy — all other paths are pure static assets.
+# Without this, the Functions worker can SPA-fallback missing files to index.html
+# (false-positive "owned" layout detection and broken production IDE).
+cat > "${STAGE}/_routes.json" <<'EOF'
+{
+  "version": 1,
+  "include": ["/git-proxy", "/git-proxy/*"],
+  "exclude": []
+}
+EOF
+
+# Security headers; allow VS Code web workers / wasm / Open VSX in browser mode.
 cat > "${STAGE}/_headers" <<'EOF'
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: wss: blob:; worker-src 'self' blob:; frame-src 'self' https:; object-src 'none'; base-uri 'self'
+
+/vscode/*
+  Cache-Control: public, max-age=86400, immutable
+
+/bootstrap.js
+  Cache-Control: no-store
+
+/product.json
+  Cache-Control: no-store
 EOF
 
 log "staged tree summary"
