@@ -1,0 +1,23 @@
+{
+  "name": "zcode-browser-fs",
+  "displayName": "ZCode Browser FS",
+  "description": "OPFS FileSystemProvider for ZCode browser mode",
+  "version": "0.0.0",
+  "publisher": "spinupdev",
+  "private": true,
+  "engines": {
+    "vscode": "^1.129.0"
+  },
+  "categories": ["Other"],
+  "browser": "./dist/web/extension.js",
+  "activationEvents": ["onFileSystem:zcode-opfs"],
+  "contributes": {
+    "commands": []
+  },
+  "scripts": {
+    "build": "node -e \"console.log('zcode-browser-fs: extension build stub (Track B3)')\"",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  }
+}

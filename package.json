@@ -1,0 +1,27 @@
+{
+  "name": "zcode",
+  "private": true,
+  "version": "0.0.0",
+  "description": "ZCode — dual-mode VS Code OSS browser IDE (browser + remote). Not affiliated with coder/code-server.",
+  "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "sync-vscode": "bash scripts/sync-vscode.sh",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  }
+}

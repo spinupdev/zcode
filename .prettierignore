@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+.turbo
+vendor
+pnpm-lock.yaml
+coverage
+*.md

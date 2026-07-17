@@ -1,0 +1,12 @@
+{
+  "name": "@zcode/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Staged static workbench assets (owned OSS web build lands in M0). Dev harness only until then.",
+  "scripts": {
+    "build": "node ./scripts/placeholder-build.mjs",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  }
+}

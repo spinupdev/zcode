@@ -1,0 +1,28 @@
+{
+  "name": "zcode-git",
+  "displayName": "ZCode Git (Browser)",
+  "description": "SCM provider + clone commands via isomorphic-git for ZCode browser mode",
+  "version": "0.0.0",
+  "publisher": "spinupdev",
+  "private": true,
+  "engines": {
+    "vscode": "^1.129.0"
+  },
+  "categories": ["SCM Providers"],
+  "browser": "./dist/web/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "zcode.git.clone",
+        "title": "ZCode: Clone Repository (Browser)"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node -e \"console.log('zcode-git: extension build stub (Track B4)')\"",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  }
+}

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  monorepo:
+    name: Build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Guard against test-web in release paths
+        run: bash scripts/check-no-test-web-in-release.sh
+
+  vscode-patches:
+    name: VS Code patches (quilt)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Only when submodule is present in the commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Check submodule registration
+        id: sub
+        run: |
+          if [[ -f .gitmodules ]] && grep -q 'vendor/vscode' .gitmodules; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No vendor/vscode submodule yet — skip"
+          fi
+
+      - name: Install quilt
+        if: steps.sub.outputs.present == 'true'
+        run: sudo apt-get update && sudo apt-get install -y quilt
+
+      - name: Sync vscode + apply patches
+        if: steps.sub.outputs.present == 'true'
+        run: |
+          git submodule update --init --depth 1 vendor/vscode
+          bash scripts/sync-vscode.sh

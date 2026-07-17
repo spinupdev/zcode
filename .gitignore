@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+dist-test/
+out/
+*.tsbuildinfo
+.turbo/
+
+# VS Code local / product data
+.zcode/
+.vscode-test/
+.vscode-test-web/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+.idea/
+
+# Logs & coverage
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage/
+.nyc_output/
+
+# Quilt (applied state lives in vendor; series is committed)
+patches/.pc/
+.pc/
+
+# Release / packaging
+*.tgz
+release/

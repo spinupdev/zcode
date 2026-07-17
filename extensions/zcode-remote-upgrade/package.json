@@ -1,0 +1,28 @@
+{
+  "name": "zcode-remote-upgrade",
+  "displayName": "ZCode Remote Upgrade",
+  "description": "Browser → remote workspace upgrade (post-MVP, ADR-gated)",
+  "version": "0.0.0",
+  "publisher": "spinupdev",
+  "private": true,
+  "engines": {
+    "vscode": "^1.129.0"
+  },
+  "categories": ["Other"],
+  "browser": "./dist/web/extension.js",
+  "activationEvents": ["onCommand:zcode.remote.upgrade"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "zcode.remote.upgrade",
+        "title": "ZCode: Upgrade Workspace to Remote"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node -e \"console.log('zcode-remote-upgrade: post-MVP stub')\"",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  }
+}

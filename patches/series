@@ -1,0 +1,3 @@
+# Quilt patch series applied to vendor/vscode (code-server-style).
+# Empty until product requires core changes. Prefer wrappers + extensions.
+# Format: one patch file name per line (relative to patches/).
