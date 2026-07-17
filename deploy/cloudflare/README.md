@@ -1,19 +1,23 @@
-# Cloudflare hosting (static SPA + stateless git-proxy)
+# Cloudflare hosting (browser-mode IDE + git proxy)
 
-Browser mode does **not** need a stateful backend. You need:
+Browser mode does **not** need a stateful backend. Pages ships:
 
-1. **Static assets** — `apps/web/dist` on Cloudflare Pages
-2. **Stateless `/git-proxy`** — Pages Function (same-origin) and/or standalone Worker
+1. **Product IDE at `/`** — VS Code Web workbench + `/vscode` + `/extensions`
+2. **Debug SPA at `/debug/`** — git dogfood tools (optional)
+3. **Stateless `/git-proxy`** — Pages Function (same-origin) and/or standalone Worker
 
 ```text
-https://zcode-69r.pages.dev/              →  Pages (SPA)
-https://zcode-69r.pages.dev/git-proxy/*   →  Pages Function (deploy/cloudflare/site/functions)
-https://zcode-git-proxy.*.workers.dev/*   →  optional standalone Worker (this folder’s sibling)
+https://zcode-69r.pages.dev/              →  VS Code Web IDE (browser mode)
+https://zcode-69r.pages.dev/vscode/*      →  vscode-web static
+https://zcode-69r.pages.dev/extensions/*  →  zcode-* web extensions
+https://zcode-69r.pages.dev/debug/        →  debug git SPA (DEV dogfood)
+https://zcode-69r.pages.dev/git-proxy/*   →  Pages Function
+https://zcode-git-proxy.*.workers.dev/*   →  optional standalone Worker
 ```
 
-The SPA defaults `gitProxyUrl` to `{origin}/git-proxy` (same-origin).
+**Remote mode (REH / PTY)** still needs self-host (`zcode serve` / Docker) — not on Pages.
 
-**Note:** Full VS Code Web IDE (`/`) is self-hosted (`zcode serve` / Docker). Pages ships the **browser git SPA** only.
+**File-size note:** Cloudflare Pages max file is **25 MiB**. Owned 1.129 esbuild workbench (~33 MiB) is too large, so deploy stages **dogfood `vscode-web@1.91`** for CDN unless `ZCODE_CF_VSCODE_WEB_DIR` points at a Pages-safe tree.
 
 ## One-shot deploy
 
