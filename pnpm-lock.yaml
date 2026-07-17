@@ -90,6 +90,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@zcode/git-proxy':
+        specifier: workspace:*
+        version: link:../git-proxy
       '@zcode/protocol':
         specifier: workspace:*
         version: link:../protocol
