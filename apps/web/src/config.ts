@@ -1,27 +1,33 @@
 /**
  * App configuration for the ZCode browser workspace.
  * Prefer same-origin `/git-proxy` so static hosts only need a Worker/function.
+ *
+ * Tokens: stored in sessionStorage only (not localStorage) unless user opts in.
  */
 
 const STORAGE_KEY = 'zcode.web.config.v1';
+const TOKEN_SESSION_KEY = 'zcode.web.gitToken';
 const LEGACY_STANDALONE_PROXIES = new Set([
   'http://127.0.0.1:8787',
   'http://localhost:8787',
 ]);
 
 export interface AppConfig {
-  /** isomorphic-git corsProxy base URL (no trailing slash), e.g. https://app/git-proxy */
+  /** isomorphic-git corsProxy base URL (no trailing slash) */
   gitProxyUrl: string;
   /** Default / last-used clone URL */
   cloneUrl: string;
-  /** Max file rows to render in the tree (perf) */
   treePageSize: number;
-  /** Author for local commits */
   authorName: string;
   authorEmail: string;
+  /**
+   * HTTPS PAT / password for private clone/push.
+   * Loaded from sessionStorage; optional remember in localStorage under token key only if set.
+   */
+  gitToken?: string;
+  gitUsername?: string;
 }
 
-/** Same-origin proxy mount — works with `zcode web`, `zcode serve`, CF Worker routes. */
 export function sameOriginGitProxyUrl(origin = window.location.origin): string {
   return `${origin.replace(/\/+$/, '')}/git-proxy`;
 }
@@ -37,7 +43,6 @@ export function defaultConfig(): AppConfig {
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
-  // Placeholder for types/docs; runtime uses defaultConfig() for origin-aware proxy.
   gitProxyUrl: '/git-proxy',
   cloneUrl: 'https://github.com/isomorphic-git/isomorphic-git.git',
   treePageSize: 200,
@@ -55,10 +60,11 @@ export function loadConfig(): AppConfig {
     /* ignore */
   }
 
-  // Migrate old standalone-proxy default → same-origin
   if (stored.gitProxyUrl && LEGACY_STANDALONE_PROXIES.has(normalizeProxyUrl(stored.gitProxyUrl))) {
     delete stored.gitProxyUrl;
   }
+  // Never keep token in the main config blob if old versions stored it
+  delete stored.gitToken;
 
   const params = new URLSearchParams(window.location.search);
   const fromQuery: Partial<AppConfig> = {};
@@ -68,38 +74,51 @@ export function loadConfig(): AppConfig {
     fromQuery.cloneUrl = (params.get('clone') || params.get('url'))!;
   }
 
-  const merged = {
+  let gitToken: string | undefined;
+  try {
+    gitToken = sessionStorage.getItem(TOKEN_SESSION_KEY) ?? undefined;
+  } catch {
+    /* ignore */
+  }
+
+  return {
     ...defaults,
     ...stored,
     ...fromQuery,
-  };
-
-  return {
-    ...merged,
     gitProxyUrl: normalizeProxyUrl(
       fromQuery.gitProxyUrl ?? stored.gitProxyUrl ?? defaults.gitProxyUrl,
     ),
+    gitToken: gitToken || undefined,
+    gitUsername: stored.gitUsername,
   };
 }
 
 export function saveConfig(cfg: AppConfig): void {
-  const toStore: AppConfig = {
-    ...cfg,
+  const { gitToken, ...rest } = cfg;
+  const toStore = {
+    ...rest,
     gitProxyUrl: normalizeProxyUrl(cfg.gitProxyUrl),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+  try {
+    if (gitToken?.trim()) {
+      sessionStorage.setItem(TOKEN_SESSION_KEY, gitToken.trim());
+    } else {
+      sessionStorage.removeItem(TOKEN_SESSION_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function normalizeProxyUrl(url: string): string {
   const t = url.trim();
-  // Allow relative path for same-origin: "/git-proxy"
   if (t.startsWith('/')) {
     return `${window.location.origin}${t}`.replace(/\/+$/, '');
   }
   return t.replace(/\/+$/, '');
 }
 
-/** Probe git-proxy /healthz. Returns latency ms or throws. */
 export async function testGitProxy(
   proxyUrl: string,
   timeoutMs = 4000,

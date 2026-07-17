@@ -1,4 +1,4 @@
-import type { CloneProgress, WorkspaceInfo } from '@zcode/protocol';
+import type { CloneProgress, GitAuth, WorkspaceInfo } from '@zcode/protocol';
 import type { ZCodeBrowserAgent } from '@zcode/browser-agent';
 import type { WorkerIn, WorkerOut } from './git-worker.js';
 
@@ -19,6 +19,7 @@ export async function cloneInWorker(
     url: string;
     corsProxyUrl: string;
     depth?: number;
+    auth?: GitAuth;
     onProgress?: (p: CloneProgress) => void;
   },
 ): Promise<WorkspaceInfo> {
@@ -59,23 +60,21 @@ export async function cloneInWorker(
           url: opts.url,
           corsProxyUrl: opts.corsProxyUrl,
           depth: opts.depth,
+          auth: opts.auth,
         };
         worker.postMessage(payload);
       },
     );
 
-    // Import into main-thread FS (IndexedDB)
     opts.onProgress?.({ phase: 'resolving', message: 'persisting workspace…' });
     for (const f of result.files) {
       await agent.fs.writeFile(f.path, b64decode(f.dataB64));
     }
-    // Register in store
     if (!agent.store.get(result.workspace.id)) {
       agent.store.create(result.workspace.name, result.workspace.id);
     } else {
       agent.store.rename(result.workspace.id, result.workspace.name);
     }
-    // Ensure meta file
     await agent.fs.writeFile(
       `workspace/${result.workspace.id}/.zcode-workspace.json`,
       JSON.stringify({

@@ -22,6 +22,7 @@ export type {
   CloneOpts,
   CommitOpts,
   PushOpts,
+  GitAuth,
 } from './browser-agent.js';
 
 export type { ModeResolutionInput } from './mode.js';

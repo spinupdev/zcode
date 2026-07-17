@@ -35,6 +35,14 @@ export interface CloneProgress {
   message?: string;
 }
 
+/** HTTPS credentials for private remotes (e.g. GitHub PAT). Never log these. */
+export interface GitAuth {
+  /** Often ignored by hosts when using a PAT as password */
+  username?: string;
+  /** Personal access token or password */
+  password: string;
+}
+
 export interface CloneOpts {
   workspaceId: string;
   url: string;
@@ -42,6 +50,8 @@ export interface CloneOpts {
   depth?: number;
   /** Absolute URL of zcode git-proxy (required for non-CORS hosts) */
   corsProxyUrl: string;
+  /** Optional HTTPS auth for private repos */
+  auth?: GitAuth;
   onProgress?: (p: CloneProgress) => void;
   signal?: AbortSignal;
 }
@@ -57,6 +67,8 @@ export interface PushOpts {
   remote?: string;
   corsProxyUrl: string;
   force?: boolean;
+  /** Optional HTTPS auth for private remotes */
+  auth?: GitAuth;
 }
 
 /**

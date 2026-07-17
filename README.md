@@ -41,8 +41,9 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 2. Confirm **Git proxy URL** is `http://127.0.0.1:5000/git-proxy` (default)
 3. Click **Test proxy** → green **proxy ok**
 4. Set **Clone URL**, e.g. `https://github.com/isomorphic-git/isomorphic-git.git`
-5. Click **Clone** → progress bar + log → file tree fills
-6. Edit → **Save** → **Commit** (local commit in IndexedDB)
+5. *(Private repos)* paste a **PAT** in **Token** (session only)
+6. Click **Clone** → progress + file tree
+7. Edit → **Save** → **Commit** → **Push** (token needs write access)
 
 Deep link (auto-start after proxy check):
 
@@ -50,9 +51,9 @@ Deep link (auto-start after proxy check):
 http://127.0.0.1:5000/?clone=https://github.com/org/repo.git&autoclone=1
 ```
 
-From **VS Code Web** (`/ide/`): Command Palette → **“ZCode: Clone Repository (Browser SPA)”** → opens the SPA with autoclone.
+From **VS Code Web** (`/ide/`): Command Palette → **“ZCode: Clone Repository (Browser SPA)”**.
 
-**Limits today:** public HTTPS remotes work best; private repos need credentials later; full `git` in REH remote mode is separate.
+**Notes:** HTTPS only (no SSH in browser). Token lives in `sessionStorage`, not `localStorage`.
 
 ### VS Code IDE (`/ide/`)
 

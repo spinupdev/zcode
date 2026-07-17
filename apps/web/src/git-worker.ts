@@ -2,7 +2,7 @@
  * Web Worker: run isomorphic-git clone off the main thread so the UI can paint.
  */
 import { createBrowserAgent, MemoryFs } from '@zcode/browser-agent';
-import type { CloneProgress } from '@zcode/protocol';
+import type { CloneProgress, GitAuth } from '@zcode/protocol';
 
 export type WorkerIn =
   | {
@@ -12,6 +12,8 @@ export type WorkerIn =
       url: string;
       corsProxyUrl: string;
       depth?: number;
+      /** Optional; do not log. Prefer short-lived PAT. */
+      auth?: GitAuth;
     }
   | { type: 'ping'; requestId: string };
 
@@ -27,7 +29,6 @@ export type WorkerOut =
         createdAt: string;
         approxBytes?: number;
       };
-      /** Serialized file map for main-thread IDB persistence (path → base64) */
       files: Array<{ path: string; dataB64: string }>;
     }
   | { type: 'error'; requestId: string; message: string }
@@ -42,7 +43,6 @@ function b64encode(data: Uint8Array): string {
   return btoa(s);
 }
 
-// Workers use memory FS; main thread merges into IDB after clone
 const agent = createBrowserAgent({ fs: new MemoryFs(), hydrateFromFs: false });
 
 self.onmessage = (ev: MessageEvent<WorkerIn>) => {
@@ -63,16 +63,15 @@ async function handle(msg: WorkerIn): Promise<void> {
       url: msg.url,
       corsProxyUrl: msg.corsProxyUrl,
       depth: msg.depth ?? 1,
+      auth: msg.auth,
       onProgress: (progress) => {
         post({ type: 'progress', requestId, progress });
       },
     });
 
-    const paths = await agent.listFiles(msg.workspaceId);
-    const files: Array<{ path: string; dataB64: string }> = [];
-    // include .git via raw fs walk
     const mem = agent.fs as MemoryFs;
     const all = (await mem.listFiles?.(`workspace/${msg.workspaceId}`)) ?? [];
+    const files: Array<{ path: string; dataB64: string }> = [];
     for (const full of all) {
       try {
         const data = await mem.readFile(full);
@@ -81,8 +80,6 @@ async function handle(msg: WorkerIn): Promise<void> {
         /* skip */
       }
     }
-    // also mark dirs by writing nothing — IDB fs mkdir on write path
-    void paths;
 
     post({
       type: 'clone-done',

@@ -1,9 +1,25 @@
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
-import type { CloneOpts, CloneProgress, CommitOpts, PushOpts, WorkspaceInfo } from '@zcode/protocol';
+import type {
+  CloneOpts,
+  CloneProgress,
+  CommitOpts,
+  GitAuth,
+  PushOpts,
+  WorkspaceInfo,
+} from '@zcode/protocol';
 import type { AgentFs } from './memory-fs.js';
 import { createIsoFs } from './iso-fs.js';
 import type { WorkspaceStore } from './workspace-store.js';
+
+/** isomorphic-git onAuth for HTTPS PAT / password. */
+function makeOnAuth(auth?: GitAuth) {
+  if (!auth?.password) return undefined;
+  return () => ({
+    username: auth.username?.trim() || 'git',
+    password: auth.password,
+  });
+}
 
 export async function gitClone(
   fs: AgentFs,
@@ -36,6 +52,7 @@ export async function gitClone(
 
   emit({ phase: 'negotiating', message: 'starting clone' });
 
+  const onAuth = makeOnAuth(opts.auth);
   try {
     await git.clone({
       fs: iso,
@@ -46,6 +63,7 @@ export async function gitClone(
       ref: opts.ref,
       singleBranch: true,
       depth: opts.depth ?? 1,
+      ...(onAuth ? { onAuth } : {}),
       onProgress: (e) => {
         const phase = mapPhase(e.phase);
         emit({
@@ -61,11 +79,19 @@ export async function gitClone(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // Common failure: proxy down / CORS / SSRF block
-    if (/Failed to fetch|NetworkError|CORS|403|502|504/i.test(message)) {
+    if (/401|403|auth|credential|Authentication/i.test(message)) {
       throw Object.assign(
         new Error(
-          `${message} — check git-proxy is running at ${proxy} (zcode git-proxy --port 8787)`,
+          `${message} — private repo? set a GitHub/GitLab personal access token in App config`,
+        ),
+        { code: 'GIT_ERROR', cause: err },
+      );
+    }
+    // Common failure: proxy down / CORS / SSRF block
+    if (/Failed to fetch|NetworkError|CORS|502|504/i.test(message)) {
+      throw Object.assign(
+        new Error(
+          `${message} — check git-proxy at ${proxy} (same-origin /git-proxy via zcode web)`,
         ),
         { code: 'PROXY_REQUIRED', cause: err },
       );
@@ -130,14 +156,29 @@ export async function gitPush(
 ): Promise<void> {
   const rec = requireWorkspace(store, opts.workspaceId);
   const iso = createIsoFs(fs, rec.rootKey);
-  await git.push({
-    fs: iso,
-    http,
-    dir: '.',
-    remote: opts.remote ?? 'origin',
-    corsProxy: opts.corsProxyUrl.replace(/\/$/, ''),
-    force: opts.force,
-  });
+  const onAuth = makeOnAuth(opts.auth);
+  try {
+    await git.push({
+      fs: iso,
+      http,
+      dir: '.',
+      remote: opts.remote ?? 'origin',
+      corsProxy: opts.corsProxyUrl.replace(/\/$/, ''),
+      force: opts.force,
+      ...(onAuth ? { onAuth } : {}),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/401|403|auth|credential|Authentication|denied/i.test(message)) {
+      throw Object.assign(
+        new Error(
+          `${message} — push needs a token with write access (GitHub: repo scope / fine-grained contents:write)`,
+        ),
+        { code: 'GIT_ERROR', cause: err },
+      );
+    }
+    throw Object.assign(new Error(message), { code: 'GIT_ERROR', cause: err });
+  }
 }
 
 export async function gitStatus(

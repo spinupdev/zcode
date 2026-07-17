@@ -20,19 +20,25 @@
       <div class="config-row">
         <label>
           Git proxy URL
-          <input id="proxy-url" type="url" size="36" placeholder="/git-proxy or https://host/git-proxy" />
+          <input id="proxy-url" type="url" size="36" placeholder="http://127.0.0.1:5000/git-proxy" />
         </label>
         <label>
           Clone URL
           <input id="clone-url" type="url" size="48" placeholder="https://github.com/org/repo.git" />
         </label>
+        <label>
+          Token (private HTTPS)
+          <input id="git-token" type="password" size="28" placeholder="GitHub/GitLab PAT" autocomplete="off" />
+        </label>
         <button id="btn-test-proxy" type="button">Test proxy</button>
         <button id="btn-save-config" type="button">Save config</button>
         <button id="btn-clone" type="button" class="primary">Clone</button>
+        <button id="btn-push" type="button">Push</button>
       </div>
       <p class="hint">
-        Default is same-origin <code>/git-proxy</code> (stateless). Workspaces persist in
-        <strong>IndexedDB</strong>. Clones run in a <strong>Web Worker</strong>.
+        1) <strong>Test proxy</strong> (must be green) 2) set Clone URL 3) <strong>Clone</strong>.
+        Private repos: paste a PAT (stored in <code>sessionStorage</code> only).
+        Default proxy is same-origin <code>/git-proxy</code>.
       </p>
     </section>
 
@@ -50,6 +56,7 @@
       <button id="btn-save" type="button">Save file</button>
       <input id="commit-msg" type="text" placeholder="Commit message" size="20" />
       <button id="btn-commit" type="button">Commit</button>
+      <button id="btn-push-toolbar" type="button">Push to origin</button>
       <input id="tree-filter" type="search" placeholder="Filter files…" size="16" />
       <span id="tree-meta" class="muted"></span>
     </section>

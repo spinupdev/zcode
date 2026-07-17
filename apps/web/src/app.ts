@@ -30,6 +30,7 @@ const el = {
   status: document.getElementById('status')!,
   url: document.getElementById('clone-url') as HTMLInputElement,
   proxy: document.getElementById('proxy-url') as HTMLInputElement,
+  token: document.getElementById('git-token') as HTMLInputElement,
   msg: document.getElementById('commit-msg') as HTMLInputElement,
   progress: document.getElementById('progress') as HTMLProgressElement,
   progressLabel: document.getElementById('progress-label')!,
@@ -41,6 +42,12 @@ const el = {
   searchResults: document.getElementById('search-results')!,
   workspaceSelect: document.getElementById('workspace-select') as HTMLSelectElement,
 };
+
+function currentAuth() {
+  const password = el.token.value.trim() || config.gitToken?.trim();
+  if (!password) return undefined;
+  return { username: config.gitUsername || 'git', password };
+}
 
 function log(msg: string) {
   const line = `${new Date().toISOString().slice(11, 19)} ${msg}`;
@@ -85,6 +92,7 @@ function hideProgressSoon() {
 function applyConfigToForm() {
   el.proxy.value = config.gitProxyUrl;
   el.url.value = config.cloneUrl;
+  if (config.gitToken) el.token.value = config.gitToken;
 }
 
 function readConfigFromForm(): AppConfig {
@@ -92,13 +100,14 @@ function readConfigFromForm(): AppConfig {
     ...config,
     gitProxyUrl: normalizeProxyUrl(el.proxy.value),
     cloneUrl: el.url.value.trim(),
+    gitToken: el.token.value.trim() || undefined,
   };
 }
 
 function persistConfig() {
   config = readConfigFromForm();
   saveConfig(config);
-  log(`config saved (proxy=${config.gitProxyUrl})`);
+  log(`config saved (proxy=${config.gitProxyUrl}${config.gitToken ? ', token set' : ''})`);
 }
 
 async function checkProxy() {
@@ -227,11 +236,14 @@ async function doClone() {
 
   let lastLog = 0;
   try {
+    const auth = currentAuth();
+    if (auth) log('using HTTPS token for private access (not logged)');
     const ws = await cloneInWorker(agent, {
       workspaceId: id,
       url,
       corsProxyUrl,
       depth: 1,
+      auth,
       onProgress: (p) => {
         setProgress(p);
         const now = Date.now();
@@ -252,6 +264,7 @@ async function doClone() {
     const st = await agent.status(ws.id);
     setStatus(`${st.branch} · ready · ${allFiles.length} files`);
     log(`ready on branch ${st.branch} (persisted in IndexedDB)`);
+    log('Next: edit → Save → Commit → Push (token required for private remotes)');
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log(`clone failed: ${message}`);
@@ -280,6 +293,31 @@ async function doCommit() {
     setStatus(`${st.branch}${st.dirty ? ' *' : ''}`);
   } catch (err) {
     log(`commit failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+async function doPush() {
+  if (!workspaceId) {
+    log('open or clone a workspace first');
+    return;
+  }
+  persistConfig();
+  const corsProxyUrl = config.gitProxyUrl;
+  const auth = currentAuth();
+  setStatus('pushing…');
+  log(`push origin via ${corsProxyUrl}${auth ? ' (with token)' : ' (no token)'}`);
+  try {
+    await agent.push({
+      workspaceId,
+      corsProxyUrl,
+      auth,
+    });
+    log('push ok');
+    const st = await agent.status(workspaceId);
+    setStatus(`${st.branch} · pushed`);
+  } catch (err) {
+    log(`push failed: ${err instanceof Error ? err.message : String(err)}`);
+    setStatus('push failed');
   }
 }
 
@@ -320,6 +358,8 @@ function wire() {
   document.getElementById('btn-clone')!.addEventListener('click', () => void doClone());
   document.getElementById('btn-save')!.addEventListener('click', () => void saveFile());
   document.getElementById('btn-commit')!.addEventListener('click', () => void doCommit());
+  document.getElementById('btn-push')?.addEventListener('click', () => void doPush());
+  document.getElementById('btn-push-toolbar')?.addEventListener('click', () => void doPush());
   document.getElementById('btn-refresh')!.addEventListener('click', () => void refreshTree());
   document.getElementById('btn-save-config')!.addEventListener('click', () => {
     persistConfig();
@@ -333,6 +373,7 @@ function wire() {
 
   el.proxy.addEventListener('change', () => persistConfig());
   el.url.addEventListener('change', () => persistConfig());
+  el.token.addEventListener('change', () => persistConfig());
   el.treeFilter.addEventListener('input', () => {
     treeFilter = el.treeFilter.value;
     renderTree();
