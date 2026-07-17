@@ -21,7 +21,9 @@ export default {
     }
 
     if (!matchesPrefix(url.pathname)) {
-      return json({ error: 'not_found', hint: 'mount this worker at /git-proxy/*' }, 404, request);
+      // Entire custom domain was often pointed at this Worker by mistake.
+      // IDE/static assets live on Cloudflare Pages — not this Worker.
+      return misconfiguredHostResponse(request, url);
     }
 
     const stripped = stripPrefix(url.pathname + url.search);
@@ -145,4 +147,67 @@ function json(body: unknown, status: number, request: Request): Response {
   const h = corsHeaders(request);
   h.set('content-type', 'application/json; charset=utf-8');
   return new Response(JSON.stringify(body), { status, headers: h });
+}
+
+/**
+ * Non-/git-proxy paths: this Worker is proxy-only.
+ * Correct custom domain setup attaches the hostname to the **Pages** project `zcode`.
+ * Worker routes (optional) must be path-scoped: `example.com/git-proxy/*`.
+ */
+function misconfiguredHostResponse(request: Request, url: URL): Response {
+  const accept = request.headers.get('Accept') ?? '';
+  const wantsHtml = accept.includes('text/html') || request.method === 'GET';
+  const payload = {
+    error: 'not_found',
+    path: url.pathname,
+    hint: 'This is the zcode-git-proxy Worker only. Point your custom domain at Cloudflare Pages project "zcode" (IDE). Use Worker route only for example.com/git-proxy/* — or rely on the Pages Function for same-origin /git-proxy.',
+    expected: {
+      pages: 'Cloudflare Dashboard → Pages → zcode → Custom domains → add hostname',
+      workerRouteOptional: 'Workers → zcode-git-proxy → Triggers → example.com/git-proxy/*',
+      healthz: `${url.origin}/git-proxy/healthz`,
+    },
+  };
+  if (wantsHtml && request.method === 'GET') {
+    const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><title>ZCode git-proxy</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#e6edf3;background:#0d1117}
+  code,pre{background:#161b22;padding:0.15rem 0.4rem;border-radius:4px}
+  pre{padding:0.75rem;overflow:auto}
+  a{color:#58a6ff}
+  h1{font-size:1.25rem}
+</style></head><body>
+  <h1>Wrong host routing for ZCode</h1>
+  <p>This hostname is hitting the <strong>git-proxy Worker</strong>, not the <strong>Pages IDE</strong>.</p>
+  <p>Path <code>${escapeHtml(url.pathname)}</code> is not under <code>/git-proxy/*</code>.</p>
+  <h2>Fix (custom domain)</h2>
+  <ol>
+    <li>Cloudflare Dashboard → <strong>Workers</strong> → <code>zcode-git-proxy</code> → Triggers:
+      remove any route like <code>${escapeHtml(url.hostname)}/*</code> that steals the whole site.</li>
+    <li>Dashboard → <strong>Pages</strong> → project <code>zcode</code> → <strong>Custom domains</strong>
+      → add <code>${escapeHtml(url.hostname)}</code>.</li>
+    <li>Optional: Worker route only <code>${escapeHtml(url.hostname)}/git-proxy/*</code>
+      (Pages Function already serves same-origin <code>/git-proxy</code> on the Pages domain).</li>
+  </ol>
+  <p>Check proxy: <a href="/git-proxy/healthz"><code>/git-proxy/healthz</code></a>
+    (works when this Worker is mounted correctly).</p>
+  <pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+</body></html>`;
+    return new Response(html, {
+      status: 404,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    });
+  }
+  return json(payload, 404, request);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }

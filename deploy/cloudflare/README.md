@@ -52,10 +52,33 @@ cd deploy/cloudflare/site
 npx wrangler pages deploy dist --project-name=zcode --branch main
 ```
 
-### Custom domain
+### Custom domain (important)
 
-1. Pages → Custom domains → add hostname  
-2. Optional: Worker Triggers → `your-domain.com/git-proxy/*` (or rely on Pages Function)
+The **IDE** is Cloudflare **Pages** (`zcode`). The **Worker** is proxy-only.
+
+| Correct | Wrong |
+| --- | --- |
+| Pages → `zcode` → Custom domains → `zcode.example.com` | Worker custom domain / route `zcode.example.com/*` for the whole site |
+| Optional Worker route: `zcode.example.com/git-proxy/*` only | Pointing apex at Worker and expecting `/` to load the IDE |
+
+**Steps:**
+
+1. **Pages** → project **`zcode`** → **Custom domains** → **Set up a custom domain** → `zcode.dvito.cloud` (or your host).  
+   Cloudflare will guide DNS (usually a CNAME to the Pages project).
+2. **Workers** → **`zcode-git-proxy`** → **Triggers**:
+   - **Remove** any catch-all like `zcode.dvito.cloud/*` or “Custom domain” that sends **all** traffic to the Worker.
+   - You do **not** need a Worker route if you use the Pages Function (same-origin `/git-proxy` on the Pages hostname).
+3. Verify:
+
+```bash
+# Must be the IDE HTML (ZCode IDE / monaco-parts-splash), NOT JSON not_found
+curl -sS https://zcode.dvito.cloud/ | head
+
+# Same-origin proxy via Pages Function (runtime: cloudflare-pages-function)
+curl -sS https://zcode.dvito.cloud/git-proxy/healthz
+```
+
+If `/` returns `{"error":"not_found","hint":"mount this worker at /git-proxy/*"}`, the hostname is still on the **Worker**. Move it to **Pages**.
 
 ## Verify
 
