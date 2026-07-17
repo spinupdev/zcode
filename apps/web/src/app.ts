@@ -1,10 +1,11 @@
 /**
  * ZCode browser workspace app.
- * Clone via isomorphic-git + git-proxy, edit files in-memory, commit locally.
+ * Clone via worker + isomorphic-git + same-origin /git-proxy; durable IDB FS.
  */
 import { createBrowserAgent, type ZCodeBrowserAgent } from '@zcode/browser-agent';
 import type { CloneProgress } from '@zcode/protocol';
 import { bootstrapFromUrl } from '@zcode/shell';
+import { cloneInWorker } from './clone-client.js';
 import {
   type AppConfig,
   loadConfig,
@@ -36,6 +37,9 @@ const el = {
   treeMeta: document.getElementById('tree-meta')!,
   treeFilter: document.getElementById('tree-filter') as HTMLInputElement,
   btnClone: document.getElementById('btn-clone') as HTMLButtonElement,
+  search: document.getElementById('search-query') as HTMLInputElement,
+  searchResults: document.getElementById('search-results')!,
+  workspaceSelect: document.getElementById('workspace-select') as HTMLSelectElement,
 };
 
 function log(msg: string) {
@@ -45,13 +49,6 @@ function log(msg: string) {
 
 function setStatus(s: string) {
   el.status.textContent = s;
-}
-
-/** Yield to the browser so status/progress can paint during long clones. */
-function yieldToUi(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => setTimeout(resolve, 0));
-  });
 }
 
 function setProgress(p: CloneProgress) {
@@ -117,13 +114,13 @@ async function checkProxy() {
     } else {
       el.proxyStatus.textContent = `proxy HTTP ${r.status}`;
       el.proxyStatus.className = 'proxy-status bad';
-      log(`proxy unhealthy ${proxy} status=${r.status} body=${r.body ?? ''}`);
+      log(`proxy unhealthy ${proxy} status=${r.status}`);
     }
   } catch (err) {
     el.proxyStatus.textContent = 'proxy unreachable';
     el.proxyStatus.className = 'proxy-status bad';
     log(
-      `proxy unreachable at ${proxy}: ${err instanceof Error ? err.message : String(err)}. Run: node apps/cli/dist/cli.js git-proxy --port 8787`,
+      `proxy unreachable at ${proxy}: ${err instanceof Error ? err.message : String(err)}. Use zcode web (embeds /git-proxy) or deploy the CF Worker.`,
     );
   }
 }
@@ -147,17 +144,47 @@ function renderTree() {
 
   el.treeMeta.textContent =
     filtered.length > limit
-      ? `showing ${slice.length} of ${filtered.length} files (filter to narrow)`
+      ? `showing ${slice.length} of ${filtered.length} files`
       : `${filtered.length} files`;
 }
 
 async function refreshTree() {
   if (!workspaceId) return;
   setStatus('listing files…');
-  await yieldToUi();
   allFiles = await agent.listFiles(workspaceId);
   renderTree();
   setStatus(`${allFiles.length} files`);
+}
+
+async function refreshWorkspaceList() {
+  const list = await agent.listWorkspaces();
+  el.workspaceSelect.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = list.length ? 'Select workspace…' : 'No saved workspaces';
+  el.workspaceSelect.appendChild(blank);
+  for (const w of list) {
+    const o = document.createElement('option');
+    o.value = w.id;
+    o.textContent = `${w.name} (${w.id.slice(0, 8)})`;
+    if (w.id === workspaceId) o.selected = true;
+    el.workspaceSelect.appendChild(o);
+  }
+  const est = await agent.storageEstimate();
+  log(
+    `storage ~${Math.round((est.usage / 1024 / 1024) * 10) / 10}MB / ${Math.round(est.quota / 1024 / 1024)}MB · ${list.length} workspace(s)`,
+  );
+}
+
+async function openWorkspace(id: string) {
+  workspaceId = id;
+  currentFile = null;
+  el.editor.value = '';
+  el.editor.disabled = true;
+  await refreshTree();
+  const st = await agent.status(id);
+  setStatus(`${st.branch}${st.dirty ? ' *' : ''} · ${allFiles.length} files`);
+  log(`opened workspace ${id.slice(0, 8)}…`);
 }
 
 async function openFile(path: string) {
@@ -182,55 +209,49 @@ async function doClone() {
   const url = config.cloneUrl;
   const corsProxyUrl = config.gitProxyUrl;
   if (!url || !corsProxyUrl) {
-    log('clone url and proxy required — set them in App config');
+    log('clone url and proxy required');
     return;
   }
 
   cloning = true;
   el.btnClone.disabled = true;
-  workspaceId = crypto.randomUUID();
+  const id = crypto.randomUUID();
+  workspaceId = id;
   allFiles = [];
   renderTree();
-  log(`cloning ${url}`);
-  log(`using corsProxy ${corsProxyUrl}`);
-  setProgress({ phase: 'negotiating', message: 'starting…' });
+  log(`cloning ${url} (web worker)`);
+  log(`corsProxy ${corsProxyUrl}`);
+  setProgress({ phase: 'negotiating', message: 'starting worker…' });
 
-  // Pre-flight proxy so failures are obvious
-  try {
-    await checkProxy();
-  } catch {
-    /* already logged */
-  }
+  await checkProxy();
 
   let lastLog = 0;
   try {
-    const ws = await agent.clone({
-      workspaceId,
+    const ws = await cloneInWorker(agent, {
+      workspaceId: id,
       url,
       corsProxyUrl,
       depth: 1,
       onProgress: (p) => {
         setProgress(p);
         const now = Date.now();
-        if (p.phase === 'done' || now - lastLog > 400) {
+        if (p.phase === 'done' || now - lastLog > 300) {
           lastLog = now;
           const bit =
             p.totalObjects && p.receivedObjects != null
               ? `${p.receivedObjects}/${p.totalObjects}`
-              : p.message ?? p.phase;
+              : (p.message ?? p.phase);
           log(`clone ${p.phase} ${bit}`);
         }
-        // Note: UI may still freeze during checkout (main-thread CPU); progress
-        // resumes when the browser can paint again.
       },
     });
-    log(`cloned ${ws.name} (${ws.approxBytes ?? 0} bytes) → ${ws.uri}`);
-    setProgress({ phase: 'done', message: 'building file list…' });
-    await yieldToUi();
+    workspaceId = ws.id;
+    log(`cloned ${ws.name} → ${ws.uri}`);
     await refreshTree();
-    const st = await agent.status(workspaceId);
+    await refreshWorkspaceList();
+    const st = await agent.status(ws.id);
     setStatus(`${st.branch} · ready · ${allFiles.length} files`);
-    log(`ready on branch ${st.branch}`);
+    log(`ready on branch ${st.branch} (persisted in IndexedDB)`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log(`clone failed: ${message}`);
@@ -262,6 +283,34 @@ async function doCommit() {
   }
 }
 
+async function doSearch() {
+  if (!workspaceId) {
+    log('open or clone a workspace first');
+    return;
+  }
+  const query = el.search.value.trim();
+  if (!query) return;
+  setStatus(`search “${query}”…`);
+  const hits = await agent.search({ workspaceId, query, maxHits: 80 });
+  el.searchResults.innerHTML = '';
+  if (!hits.length) {
+    el.searchResults.textContent = 'No matches';
+    setStatus('no matches');
+    return;
+  }
+  for (const h of hits) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'search-hit';
+    b.textContent = `${h.path}:${h.line}  ${h.text.trim()}`;
+    b.title = h.text;
+    b.onclick = () => void openFile(h.path);
+    el.searchResults.appendChild(b);
+  }
+  setStatus(`${hits.length} hits`);
+  log(`search “${query}” → ${hits.length} hits`);
+}
+
 function wire() {
   const boot = bootstrapFromUrl(window.location.href);
   el.mode.textContent = `mode=${boot.mode} · browser workspace`;
@@ -277,6 +326,10 @@ function wire() {
     void checkProxy();
   });
   document.getElementById('btn-test-proxy')!.addEventListener('click', () => void checkProxy());
+  document.getElementById('btn-search')!.addEventListener('click', () => void doSearch());
+  el.search.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') void doSearch();
+  });
 
   el.proxy.addEventListener('change', () => persistConfig());
   el.url.addEventListener('change', () => persistConfig());
@@ -284,17 +337,19 @@ function wire() {
     treeFilter = el.treeFilter.value;
     renderTree();
   });
+  el.workspaceSelect.addEventListener('change', () => {
+    const id = el.workspaceSelect.value;
+    if (id) void openWorkspace(id);
+  });
 
   el.editor.disabled = true;
   el.progress.hidden = true;
 
   log('ZCode browser workspace ready.');
-  log(`proxy config: ${config.gitProxyUrl}`);
-  log(
-    'Same-origin /git-proxy is preferred (zcode web / zcode serve / Cloudflare Worker). Override with ?proxy=…',
-  );
-  log('Click “Test proxy”, then Clone. Large repos may freeze briefly during checkout.');
+  log(`proxy: ${config.gitProxyUrl} (same-origin /git-proxy preferred)`);
+  log('Clones run in a Web Worker; workspaces persist in IndexedDB.');
   void checkProxy();
+  void refreshWorkspaceList();
 }
 
 wire();

@@ -21,7 +21,7 @@ body {
   color: var(--text);
   height: 100vh;
   display: grid;
-  grid-template-rows: auto auto auto auto 1fr 150px;
+  grid-template-rows: auto auto auto auto auto 1fr 150px;
 }
 
 header {
@@ -226,4 +226,47 @@ button.file:hover {
   color: var(--muted);
   font-size: 0.75rem;
   white-space: pre-wrap;
+}
+
+.search-bar {
+  align-items: flex-start;
+}
+
+.search-results {
+  flex: 1;
+  min-width: 200px;
+  max-height: 5.5rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+}
+
+button.search-hit {
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.search-hit:hover {
+  background: #21262d;
+  color: var(--accent);
+}
+
+select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  min-width: 12rem;
 }

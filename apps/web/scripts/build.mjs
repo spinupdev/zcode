@@ -5,14 +5,13 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
+const shim = join(root, 'src/shims/empty.js');
 
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
-await esbuild.build({
-  entryPoints: [join(root, 'src/app.ts')],
+const common = {
   bundle: true,
-  outfile: join(dist, 'app.js'),
   format: 'esm',
   platform: 'browser',
   target: ['es2022'],
@@ -21,14 +20,25 @@ await esbuild.build({
   define: {
     'process.env.NODE_ENV': '"production"',
   },
-  // isomorphic-git may pull optional node paths — stub for browser
   alias: {
-    'node:crypto': join(root, 'src/shims/empty.js'),
-    crypto: join(root, 'src/shims/empty.js'),
+    'node:crypto': shim,
+    crypto: shim,
   },
+};
+
+await esbuild.build({
+  ...common,
+  entryPoints: [join(root, 'src/app.ts')],
+  outfile: join(dist, 'app.js'),
+});
+
+await esbuild.build({
+  ...common,
+  entryPoints: [join(root, 'src/git-worker.ts')],
+  outfile: join(dist, 'git-worker.js'),
 });
 
 cpSync(join(root, 'index.html'), join(dist, 'index.html'));
 cpSync(join(root, 'app.css'), join(dist, 'app.css'));
 
-console.log('apps/web: bundled browser workspace → dist/');
+console.log('apps/web: bundled app.js + git-worker.js → dist/');

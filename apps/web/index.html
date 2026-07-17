@@ -19,7 +19,7 @@
       <div class="config-row">
         <label>
           Git proxy URL
-          <input id="proxy-url" type="url" size="36" placeholder="http://127.0.0.1:8787" />
+          <input id="proxy-url" type="url" size="36" placeholder="/git-proxy or https://host/git-proxy" />
         </label>
         <label>
           Clone URL
@@ -30,9 +30,8 @@
         <button id="btn-clone" type="button" class="primary">Clone</button>
       </div>
       <p class="hint">
-        Default is same-origin <code>/git-proxy</code> (stateless CORS bridge for GitHub/GitLab).
-        Saved in <code>localStorage</code>. Override:
-        <code>?proxy=https://your.app/git-proxy&amp;clone=https://github.com/…</code>
+        Default is same-origin <code>/git-proxy</code> (stateless). Workspaces persist in
+        <strong>IndexedDB</strong>. Clones run in a <strong>Web Worker</strong>.
       </p>
     </section>
 
@@ -42,12 +41,22 @@
     </section>
 
     <section class="toolbar">
+      <label>
+        Workspace
+        <select id="workspace-select"></select>
+      </label>
       <button id="btn-refresh" type="button">Refresh tree</button>
       <button id="btn-save" type="button">Save file</button>
-      <input id="commit-msg" type="text" placeholder="Commit message" size="24" />
+      <input id="commit-msg" type="text" placeholder="Commit message" size="20" />
       <button id="btn-commit" type="button">Commit</button>
-      <input id="tree-filter" type="search" placeholder="Filter files…" size="20" />
+      <input id="tree-filter" type="search" placeholder="Filter files…" size="16" />
       <span id="tree-meta" class="muted"></span>
+    </section>
+
+    <section class="toolbar search-bar">
+      <input id="search-query" type="search" placeholder="Search in workspace…" size="32" />
+      <button id="btn-search" type="button">Search</button>
+      <div id="search-results" class="search-results" aria-live="polite"></div>
     </section>
 
     <main>
