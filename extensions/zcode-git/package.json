@@ -1,28 +1,48 @@
 {
   "name": "zcode-git",
   "displayName": "ZCode Git (Browser)",
-  "description": "SCM provider + clone commands via isomorphic-git for ZCode browser mode",
-  "version": "0.0.0",
+  "description": "SCM provider + clone commands for ZCode browser mode",
+  "version": "0.0.1",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
     "vscode": "^1.129.0"
   },
-  "categories": ["SCM Providers"],
+  "categories": [
+    "SCM Providers"
+  ],
   "browser": "./dist/web/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:zcode.git.clone"
+  ],
   "contributes": {
     "commands": [
       {
         "command": "zcode.git.clone",
         "title": "ZCode: Clone Repository (Browser)"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "ZCode",
+      "properties": {
+        "zcode.gitProxyUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8787",
+          "description": "isomorphic-git corsProxy base URL"
+        }
+      }
+    }
   },
   "scripts": {
-    "build": "node -e \"console.log('zcode-git: extension build stub (Track B4)')\"",
-    "typecheck": "node -e \"process.exit(0)\"",
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node -e \"process.exit(0)\"",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.8.3",
+    "esbuild": "^0.25.5"
   }
 }
