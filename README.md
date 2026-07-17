@@ -28,11 +28,31 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 | http://127.0.0.1:5000/ | Lightweight browser git SPA (dogfood tools) |
 | http://127.0.0.1:5000/git-proxy | Stateless CORS bridge for GitHub/GitLab |
 
-### SPA tools (`/`)
+### Clone a Git repo (browser)
 
-1. **Test proxy** → **proxy ok**
-2. **Clone** (Web Worker + IndexedDB)
-3. **Search** · **Save** · **Commit**
+Git clone is **client-side** (isomorphic-git). The browser needs same-origin **`/git-proxy`** for GitHub/GitLab CORS.
+
+```bash
+# one terminal — SPA + /git-proxy + /ide
+node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
+```
+
+1. Open **http://127.0.0.1:5000/** (the SPA, not only `/ide`)
+2. Confirm **Git proxy URL** is `http://127.0.0.1:5000/git-proxy` (default)
+3. Click **Test proxy** → green **proxy ok**
+4. Set **Clone URL**, e.g. `https://github.com/isomorphic-git/isomorphic-git.git`
+5. Click **Clone** → progress bar + log → file tree fills
+6. Edit → **Save** → **Commit** (local commit in IndexedDB)
+
+Deep link (auto-start after proxy check):
+
+```text
+http://127.0.0.1:5000/?clone=https://github.com/org/repo.git&autoclone=1
+```
+
+From **VS Code Web** (`/ide/`): Command Palette → **“ZCode: Clone Repository (Browser SPA)”** → opens the SPA with autoclone.
+
+**Limits today:** public HTTPS remotes work best; private repos need credentials later; full `git` in REH remote mode is separate.
 
 ### VS Code IDE (`/ide/`)
 

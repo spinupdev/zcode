@@ -347,8 +347,16 @@ function wire() {
 
   log('ZCode browser workspace ready.');
   log(`proxy: ${config.gitProxyUrl} (same-origin /git-proxy preferred)`);
+  log('To clone: set Clone URL → Test proxy (green) → Clone.');
   log('Clones run in a Web Worker; workspaces persist in IndexedDB.');
-  void checkProxy();
+  void checkProxy().then(() => {
+    const params = new URLSearchParams(location.search);
+    // ?clone=https://…&autoclone=1 starts clone after proxy check
+    if (params.get('autoclone') === '1' && config.cloneUrl) {
+      log('autoclone=1 — starting clone…');
+      void doClone();
+    }
+  });
   void refreshWorkspaceList();
 }
 
