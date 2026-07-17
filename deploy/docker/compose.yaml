@@ -1,4 +1,5 @@
 services:
+  # One service: SPA/static + password login + same-origin /git-proxy (stateless)
   zcode:
     build:
       context: ../..
@@ -9,15 +10,6 @@ services:
       ZCODE_PASSWORD: ${ZCODE_PASSWORD:-zcode}
     volumes:
       - zcode-workspace:/workspace
-    restart: unless-stopped
-
-  git-proxy:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.server
-    command: ["node", "apps/cli/dist/cli.js", "git-proxy", "--host", "0.0.0.0", "--port", "8787"]
-    ports:
-      - "8787:8787"
     restart: unless-stopped
 
 volumes:

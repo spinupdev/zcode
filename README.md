@@ -4,87 +4,71 @@
 
 | Mode | Description |
 | --- | --- |
-| **Browser** | Client-side workspace: clone via isomorphic-git + git-proxy, edit, commit |
-| **Remote** | Browser UI + password login; optional REH spawn when server artifacts exist |
+| **Browser** | Client-side workspace: clone via isomorphic-git + **same-origin `/git-proxy`**, edit, commit |
+| **Remote** | Password login + optional REH when server artifacts exist |
 
-> **Not [coder/code-server](https://github.com/coder/code-server).**  
-> Preferred repo rename: `spinupdev/zcode`. CLI: **`zcode`**.
+> **Not [coder/code-server](https://github.com/coder/code-server).** CLI: **`zcode`**.
 
-## Quick start — run the integrated browser workspace
+## Quick start (one process)
 
 ```bash
 pnpm install
 pnpm build
 
-# terminal 1 — CORS proxy for GitHub/GitLab git HTTP
-node apps/cli/dist/cli.js git-proxy --port 8787
-
-# terminal 2 — browser workspace UI
+# SPA + stateless /git-proxy on the same origin
 node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 ```
 
 Open **http://127.0.0.1:5000/**
 
-1. Confirm **Git proxy URL** (`http://127.0.0.1:8787`) and click **Test proxy** (should show green “proxy ok”).
-2. Set clone URL → **Clone** — progress bar + log should update (large repos may briefly freeze during checkout).
-3. Open a file → edit → **Save** → **Commit**.
+1. **Test proxy** → should show **proxy ok** (`/git-proxy/healthz`)
+2. **Clone** → progress bar + log  
+3. Edit → **Save** → **Commit**
 
-Proxy/clone settings persist in `localStorage`. Override via `?proxy=http://127.0.0.1:8787&clone=https://github.com/…`.
+No second proxy process is required. Defaults:
 
-### Or one server (login + static app)
+| URL | Role |
+| --- | --- |
+| `http://127.0.0.1:5000/` | Browser workspace SPA |
+| `http://127.0.0.1:5000/git-proxy` | Stateless CORS bridge for GitHub/GitLab |
 
-```bash
-node apps/cli/dist/cli.js serve . --port 8080 --password secret --no-reh
-```
+## Hosting (frontend + edge)
 
-Open http://127.0.0.1:8080/ → login → browser workspace at `/index.html` (when `apps/web/dist` exists).
+Browser mode is **static SPA + stateless proxy** — no durable backend required for public clones.
 
-### Shell bootstrap harness (config only)
+| Deploy | How |
+| --- | --- |
+| **Local / VM** | `zcode web` or `zcode serve` (both mount `/git-proxy`) |
+| **Cloudflare Pages + Worker** | See [deploy/cloudflare/README.md](./deploy/cloudflare/README.md) |
+| **Design notes** | [docs/hosting.md](./docs/hosting.md) |
 
-```bash
-pnpm dev:shell
-# http://127.0.0.1:4173/?mode=browser
-```
+App default: `gitProxyUrl = {origin}/git-proxy` (saved in `localStorage`; override with `?proxy=`).
 
 ## CLI
 
 ```bash
-zcode serve [dir] --port 8080 --password secret [--static-dir apps/web/dist] [--no-reh]
-zcode git-proxy --port 8787 --allow-hosts github.com,gitlab.com
-zcode web --dir apps/web/dist --port 5000
+zcode web --dir apps/web/dist --port 5000          # SPA + /git-proxy
+zcode serve . --port 8080 --password secret --no-reh
+zcode git-proxy --port 8787                        # optional standalone
 ```
 
-## Tests & checks
+## Tests
 
 ```bash
 pnpm test
-pnpm build:server:check   # REH build prerequisites
 pnpm smoke
 ```
 
 ## Layout
 
 ```text
-packages/     protocol · shell · browser-agent · server · git-proxy · …
-apps/         cli · web (browser workspace UI)
-extensions/   zcode-browser-fs · zcode-git · …
-vendor/       vscode @ 1.129.0 (submodule)
-deploy/docker compose + Dockerfile
-docs/         design + build guides
+packages/     protocol · shell · browser-agent · server · git-proxy
+apps/         cli · web
+deploy/
+  cloudflare/git-proxy   # Worker for static hosts
+  docker/                # container compose
+docs/         design · hosting · vscode pin
 ```
-
-## Docker
-
-```bash
-docker compose -f deploy/docker/compose.yaml up --build
-# app :8080  git-proxy :8787
-```
-
-## Docs
-
-- [Architecture design](./docs/design-dual-mode-vscode-ide.md)
-- [VS Code pin](./docs/vscode-pin.md)
-- [Building VS Code REH](./docs/building-vscode.md)
 
 ## License
 

@@ -1,0 +1,22 @@
+# Stateless git CORS proxy for static frontend hosting (Cloudflare Workers).
+# Route: your-domain.com/git-proxy/*  →  this worker
+#
+# Deploy:
+#   cd deploy/cloudflare/git-proxy && npx wrangler deploy
+#
+# Pages: set SPA at / and either
+#   - route /git-proxy/* to this worker, or
+#   - use wrangler pages with functions (similar code)
+
+name = "zcode-git-proxy"
+main = "src/worker.ts"
+compatibility_date = "2024-11-01"
+
+# Uncomment and set your zone routes:
+# routes = [
+#   { pattern = "zcode.example.com/git-proxy/*", zone_name = "example.com" }
+# ]
+
+[vars]
+# Comma-separated allowlist (optional; defaults baked into worker)
+# ALLOW_HOSTS = "github.com,gitlab.com,bitbucket.org"
