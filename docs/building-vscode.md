@@ -109,7 +109,7 @@ pnpm fetch:reh
 
 # Pin a run:
 ./scripts/fetch-reh-artifact.sh --run-id 123456789
-./scripts/fetch-reh-artifact.sh --repo spinupdev/code-server --force
+./scripts/fetch-reh-artifact.sh --repo spinupdev/zcode --force
 ```
 
 This stages `dist/server/` (marker + binaries; **not committed**). On **Linux**, follow with:

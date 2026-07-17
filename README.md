@@ -9,7 +9,7 @@
 | **Browser** | Client-side workspace: clone via isomorphic-git + **same-origin `/git-proxy`**, edit, commit |
 | **Remote** | Password login + optional REH when server artifacts exist |
 
-> **Not [coder/code-server](https://github.com/coder/code-server).** CLI: **`zcode`**.
+> **Not [coder/code-server](https://github.com/coder/code-server).** CLI: **`zcode`**. Source: [github.com/spinupdev/zcode](https://github.com/spinupdev/zcode).
 
 ## Quick start (one process)
 

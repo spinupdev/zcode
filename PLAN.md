@@ -3,10 +3,10 @@
 | Field | Value |
 | --- | --- |
 | **Product** | **ZCode** (CLI `zcode`) |
-| **Repo (current)** | `github.com/spinupdev/code-server` |
-| **Repo (preferred)** | `github.com/spinupdev/zcode` |
+| **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
+| **Local path** | may still be checked out as `code-server` — product is **ZCode** |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-18 (REH artifact fetch + B2b OPFS) |
+| **Last updated** | 2026-07-18 (F6 → spinupdev/zcode) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -217,7 +217,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | F3 | `vendor/vscode` submodule pin 1.129.0 + quilt pipeline | **done** | R1; empty series |
 | F4 | Design doc approved | **done** | `docs/design-dual-mode-vscode-ide.md` |
 | F5 | This master PLAN + AGENTS handoff | **done** | this file |
-| F6 | Repo rename → `spinupdev/zcode` | **remaining** | operational |
+| F6 | Repo rename → `spinupdev/zcode` | **done** | `origin` = `git@github.com:spinupdev/zcode.git`; `main` pushed |
 
 ### 4.2 Track B — Browser
 
@@ -292,11 +292,10 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 ### P0 — Next 1–2 sessions
 
-1. **F6** Rename repo → `spinupdev/zcode` when ready (ops).
-2. Full PTY `printf zcode_echo_ok` under STRICT when web remote shell is reliable.
-3. Production Pages+Worker deploy dry-run against a real account (H3 runbook exists).
-4. **H4** Docker multi-arch / non-root harden.
-5. Optional: SPA git-worker dual-open OPFS coordinator (today: MemoryFs clone → main-thread OPFS/IDB import).
+1. Full PTY `printf zcode_echo_ok` under STRICT when web remote shell is reliable.
+2. Production Pages+Worker deploy dry-run against a real account (H3 runbook exists).
+3. **H4** Docker multi-arch / non-root harden.
+4. Optional: SPA git-worker dual-open OPFS coordinator (today: MemoryFs clone → main-thread OPFS/IDB import).
 
 ---
 
@@ -352,7 +351,7 @@ pnpm smoke            # lighter checks
 | --- | --- | --- |
 | OQ2 | Dual marketplace (Open VSX + private) for enterprise? | product.json / gallery |
 | OQ6 | SaaS billing model | session-api |
-| OQ9 | When to rename GitHub repo to `zcode` | branding |
+| OQ9 | ~~When to rename GitHub repo to `zcode`~~ | **done** — `spinupdev/zcode` |
 | OQ10 | CDN shell cookie domain for cross-origin remote | blocks full Topology B CDN |
 | OQ11 | Dogfood `vscode-web@1.91` vs block on owned 1.129 web | quality vs speed |
 
@@ -395,5 +394,6 @@ pnpm smoke            # lighter checks
 | 2026-07-17 | STRICT remote e2e green; REH without-connection-token; `/login` route; workspacePath alignment; H3 production runbook |
 | 2026-07-18 | CI Linux REH download: `scripts/fetch-reh-artifact.sh` + `pnpm fetch:reh`; reh-and-e2e normalize (+x/flatten) |
 | 2026-07-18 | **B2b done**: ZenFS OPFS primary (`createDefaultFsAsync`), IDB migrate/fallback; SPA + zcode-browser-fs + zcode-git |
+| 2026-07-18 | **F6 done**: remote `origin` → `github.com/spinupdev/zcode`; `main` pushed |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

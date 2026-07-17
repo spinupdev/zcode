@@ -7,8 +7,7 @@
 | **Date** | 2026-07-17 |
 | **Revised** | 2026-07-17 (user decisions: naming ZCode, VS Code pin, parallel tracks) |
 | **Status** | **Approved for implementation** (user decisions locked 2026-07-17) |
-| **Repo (current)** | `github.com/spinupdev/code-server` (greenfield) |
-| **Repo (preferred rename)** | `github.com/spinupdev/zcode` |
+| **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
 | **Product** | **ZCode** (user-facing brand) · CLI **`zcode`** · images `ghcr.io/spinupdev/zcode-*` |
 | **Related** | Product vision: browser-only (serverless) + remote Docker modes; microVM = post-MVP |
 
@@ -16,7 +15,7 @@
 
 ## Overview
 
-This document specifies the architecture for **ZCode** (current repo path `spinupdev/code-server`; preferred rename `spinupdev/zcode`): a dual-mode, VS Code OSS–based browser IDE. The product always instantiates the **IDE UI in the browser**. It can operate in two modes:
+This document specifies the architecture for **ZCode** ([`spinupdev/zcode`](https://github.com/spinupdev/zcode)): a dual-mode, VS Code OSS–based browser IDE. The product always instantiates the **IDE UI in the browser**. It can operate in two modes:
 
 1. **Browser / serverless mode** — workspace, git, and a web extension host run entirely client-side (OPFS via ZenFS + isomorphic-git + web workers). No remote compute is required for editing, file tree, best-effort search, SCM, and browser-capable extensions.
 2. **Remote server mode** — a Node-based VS Code server runs inside a Docker container (MVP). The browser workbench connects with a **`remoteAuthority`** over WebSocket and uses a **remote extension host**, PTY terminal, native language servers, and full filesystem/git tooling.
