@@ -6,6 +6,10 @@ import {
   DEFAULT_ALLOW_HOSTS,
   DEFAULT_GIT_PROXY_PREFIX,
 } from '@zcode/git-proxy';
+import {
+  applySecurityHeaders,
+  buildWorkbenchCreateOptions,
+} from '@zcode/server';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -205,11 +209,13 @@ function serveFile(res: http.ServerResponse, file: string): boolean {
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) return false;
   const data = fs.readFileSync(file);
   const ext = path.extname(file);
-  res.writeHead(200, {
+  const headers: Record<string, string | number | string[]> = {
     'content-type': TYPES[ext] ?? 'application/octet-stream',
     'cache-control': ext === '.html' ? 'no-store' : 'public, max-age=120',
     'content-length': data.byteLength,
-  });
+  };
+  if (ext === '.html') applySecurityHeaders(headers);
+  res.writeHead(200, headers);
   res.end(data);
   return true;
 }
@@ -218,52 +224,22 @@ function serveIdeProduct(res: http.ServerResponse, url: URL, repoRoot: string): 
   try {
     const productPath = path.join(repoRoot, 'product/product.json');
     const overlay = fs.existsSync(productPath)
-      ? JSON.parse(fs.readFileSync(productPath, 'utf8'))
+      ? (JSON.parse(fs.readFileSync(productPath, 'utf8')) as Record<string, unknown>)
       : { nameShort: 'ZCode', nameLong: 'ZCode', applicationName: 'zcode' };
-    const mode = (url.searchParams.get('mode') as 'browser' | 'remote' | null) ?? 'browser';
+    const modeParam = url.searchParams.get('mode');
     const remoteAuth =
       url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority') ?? undefined;
-    const host = url.host;
-    const scheme = url.protocol === 'https:' ? 'https' : 'http';
-    const ext = (p: string) => ({ scheme, authority: host, path: p });
-    const builtins = [
-      ext('/extensions/zcode-browser-fs'),
-      ext('/extensions/zcode-git'),
-      ext('/extensions/zcode-diagnostics'),
-    ];
-    const configurationDefaults = {
-      'security.workspace.trust.enabled': false,
-      'security.workspace.trust.startupPrompt': 'never',
-      'files.exclude': { '**/.git': true, '**/.git/**': true },
-    };
-    const body =
-      mode === 'remote' && remoteAuth
-        ? {
-            productConfiguration: { ...overlay, configurationDefaults },
-            remoteAuthority: remoteAuth,
-            folderUri: {
-              scheme: 'vscode-remote',
-              authority: remoteAuth,
-              path: url.searchParams.get('path') || '/home/workspace',
-            },
-            additionalBuiltinExtensions: builtins,
-            windowIndicator: {
-              label: '$(remote) ZCode remote',
-              tooltip: `Remote ${remoteAuth}`,
-            },
-          }
-        : {
-            productConfiguration: { ...overlay, configurationDefaults },
-            folderUri: {
-              scheme: 'zcode-opfs',
-              path: `/workspace/${url.searchParams.get('workspace') || 'default'}`,
-            },
-            additionalBuiltinExtensions: builtins,
-            windowIndicator: {
-              label: '$(remote) ZCode browser',
-              tooltip: 'Browser mode — shared IDB with SPA',
-            },
-          };
+    const mode =
+      modeParam === 'remote' || (modeParam !== 'browser' && remoteAuth) ? 'remote' : 'browser';
+    const body = buildWorkbenchCreateOptions({
+      mode,
+      remoteAuthority: mode === 'remote' ? remoteAuth ?? url.host : undefined,
+      workspaceId: url.searchParams.get('workspace') || 'default',
+      remoteWorkspacePath: url.searchParams.get('path') || '/home/workspace',
+      productOverlay: overlay,
+      origin: `${url.protocol}//${url.host}`,
+      connectionReady: mode === 'remote' ? true : undefined,
+    });
     const data = JSON.stringify(body);
     res.writeHead(200, {
       'content-type': 'application/json; charset=utf-8',

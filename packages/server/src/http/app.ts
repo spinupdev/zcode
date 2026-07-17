@@ -4,9 +4,11 @@ import {
   DEFAULT_ALLOW_HOSTS,
   DEFAULT_GIT_PROXY_PREFIX,
 } from '@zcode/git-proxy';
+import { buildWorkbenchCreateOptions } from '@zcode/shell';
 import { CookieTokenBridge, SESSION_COOKIE } from '../auth/cookie-bridge.js';
 import { type PasswordVerifier, LoginRateLimiter } from '../auth/password.js';
 import { tryProxyHttp } from '../reh/proxy.js';
+import { applySecurityHeaders } from './csp.js';
 import { tryServeStatic } from './static.js';
 
 export interface AppContext {
@@ -210,18 +212,21 @@ async function handleLogin(
 
 function json(res: ServerResponse, status: number, body: unknown): void {
   const data = JSON.stringify(body);
-  res.writeHead(status, {
+  const headers: Record<string, string | number | string[]> = {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
-  });
+  };
+  res.writeHead(status, headers);
   res.end(data);
 }
 
 function html(res: ServerResponse, status: number, body: string): void {
-  res.writeHead(status, {
+  const headers: Record<string, string | number | string[]> = {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'no-store',
-  });
+  };
+  applySecurityHeaders(headers);
+  res.writeHead(status, headers);
   res.end(body);
 }
 
@@ -235,54 +240,23 @@ function readBody(req: IncomingMessage): Promise<string> {
 }
 
 function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
-  const overlay = {
-    nameShort: 'ZCode',
-    nameLong: 'ZCode',
-    applicationName: 'zcode',
-    ...ctx.productOverlay,
-    configurationDefaults: {
-      'security.workspace.trust.enabled': false,
-      'security.workspace.trust.startupPrompt': 'never',
-      ...(ctx.productOverlay?.configurationDefaults as object | undefined),
-    },
-  };
-  const mode = url.searchParams.get('mode') ?? 'browser';
+  const modeParam = url.searchParams.get('mode');
   const remoteAuth =
-    url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority');
-  const scheme = url.protocol === 'https:' ? 'https' : 'http';
-  const host = url.host;
-  const ext = (p: string) => ({ scheme, authority: host, path: p });
-  const builtins = [
-    ext('/extensions/zcode-browser-fs'),
-    ext('/extensions/zcode-git'),
-    ext('/extensions/zcode-diagnostics'),
-  ];
-  const body =
-    mode === 'remote' && remoteAuth
-      ? {
-          productConfiguration: overlay,
-          remoteAuthority: remoteAuth,
-          folderUri: {
-            scheme: 'vscode-remote',
-            authority: remoteAuth,
-            path: url.searchParams.get('path') || '/home/workspace',
-          },
-          additionalBuiltinExtensions: builtins,
-        }
-      : {
-          productConfiguration: {
-            ...overlay,
-            configurationDefaults: {
-              ...(overlay.configurationDefaults as object),
-              'files.exclude': { '**/.git': true, '**/.git/**': true },
-            },
-          },
-          folderUri: {
-            scheme: 'zcode-opfs',
-            path: `/workspace/${url.searchParams.get('workspace') || 'default'}`,
-          },
-          additionalBuiltinExtensions: builtins,
-        };
+    url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority') ?? undefined;
+  const mode =
+    modeParam === 'remote' || (modeParam !== 'browser' && remoteAuth) ? 'remote' : 'browser';
+  const origin = `${url.protocol}//${url.host}`;
+  const body = buildWorkbenchCreateOptions({
+    mode,
+    remoteAuthority: mode === 'remote' ? remoteAuth ?? ctx.authority : undefined,
+    workspaceId: url.searchParams.get('workspace') || 'default',
+    remoteWorkspacePath: url.searchParams.get('path') || '/home/workspace',
+    productOverlay: ctx.productOverlay as
+      | import('@zcode/shell').ProductOverlay
+      | undefined,
+    origin,
+    connectionReady: mode === 'remote' ? true : undefined,
+  });
   json(res, 200, body);
 }
 

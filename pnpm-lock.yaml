@@ -70,7 +70,17 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  extensions/zcode-diagnostics: {}
+  extensions/zcode-diagnostics:
+    devDependencies:
+      '@types/vscode':
+        specifier: ^1.95.0
+        version: 1.125.0
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.12
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   extensions/zcode-git:
     dependencies:
@@ -118,6 +128,9 @@ importers:
       '@zcode/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@zcode/shell':
+        specifier: workspace:*
+        version: link:../shell
 
   packages/session-api: {}
 

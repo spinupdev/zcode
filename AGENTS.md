@@ -30,9 +30,9 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 ## Highest-priority remaining work
 
-See **PLAN.md §5**. M0d / R2c / R6 done on this path.
+See **PLAN.md §5**. M0d / R2c / R6 / M1 / M2 done on this path.
 
-- Next: **M1** remoteAuthority polish, **M2** CSP/diagnostics
+- Next: STRICT terminal UI, **F6** rename, **H3** hosting runbook
 - Rebuild owned assets: Node 24 + `GITHUB_TOKEN` + `./scripts/build-web.sh --package` / `./scripts/build-server.sh`
 - R6: `pnpm e2e:reh` (skips without `dist/server`)
 

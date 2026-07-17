@@ -121,43 +121,70 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     return next;
   }
 
-  // Dual-mode from query
+  // Dual-mode from query + product.json (M1)
   try {
     const params = new URLSearchParams(location.search);
-    const mode = params.get('mode');
-    const authority = params.get('authority') || params.get('remoteAuthority');
-    if (mode === 'remote' && authority && window.product) {
+    let mode = params.get('mode');
+    let authority = params.get('authority') || params.get('remoteAuthority');
+    // Prefer server-built dual-mode payload (capabilities, configurationDefaults)
+    try {
+      const res = await fetch('/ide/product.json' + location.search, { cache: 'no-store' });
+      if (res.ok) window.product = await res.json();
+    } catch (_) { /* embedded product */ }
+
+    if (mode === 'remote' || window.product?.remoteAuthority || window.product?.zcodeMode === 'remote') {
+      mode = 'remote';
+      authority = authority || window.product?.remoteAuthority || location.host;
+      // Same-origin cookie session required before remote connect (no token in URL)
+      try {
+        const sess = await fetch('/v1/session', { cache: 'no-store', credentials: 'same-origin' });
+        if (sess.ok) {
+          const s = await sess.json();
+          if (!s.authenticated && !s.ready) {
+            const next = encodeURIComponent(location.pathname + location.search);
+            location.replace('/?login=1&redirect=' + next);
+            return;
+          }
+          if (s.authority) authority = s.authority;
+          window.product = {
+            ...window.product,
+            connectionReady: true,
+            remoteAuthority: authority,
+          };
+        }
+      } catch (_) {
+        /* static web may not expose /v1/session — still allow dogfood */
+      }
       window.product = {
         ...window.product,
+        zcodeMode: 'remote',
         remoteAuthority: authority,
         folderUri: {
           scheme: 'vscode-remote',
-          authority,
-          path: params.get('path') || '/home/workspace',
+          authority: authority,
+          path: params.get('path') || window.product?.folderUri?.path || '/home/workspace',
         },
         windowIndicator: {
           label: '$(remote) ZCode remote',
-          tooltip: 'Remote: ' + authority,
+          tooltip: 'Remote: ' + authority + ' (cookie-auth REH proxy)',
         },
       };
     } else if (window.product) {
       const ws = params.get('workspace') || 'default';
       window.product = {
         ...window.product,
+        zcodeMode: 'browser',
+        remoteAuthority: undefined,
         folderUri: {
           scheme: 'zcode-opfs',
           path: '/workspace/' + ws,
         },
         windowIndicator: {
-          label: '$(folder) ' + ws.slice(0, 8),
-          tooltip: 'zcode-opfs workspace ' + ws + ' (shared IDB with SPA)',
+          label: '$(folder) ' + String(ws).slice(0, 12),
+          tooltip: 'zcode-opfs workspace ' + ws + ' (shared IDB with SPA; no PTY)',
         },
       };
     }
-    try {
-      const res = await fetch('/ide/product.json' + location.search, { cache: 'no-store' });
-      if (res.ok) window.product = await res.json();
-    } catch (_) { /* embedded product */ }
   } catch (_) { /* ignore */ }
 
   window.product = withHostAuthority(window.product || {});

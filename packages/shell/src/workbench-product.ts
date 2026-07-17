@@ -3,7 +3,13 @@
  * Dual-mode: browser (no remoteAuthority) vs remote (authority host:port).
  */
 
-import type { IdeMode, ModeResolutionInput, WorkbenchLoadConfig } from '@zcode/protocol';
+import type {
+  IdeMode,
+  ModeResolutionInput,
+  ProductCapabilities,
+  WorkbenchLoadConfig,
+} from '@zcode/protocol';
+import { capabilitiesForMode } from '@zcode/protocol';
 import { bootstrapFromInput } from './bootstrap.js';
 
 export interface ProductOverlay {
@@ -12,6 +18,7 @@ export interface ProductOverlay {
   applicationName?: string;
   dataFolderName?: string;
   extensionsGallery?: Record<string, string>;
+  configurationDefaults?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -27,6 +34,17 @@ export interface WorkbenchCreateOptions {
   /** Home indicator / flags */
   homeIndicator?: { href: string; icon: string; title: string };
   windowIndicator?: { label: string; tooltip: string };
+  /**
+   * Product capability matrix (chrome only — not editor IPC).
+   * Embedded for diagnostics / status; VS Code ignores unknown top-level keys safely.
+   */
+  zcodeCapabilities?: ProductCapabilities;
+  /** Explicit mode for diagnostics extension */
+  zcodeMode?: IdeMode;
+  /** Connection ready (cookie) — never carries a token */
+  connectionReady?: boolean;
+  /** Owned / dogfood vscode commit for skew checks */
+  vscodeCommit?: string;
 }
 
 export interface BuildWorkbenchProductInput {
@@ -42,6 +60,48 @@ export interface BuildWorkbenchProductInput {
   builtinExtensionPaths?: string[];
   /** Origin for absolute extension URIs (default relative path scheme http) */
   origin?: string;
+  /** Cookie session ready (remote) */
+  connectionReady?: boolean;
+  /** vscode commit pin / staged marker */
+  vscodeCommit?: string;
+}
+
+const DEFAULT_BUILTIN_EXTENSIONS = [
+  '/extensions/zcode-browser-fs',
+  '/extensions/zcode-git',
+  '/extensions/zcode-diagnostics',
+];
+
+/**
+ * Configuration defaults by mode (capability chrome).
+ * Browser: terminal is not a product surface (no REH PTY).
+ * Remote: enable remote-friendly defaults.
+ */
+export function configurationDefaultsForMode(
+  mode: IdeMode,
+  caps: ProductCapabilities,
+): Record<string, unknown> {
+  const base: Record<string, unknown> = {
+    'security.workspace.trust.enabled': false,
+    'security.workspace.trust.startupPrompt': 'never',
+    'workbench.startupEditor': 'readme',
+  };
+
+  if (!caps.terminal || mode === 'browser') {
+    // Soft-hide: do not open panel on startup; no multi-line paste noise.
+    base['workbench.panel.opensMaximized'] = 'never';
+    base['terminal.integrated.enablePersistentSessions'] = false;
+    base['terminal.integrated.enableMultiLinePasteWarning'] = 'never';
+  } else {
+    base['terminal.integrated.enablePersistentSessions'] = true;
+    base['remote.autoForwardPorts'] = true;
+  }
+
+  if (mode === 'browser') {
+    base['files.exclude'] = { '**/.git': true, '**/.git/**': true };
+  }
+
+  return base;
 }
 
 /**
@@ -53,10 +113,13 @@ export function buildWorkbenchCreateOptions(
   const modeInput: ModeResolutionInput = {
     mode: input.mode,
     remoteAuthority: input.remoteAuthority,
-    connectionReady: input.mode === 'remote' || !!input.remoteAuthority,
+    connectionReady:
+      input.connectionReady ?? (input.mode === 'remote' || !!input.remoteAuthority),
   };
   const boot = bootstrapFromInput(modeInput);
   const load: WorkbenchLoadConfig = boot.workbench;
+  const caps = capabilitiesForMode(boot.mode);
+  const defaults = configurationDefaultsForMode(boot.mode, caps);
 
   const productConfiguration: ProductOverlay = {
     nameShort: 'ZCode',
@@ -70,6 +133,13 @@ export function buildWorkbenchCreateOptions(
         'https://openvsxorg.blob.core.windows.net/resources/{publisher}/{name}/{version}/{path}',
     },
     ...input.productOverlay,
+    configurationDefaults: {
+      ...defaults,
+      ...(input.productOverlay?.configurationDefaults as object | undefined),
+    },
+    // Product-owned metadata (diagnostics / chrome)
+    zcodeMode: boot.mode,
+    zcodeCapabilities: caps,
   };
 
   const opts: WorkbenchCreateOptions = {
@@ -80,9 +150,19 @@ export function buildWorkbenchCreateOptions(
       title: 'ZCode Home',
     },
     windowIndicator: {
-      label: `$(remote) ZCode ${boot.mode}`,
-      tooltip: boot.mode === 'remote' ? 'Remote server mode' : 'Browser mode',
+      label:
+        boot.mode === 'remote'
+          ? `$(remote) ZCode remote`
+          : `$(folder) ZCode browser`,
+      tooltip:
+        boot.mode === 'remote'
+          ? `Remote ${load.remoteAuthority ?? ''} · terminal ${caps.terminal ? 'on' : 'off'}`
+          : 'Browser mode — virtual FS (zcode-opfs), no PTY terminal',
     },
+    zcodeCapabilities: caps,
+    zcodeMode: boot.mode,
+    connectionReady: load.resolvedConnection?.ready === true,
+    vscodeCommit: input.vscodeCommit,
   };
 
   if (boot.mode === 'remote' && load.remoteAuthority) {
@@ -101,20 +181,23 @@ export function buildWorkbenchCreateOptions(
     };
   }
 
-  if (input.builtinExtensionPaths?.length) {
-    const origin = input.origin ? new URL(input.origin) : undefined;
-    opts.additionalBuiltinExtensions = input.builtinExtensionPaths.map((p) => {
-      const path = p.startsWith('/') ? p : `/${p}`;
-      if (origin) {
-        return {
-          scheme: origin.protocol.replace(':', '') || 'http',
-          authority: origin.host,
-          path,
-        };
-      }
-      return { scheme: 'http', path };
-    });
-  }
+  const extPaths =
+    input.builtinExtensionPaths?.length
+      ? input.builtinExtensionPaths
+      : DEFAULT_BUILTIN_EXTENSIONS;
+
+  const origin = input.origin ? new URL(input.origin) : undefined;
+  opts.additionalBuiltinExtensions = extPaths.map((p) => {
+    const path = p.startsWith('/') ? p : `/${p}`;
+    if (origin) {
+      return {
+        scheme: origin.protocol.replace(':', '') || 'http',
+        authority: origin.host,
+        path,
+      };
+    }
+    return { scheme: 'http', path };
+  });
 
   return opts;
 }
@@ -123,3 +206,5 @@ export function buildWorkbenchCreateOptions(
 export function workbenchProductScript(opts: WorkbenchCreateOptions): string {
   return `window.product = ${JSON.stringify(opts)};`;
 }
+
+export { DEFAULT_BUILTIN_EXTENSIONS };

@@ -260,8 +260,8 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | M0c | Serve `/vscode` + `/extensions` | **done** | |
 | M0d | **Owned** OSS web build at pin 1.129 | **done** | `vscode-web-ci` esbuild → dist/vscode-web source=owned; dual bootstrap (ESM/AMD); CI heavy_build=web |
 | M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
-| M1 | Dual-mode remoteAuthority connect end-to-end | **remaining** | product + REH + cookie proxy ready; polish remote workbench UX / STRICT terminal |
-| M2 | Diagnostics extension, CSP, log redaction | **remaining** | stubs only |
+| M1 | Dual-mode remoteAuthority connect end-to-end | **done** | shell product builder + capabilities; session gate; e2e dual-mode product |
+| M2 | Diagnostics extension, CSP, log redaction | **done** | zcode-diagnostics copyReport; CSP on HTML; redactSecrets tests |
 | M3 | Playwright e2e: routes + SPA clone + IDE product handoff | **done** | `e2e/` + CI job; Buffer polyfill for worker clone; remote terminal still R6 |
 
 ### 4.5 Hosting / ops
@@ -292,14 +292,14 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 ### P0 — Next 1–2 sessions
 
-1. **M1** — Dual-mode remoteAuthority dogfood polish (terminal UI STRICT path).
-2. **M2** CSP + diagnostics extension.
-3. **F6** Rename repo when ready.
+1. **M1 polish** — STRICT terminal `echo ok` UI path (`ZCODE_E2E_REH_STRICT=1`).
+2. **F6** Rename repo → `spinupdev/zcode` when ready.
+3. **H3** Production Pages+Worker deploy runbook.
 
 ### P1 — Product polish
 
-4. Harden R6 terminal `echo ok` under `ZCODE_E2E_REH_STRICT=1`.  
-5. CI artifact download path for local `dist/server` on Linux runners.
+4. CI Linux REH artifact download into `dist/server` for optional e2e.  
+5. **B2b** ZenFS + OPFS primary store.
 
 ### P2 — Later
 
@@ -377,6 +377,8 @@ pnpm smoke            # lighter checks
 | [`docs/m0d-owned-web-spike.md`](./docs/m0d-owned-web-spike.md) | Owned web package spike + session log |
 | [`docs/reh-cookie-proxy.md`](./docs/reh-cookie-proxy.md) | R3b cookie → REH token proxy |
 | [`docs/r6-terminal-e2e.md`](./docs/r6-terminal-e2e.md) | R6 terminal e2e / skip policy |
+| [`docs/m1-dual-mode.md`](./docs/m1-dual-mode.md) | Dual-mode remoteAuthority product |
+| [`docs/m2-diagnostics-csp.md`](./docs/m2-diagnostics-csp.md) | Diagnostics, CSP, redaction |
 | [`docs/vscode-pin.md`](./docs/vscode-pin.md) | Pin SHA / upgrade |
 | [`docs/quilt-workflow.md`](./docs/quilt-workflow.md) | Patch discipline |
 | [`deploy/cloudflare/README.md`](./deploy/cloudflare/README.md) | Worker deploy |
@@ -395,5 +397,6 @@ pnpm smoke            # lighter checks
 | 2026-07-17 | M0d: Node24 check/spike; deps blocked by ripgrep 403; CI `heavy_build=web`. R2c CI Node24+token+disk. R6 `pnpm e2e:reh` skip-safe + mock terminal-flow tests |
 | 2026-07-17 | **M0d done**: `vscode-web-ci` owned esbuild staged; workbench dual bootstrap; quilt copilot type patch for compile; R2c/R6 harness continue |
 | 2026-07-17 | **R2c done**: owned REH `dist/server` (darwin-arm64) with server-main.js. **R6 done**: Playwright REH suite green; preserve owned web in fetch/e2e |
+| 2026-07-17 | **M1 done**: dual-mode product + capabilities + session gate. **M2 done**: diagnostics extension, CSP HTML headers, log redaction |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

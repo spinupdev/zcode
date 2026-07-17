@@ -41,6 +41,8 @@ export type { BootstrapUrlInput } from './url.js';
 export {
   buildWorkbenchCreateOptions,
   workbenchProductScript,
+  configurationDefaultsForMode,
+  DEFAULT_BUILTIN_EXTENSIONS,
 } from './workbench-product.js';
 export type {
   ProductOverlay,

@@ -27,6 +27,14 @@ export {
 } from './reh/artifact.js';
 export type { RehArtifactInfo } from './reh/artifact.js';
 export { waitForUrl } from './reh/wait.js';
+export {
+  buildContentSecurityPolicy,
+  applySecurityHeaders,
+  cspHeaderName,
+} from './http/csp.js';
+export { redactSecrets, redactString, safeJsonStringify } from './log/redact.js';
+// Dual-mode product builder (M1) — re-exported for CLI static server
+export { buildWorkbenchCreateOptions } from '@zcode/shell';
 
 export interface ServerOptions {
   host: string;
