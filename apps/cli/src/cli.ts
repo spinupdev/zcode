@@ -24,7 +24,7 @@ Commands:
 Examples:
   zcode git-proxy --port 8787
   zcode serve . --port 8080 --password secret
-  zcode web --dir apps/web/dist --port 3000
+  zcode web --dir apps/web/dist --port 5000
 
 Not affiliated with coder/code-server.
 `.trim();
@@ -93,7 +93,7 @@ switch (cmd) {
   case 'web': {
     const { startStaticServer } = await import('./static-server.js');
     const dir = flag(args, '--dir') ?? 'apps/web/dist';
-    const port = Number(flag(args, '--port') ?? 3000);
+    const port = Number(flag(args, '--port') ?? 5000);
     const host = flag(args, '--host') ?? '127.0.0.1';
     const srv = await startStaticServer({ host, port, dir });
     console.log(`zcode web ${srv.url} → ${dir}`);

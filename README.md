@@ -20,10 +20,10 @@ pnpm build
 node apps/cli/dist/cli.js git-proxy --port 8787
 
 # terminal 2 — browser workspace UI
-node apps/cli/dist/cli.js web --dir apps/web/dist --port 3000
+node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 ```
 
-Open **http://127.0.0.1:3000/** → set clone URL → **Clone** → edit → **Save** → **Commit**.
+Open **http://127.0.0.1:5000/** → set clone URL → **Clone** → edit → **Save** → **Commit**.
 
 ### Or one server (login + static app)
 
@@ -45,7 +45,7 @@ pnpm dev:shell
 ```bash
 zcode serve [dir] --port 8080 --password secret [--static-dir apps/web/dist] [--no-reh]
 zcode git-proxy --port 8787 --allow-hosts github.com,gitlab.com
-zcode web --dir apps/web/dist --port 3000
+zcode web --dir apps/web/dist --port 5000
 ```
 
 ## Tests & checks

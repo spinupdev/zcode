@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node -e \"process.exit(0)\"",
     "clean": "rm -rf dist",
-    "dev": "node ../cli/dist/cli.js web --dir dist --port 3000"
+    "dev": "node ../cli/dist/cli.js web --dir dist --port 5000"
   },
   "dependencies": {
     "@zcode/browser-agent": "workspace:*",

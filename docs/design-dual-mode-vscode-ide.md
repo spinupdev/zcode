@@ -881,7 +881,7 @@ README must state this is **not** [coder/code-server](https://github.com/coder/c
 ```bash
 zcode serve ./my-project --port 8080 --auth password
 zcode git-proxy --port 8787 --allow-hosts github.com,gitlab.com
-zcode web --dir dist/web --port 3000   # dev static only
+zcode web --dir dist/web --port 5000   # dev static only
 ```
 
 #### Built-in commands

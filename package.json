@@ -21,7 +21,7 @@
     "build:web": "bash scripts/build-web.sh",
     "build:web:check": "bash scripts/build-web.sh --check",
     "dev:shell": "pnpm --filter @zcode/shell dev",
-    "dev:app": "pnpm --filter @zcode/web build && node apps/cli/dist/cli.js web --dir apps/web/dist --port 3000",
+    "dev:app": "pnpm --filter @zcode/web build && node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000",
     "smoke": "bash scripts/smoke.sh",
     "clean": "turbo run clean && rm -rf node_modules"
   },
