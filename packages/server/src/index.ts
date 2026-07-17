@@ -1,9 +1,6 @@
 /**
- * Node wrapper around VS Code server / REH: cookie↔token bridge, static co-serve.
- *
- * R2: REH artifacts via scripts/build-server.sh → dist/server
- * R3: password login + HttpOnly session cookie mapping (this package)
- * Later: spawn REH with --connection-token and co-serve workbench assets
+ * ZCode server wrapper: password login, HttpOnly session cookie, static co-serve,
+ * optional REH spawn when artifacts/dev scripts exist.
  */
 
 import fs from 'node:fs';
@@ -20,16 +17,20 @@ export {
 } from './auth/password.js';
 export { startServer } from './http/start.js';
 export type { StartedServer } from './http/start.js';
+export { spawnReh } from './reh/spawn.js';
 
 export interface ServerOptions {
   host: string;
   port: number;
-  /** Workspace root on disk */
   workspace: string;
-  /** Password auth for self-host MVP (plaintext only for bootstrap; prefer hash env later) */
   password?: string;
-  /** Directory of co-served workbench static assets (same-origin MVP) */
   staticDir?: string;
+  /** monorepo root for locating dist/server and vendor/vscode */
+  repoRoot?: string;
+  /** Internal REH listen port (default port+1) */
+  rehPort?: number;
+  /** Set false to skip REH spawn attempts */
+  spawnReh?: boolean;
 }
 
 export interface ServerBuildInfo {
@@ -42,13 +43,10 @@ export interface ServerBuildInfo {
   path: string;
 }
 
-/** Read marker written by scripts/build-server.sh after REH package. */
 export function readServerBuildInfo(root = monorepoRoot()): ServerBuildInfo | null {
   const dir = serverArtifactDir(root);
   const marker = path.join(dir, '.zcode-build.json');
-  if (!fs.existsSync(marker)) {
-    return null;
-  }
+  if (!fs.existsSync(marker)) return null;
   const raw = JSON.parse(fs.readFileSync(marker, 'utf8')) as Omit<ServerBuildInfo, 'path'>;
   return { ...raw, path: dir };
 }

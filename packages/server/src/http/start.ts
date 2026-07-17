@@ -1,21 +1,22 @@
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { CookieTokenBridge } from '../auth/cookie-bridge.js';
 import { createPasswordVerifier, LoginRateLimiter } from '../auth/password.js';
 import type { ServerOptions } from '../index.js';
+import { monorepoRoot } from '../paths.js';
+import { spawnReh, type RehHandle } from '../reh/spawn.js';
 import { createRequestHandler } from './app.js';
 
 export interface StartedServer {
   url: string;
   authority: string;
   connectionToken: string;
+  rehMode: string;
   close(): Promise<void>;
 }
 
-/**
- * Start the product HTTP wrapper (login + session cookie + health).
- * Does not yet spawn VS Code REH — that wires in once dist/server exists.
- */
 export async function startServer(options: ServerOptions): Promise<StartedServer> {
   const connectionToken = randomBytes(24).toString('base64url');
   const signingSecret =
@@ -24,15 +25,35 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
   const passwords = createPasswordVerifier(
     options.password ?? process.env.ZCODE_PASSWORD ?? 'zcode',
   );
-  const authority = `${options.host === '0.0.0.0' ? '127.0.0.1' : options.host}:${options.port}`;
+  const displayHost = options.host === '0.0.0.0' ? '127.0.0.1' : options.host;
+
+  const staticDir = resolveStaticDir(options.staticDir);
+  const root = options.repoRoot ?? monorepoRoot();
+
+  let reh: RehHandle | undefined;
+  const rehPort = options.rehPort ?? options.port + 1;
+  if (options.spawnReh !== false) {
+    reh = spawnReh({
+      connectionToken,
+      rehPort,
+      workspace: path.resolve(options.workspace),
+      root,
+    });
+    if (reh.mode === 'none') {
+      reh = undefined;
+    }
+  }
 
   const handler = createRequestHandler({
     bridge,
     passwords,
     limiter: new LoginRateLimiter(),
     connectionToken,
-    authority,
+    authority: `${displayHost}:${options.port}`,
     secureCookies: process.env.ZCODE_SECURE_COOKIES === '1',
+    staticDir,
+    rehEndpoint: reh?.endpoint,
+    rehMode: reh?.mode ?? 'none',
   });
 
   const server = http.createServer((req, res) => {
@@ -46,16 +67,33 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
 
   const addr = server.address();
   const port = typeof addr === 'object' && addr ? addr.port : options.port;
-  const host = options.host === '0.0.0.0' ? '127.0.0.1' : options.host;
-  const url = `http://${host}:${port}/`;
+  const url = `http://${displayHost}:${port}/`;
 
   return {
     url,
-    authority: `${host}:${port}`,
+    authority: `${displayHost}:${port}`,
     connectionToken,
-    close: () =>
-      new Promise((resolve, reject) => {
+    rehMode: reh?.mode ?? 'none',
+    close: async () => {
+      await reh?.stop();
+      await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
-      }),
+      });
+    },
   };
+}
+
+function resolveStaticDir(explicit?: string): string | undefined {
+  if (explicit) {
+    return fs.existsSync(explicit) ? path.resolve(explicit) : undefined;
+  }
+  const candidates = [
+    path.join(monorepoRoot(), 'apps/web/dist'),
+    path.join(process.cwd(), 'apps/web/dist'),
+    path.join(process.cwd(), 'dist/web'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, 'index.html'))) return c;
+  }
+  return undefined;
 }

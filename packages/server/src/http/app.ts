@@ -1,18 +1,18 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { CookieTokenBridge, SESSION_COOKIE } from '../auth/cookie-bridge.js';
-import {
-  type PasswordVerifier,
-  LoginRateLimiter,
-} from '../auth/password.js';
+import { type PasswordVerifier, LoginRateLimiter } from '../auth/password.js';
+import { tryServeStatic } from './static.js';
 
 export interface AppContext {
   bridge: CookieTokenBridge;
   passwords: PasswordVerifier;
   limiter: LoginRateLimiter;
-  /** Internal connection token for VS Code server process */
   connectionToken: string;
   authority: string;
   secureCookies: boolean;
+  staticDir?: string;
+  rehEndpoint?: string;
+  rehMode?: string;
 }
 
 export function createRequestHandler(ctx: AppContext) {
@@ -22,7 +22,11 @@ export function createRequestHandler(ctx: AppContext) {
 
     try {
       if (req.method === 'GET' && (url.pathname === '/healthz' || url.pathname === '/readyz')) {
-        json(res, 200, { ok: true });
+        json(res, 200, {
+          ok: true,
+          reh: ctx.rehMode ?? 'none',
+          rehEndpoint: ctx.rehEndpoint ? true : false,
+        });
         return;
       }
 
@@ -31,13 +35,14 @@ export function createRequestHandler(ctx: AppContext) {
         json(res, 200, {
           authenticated: authed,
           authority: authed ? ctx.authority : null,
-          // never include connectionToken
+          reh: ctx.rehMode ?? 'none',
+          workbench: ctx.staticDir ? true : false,
         });
         return;
       }
 
       if (req.method === 'POST' && url.pathname === '/login') {
-        await handleLogin(req, res, ctx, url);
+        await handleLogin(req, res, ctx);
         return;
       }
 
@@ -48,11 +53,16 @@ export function createRequestHandler(ctx: AppContext) {
         return;
       }
 
+      // Static workbench / browser app (same-origin MVP)
+      if (ctx.staticDir && tryServeStatic(req, res, ctx.staticDir, url.pathname)) {
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/') {
         html(
           res,
           200,
-          loginPage(ctx.bridge.isAuthenticated(req.headers.cookie), ctx.authority),
+          loginPage(ctx.bridge.isAuthenticated(req.headers.cookie), ctx.authority, ctx),
         );
         return;
       }
@@ -70,7 +80,6 @@ async function handleLogin(
   req: IncomingMessage,
   res: ServerResponse,
   ctx: AppContext,
-  url: URL,
 ): Promise<void> {
   const ip = req.socket.remoteAddress ?? 'unknown';
   ctx.limiter.assertAllowed(ip);
@@ -102,9 +111,9 @@ async function handleLogin(
     }),
   );
 
-  // Prefer clean redirect — no secrets in query
   if (ct.includes('application/x-www-form-urlencoded')) {
-    res.writeHead(303, { Location: `/?ready=1` });
+    const dest = ctx.staticDir ? '/index.html' : '/?ready=1';
+    res.writeHead(303, { Location: dest });
     res.end();
     return;
   }
@@ -113,9 +122,8 @@ async function handleLogin(
     ok: true,
     authority: ctx.authority,
     cookie: SESSION_COOKIE,
-    // connectionToken intentionally omitted
+    redirect: ctx.staticDir ? '/index.html' : '/?ready=1',
   });
-  void url;
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -144,12 +152,16 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-function loginPage(authenticated: boolean, authority: string): string {
+function loginPage(authenticated: boolean, authority: string, ctx: AppContext): string {
   if (authenticated) {
+    const appLink = ctx.staticDir
+      ? `<p><a href="/index.html">Open browser workspace</a></p>`
+      : '';
     return `<!DOCTYPE html><html><body>
       <h1>ZCode server</h1>
       <p>Authenticated. authority=<code>${escapeHtml(authority)}</code></p>
-      <p>Workbench co-serve + REH attach lands next (R3 continue / M1).</p>
+      <p>REH mode: <code>${escapeHtml(ctx.rehMode ?? 'none')}</code></p>
+      ${appLink}
       <form method="post" action="/logout"><button type="submit">Log out</button></form>
     </body></html>`;
   }
