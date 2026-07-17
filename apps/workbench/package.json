@@ -1,0 +1,13 @@
+{
+  "name": "@zcode/workbench",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ZCode VS Code Web host page (/ide) — loads staged dist/vscode-web",
+  "type": "module",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  }
+}
