@@ -31,6 +31,8 @@ export interface ServerOptions {
   rehPort?: number;
   /** Set false to skip REH spawn attempts */
   spawnReh?: boolean;
+  /** Mount stateless /git-proxy (default true) for browser isomorphic-git */
+  gitProxy?: boolean;
 }
 
 export interface ServerBuildInfo {

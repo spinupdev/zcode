@@ -1,4 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import {
+  createGitProxyHandler,
+  DEFAULT_ALLOW_HOSTS,
+  DEFAULT_GIT_PROXY_PREFIX,
+} from '@zcode/git-proxy';
 import { CookieTokenBridge, SESSION_COOKIE } from '../auth/cookie-bridge.js';
 import { type PasswordVerifier, LoginRateLimiter } from '../auth/password.js';
 import { tryServeStatic } from './static.js';
@@ -13,19 +18,41 @@ export interface AppContext {
   staticDir?: string;
   rehEndpoint?: string;
   rehMode?: string;
+  /** Mount isomorphic-git corsProxy at this path (default /git-proxy). Set false to disable. */
+  gitProxy?: boolean | { prefix?: string; allowHosts?: string[] };
 }
 
 export function createRequestHandler(ctx: AppContext) {
+  const gitProxyEnabled = ctx.gitProxy !== false;
+  const gitProxyOpts =
+    typeof ctx.gitProxy === 'object' && ctx.gitProxy
+      ? ctx.gitProxy
+      : { prefix: DEFAULT_GIT_PROXY_PREFIX, allowHosts: [...DEFAULT_ALLOW_HOSTS] };
+  const gitProxyHandler = gitProxyEnabled
+    ? createGitProxyHandler({
+        prefix: gitProxyOpts.prefix ?? DEFAULT_GIT_PROXY_PREFIX,
+        allowHosts: gitProxyOpts.allowHosts ?? DEFAULT_ALLOW_HOSTS,
+      })
+    : null;
+
   return async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const host = req.headers.host ?? 'localhost';
     const url = new URL(req.url ?? '/', `http://${host}`);
 
     try {
+      // Same-origin git CORS proxy (stateless) — before auth/static
+      if (gitProxyHandler && (await gitProxyHandler(req, res))) {
+        return;
+      }
+
       if (req.method === 'GET' && (url.pathname === '/healthz' || url.pathname === '/readyz')) {
         json(res, 200, {
           ok: true,
           reh: ctx.rehMode ?? 'none',
           rehEndpoint: ctx.rehEndpoint ? true : false,
+          gitProxy: gitProxyEnabled
+            ? gitProxyOpts.prefix ?? DEFAULT_GIT_PROXY_PREFIX
+            : false,
         });
         return;
       }

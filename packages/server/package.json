@@ -21,6 +21,7 @@
     "clean": "rm -rf dist dist-test *.tsbuildinfo"
   },
   "dependencies": {
+    "@zcode/git-proxy": "workspace:*",
     "@zcode/protocol": "workspace:*"
   }
 }

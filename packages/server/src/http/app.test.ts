@@ -9,6 +9,7 @@ describe('startServer login flow', () => {
       port: 0,
       workspace: '/tmp',
       password: 'test-pass',
+      spawnReh: false,
     });
 
     try {

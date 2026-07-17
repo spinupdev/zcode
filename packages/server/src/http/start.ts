@@ -54,6 +54,7 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
     staticDir,
     rehEndpoint: reh?.endpoint,
     rehMode: reh?.mode ?? 'none',
+    gitProxy: options.gitProxy !== false,
   });
 
   const server = http.createServer((req, res) => {
