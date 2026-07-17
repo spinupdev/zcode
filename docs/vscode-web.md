@@ -33,15 +33,13 @@ Third-party npm package packaging Microsoft’s web compile (not our pin; labele
 # → dist/vscode-web
 ```
 
-### Owned build (GA path)
+### Owned build (GA path / M0d)
 
-From `vendor/vscode` (see [building-vscode.md](./building-vscode.md)):
+Use **Node 24** (`vendor/vscode/.nvmrc`). See [m0d-owned-web-spike.md](./m0d-owned-web-spike.md).
 
 ```bash
-# After npm install + gulp in vendor/vscode:
-#   npm run gulp compile-web
-#   npm run gulp vscode-web   # or esbuild-vscode-web + package
-./scripts/fetch-vscode-web.sh   # prefers owned .build/vscode-web if present
+./scripts/build-web.sh --package   # gulp vscode-web → dist/vscode-web
+./scripts/fetch-vscode-web.sh      # prefers owned tree when present
 ```
 
 ## Build & run
@@ -95,6 +93,8 @@ Bootstrap injects `location.host` so extension URIs are absolute same-origin.
 | Dual-mode product payload | ✅ |
 | Built-in extensions served | ✅ `/extensions/*` |
 | `zcode-opfs` FileSystemProvider | ✅ seeded sample workspace |
-| Owned 1.129 web compile in CI | ⏳ dogfood npm for local |
+| Owned 1.129 web compile in CI | ⏳ scripts ready (`build-web.sh --package`); dogfood until staged |
+| Browser SCM (`zcode-git`) | ✅ status / commit / push over IDB |
+| REH cookie proxy (R3b) | ✅ when `dist/server` artifact + `zcode serve` |
 
 **Custom SPA (`/`) is tools/dogfood.** **Primary IDE is `/ide/`.**

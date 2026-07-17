@@ -30,7 +30,7 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 
 ## Highest-priority remaining work
 
-See **PLAN.md §5**. B7 and M3 (Playwright) are **done**. Default next: **M0d** owned web build or **R3b** REH attach.
+See **PLAN.md §5**. B7, B8, M3, R3b code paths are **done**. Default next: **M0d** package on Node 24, **R2c** REH artifact, then **R6** terminal e2e.
 
 ## Rules
 

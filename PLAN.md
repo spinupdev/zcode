@@ -153,7 +153,7 @@ zcode/  (repo may still be named code-server)
 │   └── workbench/                   ← /ide host page + bootstrap
 ├── extensions/
 │   ├── zcode-browser-fs/            ← zcode-opfs FileSystemProvider
-│   ├── zcode-git/                   ← open SPA clone command
+│   ├── zcode-git/                   ← SCM status/commit/push + SPA clone
 │   ├── zcode-diagnostics/
 │   └── zcode-remote-upgrade/        ← post-MVP stub
 ├── deploy/
@@ -233,7 +233,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | B5 | Best-effort text search | **done** | SPA search |
 | B6 | Git Web Worker for responsive clone | **done** | `git-worker.js` |
 | B7 | Bridge SPA IDB workspace ↔ workbench `zcode-opfs` | **done** | Same IDB `zcode-fs-v1`; `/ide/?workspace=<id>`; Open in IDE |
-| B8 | Full SCM inside workbench (not only SPA) | **remaining** | |
+| B8 | Full SCM inside workbench (not only SPA) | **done** | `zcode-git` status/commit/push via IDB + isomorphic-git |
 | B9 | SSH remotes / LFS / submodules | **deferred** | non-goals MVP |
 | B10 | Offline PWA | **deferred** | OQ7 |
 
@@ -244,9 +244,9 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | R1 | VS Code submodule + quilt | **done** | |
 | R2 | Server/REH build scripts + docs | **done** | scripts exist; full compile rare locally |
 | R2b | CI fat-runner REH artifact (workflow_dispatch) | **done** | skeleton in CI |
-| R2c | Successful owned REH artifact on main CI path | **remaining** | long pole |
+| R2c | Successful owned REH artifact on main CI path | **remaining** | scripts+CI dispatch ready; needs fat disk/runner |
 | R3 | Password login + HttpOnly cookie bridge | **done** | no `?tkn=` |
-| R3b | Spawn REH + cookie-authorized WS attach | **remaining** | spawn only if artifact/`--reh`; attach incomplete |
+| R3b | Spawn REH + cookie-authorized WS attach | **done** | cookie→token HTTP/WS proxy; spawn uses `--connection-token` |
 | R4 | Docker image + compose | **done** | single service; polish non-root later |
 | R5 | CLI `zcode serve` | **done** | |
 | R6 | Terminal/LSP verified e2e against REH | **remaining** | needs R2c + R3b |
@@ -258,7 +258,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | M0a | Stage VS Code Web static assets | **done** | dogfood `vscode-web@1.91.1` via fetch script |
 | M0b | `/ide` host + bootstrap + product.json | **done** | |
 | M0c | Serve `/vscode` + `/extensions` | **done** | |
-| M0d | **Owned** OSS web build at pin 1.129 | **remaining** | replace dogfood package |
+| M0d | **Owned** OSS web build at pin 1.129 | **in_progress** | `build-web.sh --package/--spike` + docs; dogfood until Node24 package run |
 | M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
 | M1 | Dual-mode remoteAuthority connect end-to-end | **remaining** | product payload ready; REH missing |
 | M2 | Diagnostics extension, CSP, log redaction | **remaining** | stubs only |
@@ -292,20 +292,20 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 ### P0 — Next 1–2 sessions
 
-1. **M0d** — Spike owned `gulp vscode-web` on Node **24** (see vendor `.nvmrc`); document exact tasks that succeed.
-2. **R2c / R3b** — REH artifact + cookie-auth attach.
-3. **B8** — Browser SCM via `zcode-git` (status/diff/commit in IDE, not only SPA).
+1. **M0d** — Run `./scripts/build-web.sh --package` on **Node 24** with ≥30GB free; confirm `dist/vscode-web/.zcode-vscode-web.json` source=owned.
+2. **R2c** — Produce `dist/server` REH artifact (local fat machine or CI `vscode-reh-build` workflow_dispatch).
+3. **R6** — Terminal `echo ok` e2e against REH via cookie proxy (needs R2c).
 
-### P1 — Remote dogfood
+### P1 — Product polish
 
-4. **R2c** — Produce `dist/server` REH artifact once on a large machine; commit instructions not binaries.  
-5. **R3b** — Cookie-authenticated reverse proxy or connection bridge to REH WS.  
-6. **R6** — Terminal `echo ok` e2e.
+4. **M2** CSP + diagnostics.  
+5. **M1** Dual-mode remoteAuthority dogfood once REH artifact exists.  
+6. **F6** Rename repo when ready.
 
-### P2 — Product polish
+### P2 — Later
 
-7. **M2** CSP + diagnostics.  
-8. **F6** Rename repo when ready.
+7. **B2b** ZenFS + OPFS primary store.  
+8. **H3** Production Pages+Worker deploy runbook.
 
 ---
 
@@ -389,5 +389,6 @@ pnpm smoke            # lighter checks
 | 2026-07-17 | Initial master plan + status snapshot after SPA git, same-origin proxy, `/ide` dogfood VS Code Web, PAT push |
 | 2026-07-17 | B7 done: shared IDB `zcode-fs-v1` between SPA and `zcode-browser-fs`; Open in IDE |
 | 2026-07-17 | M3 Playwright e2e package + CI job (routes, SPA clone, IDE product); monorepo-root static paths; Buffer polyfill for isomorphic-git worker |
+| 2026-07-17 | B8 workbench SCM (`zcode-git`); R3b cookie→REH HTTP/WS proxy; M0d `build-web.sh --package/--spike` + spike docs |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.
