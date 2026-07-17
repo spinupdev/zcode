@@ -6,4 +6,8 @@ export { WorkspaceStore } from './workspace-store.js';
 export type { WorkspaceRecord } from './workspace-store.js';
 export { MemoryFs } from './memory-fs.js';
 export type { AgentFs } from './memory-fs.js';
+export { IdbFs, isIdbAvailable } from './idb-fs.js';
+export { createDefaultFs } from './default-fs.js';
 export { createIsoFs } from './iso-fs.js';
+export { searchWorkspace } from './search.js';
+export type { SearchHit, SearchOpts } from './search.js';

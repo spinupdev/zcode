@@ -6,7 +6,7 @@ import { MemoryFs } from './memory-fs.js';
 
 describe('ZCodeBrowserAgent', () => {
   it('creates, lists, and deletes workspaces', async () => {
-    const agent = createBrowserAgent();
+    const agent = createBrowserAgent({ hydrateFromFs: false });
     const ws = await agent.createWorkspace('demo');
     assert.equal(ws.name, 'demo');
     assert.match(ws.uri, /^zcode-opfs:\/\/workspace\//);
@@ -42,7 +42,7 @@ describe('ZCodeBrowserAgent', () => {
 
   it('can init-commit on a new workspace without remote', async () => {
     const fs = new MemoryFs();
-    const agent = createBrowserAgent({ fs });
+    const agent = createBrowserAgent({ fs, hydrateFromFs: false });
     const ws = await agent.createWorkspace('local');
     // manual git-like: write file then commit requires .git — use clone path in integration
     // Here just ensure commit fails cleanly without repo
