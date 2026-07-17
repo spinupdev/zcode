@@ -23,6 +23,7 @@
     "dev:shell": "pnpm --filter @zcode/shell dev",
     "dev:app": "pnpm --filter @zcode/web build && node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000",
     "smoke": "bash scripts/smoke.sh",
+    "e2e:browser": "bash scripts/e2e-browser.sh",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {

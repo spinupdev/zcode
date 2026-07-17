@@ -75,7 +75,8 @@ switch (cmd) {
       password,
       workspace,
       staticDir,
-      spawnReh: !hasFlag(args, '--no-reh'),
+      // REH only when --reh or packaged dist/server exists (see startServer)
+      spawnReh: hasFlag(args, '--reh') ? true : hasFlag(args, '--no-reh') ? false : undefined,
       gitProxy: !hasFlag(args, '--no-git-proxy'),
     });
     console.log(`ZCode serve ${srv.url}`);

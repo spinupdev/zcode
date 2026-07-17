@@ -32,7 +32,13 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
 
   let reh: RehHandle | undefined;
   const rehPort = options.rehPort ?? options.port + 1;
-  if (options.spawnReh !== false) {
+  // Only spawn REH when explicitly requested or when a packaged artifact exists.
+  // Avoid kicking vendor/vscode dev scripts (node version / multi-hour installs) by default.
+  const shouldSpawnReh =
+    options.spawnReh === true ||
+    process.env.ZCODE_SPAWN_REH === '1' ||
+    (options.spawnReh !== false && fs.existsSync(path.join(root, 'dist/server/.zcode-build.json')));
+  if (shouldSpawnReh) {
     reh = spawnReh({
       connectionToken,
       rehPort,

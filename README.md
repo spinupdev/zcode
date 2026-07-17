@@ -22,8 +22,9 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 Open **http://127.0.0.1:5000/**
 
 1. **Test proxy** → should show **proxy ok** (`/git-proxy/healthz`)
-2. **Clone** → progress bar + log  
-3. Edit → **Save** → **Commit**
+2. **Clone** → runs in a **Web Worker** (UI stays responsive); workspace saved to **IndexedDB**
+3. Reopen from the **Workspace** dropdown after reload  
+4. **Search** across text files · Edit → **Save** → **Commit**
 
 No second proxy process is required. Defaults:
 
@@ -57,6 +58,7 @@ zcode git-proxy --port 8787                        # optional standalone
 ```bash
 pnpm test
 pnpm smoke
+pnpm e2e:browser   # same-origin proxy + real clone
 ```
 
 ## Layout
