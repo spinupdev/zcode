@@ -9,6 +9,15 @@ import { WorkspaceLock } from './lock.js';
 import type { AgentFs } from './memory-fs.js';
 import { MemoryFs } from './memory-fs.js';
 import { WorkspaceStore } from './workspace-store.js';
+import {
+  gitClone,
+  gitCommit,
+  gitPush,
+  gitStatus,
+  listWorkspaceFiles,
+  readWorkspaceFile,
+  writeWorkspaceFile,
+} from './git.js';
 
 export interface BrowserAgentOptions {
   fs?: AgentFs;
@@ -17,8 +26,7 @@ export interface BrowserAgentOptions {
 }
 
 /**
- * Browser agent core: workspace CRUD + lock.
- * Git clone/commit/push land in Track B4 (isomorphic-git + proxy).
+ * Browser agent: workspace CRUD, lock, isomorphic-git clone/commit/push.
  */
 export class ZCodeBrowserAgent implements BrowserAgent {
   readonly fs: AgentFs;
@@ -34,11 +42,14 @@ export class ZCodeBrowserAgent implements BrowserAgent {
   async createWorkspace(name: string): Promise<WorkspaceInfo> {
     const rec = this.store.create(name);
     await this.fs.mkdir(rec.rootKey);
-    await this.fs.writeFile(`${rec.rootKey}/.zcode-workspace.json`, JSON.stringify({
-      id: rec.id,
-      name: rec.name,
-      createdAt: rec.createdAt,
-    }));
+    await this.fs.writeFile(
+      `${rec.rootKey}/.zcode-workspace.json`,
+      JSON.stringify({
+        id: rec.id,
+        name: rec.name,
+        createdAt: rec.createdAt,
+      }),
+    );
     return {
       id: rec.id,
       name: rec.name,
@@ -67,22 +78,20 @@ export class ZCodeBrowserAgent implements BrowserAgent {
     return this.fs.estimate();
   }
 
-  async clone(_opts: CloneOpts): Promise<WorkspaceInfo> {
-    throw Object.assign(new Error('clone not implemented yet (Track B4)'), {
-      code: 'INTERNAL',
-    });
+  async clone(opts: CloneOpts): Promise<WorkspaceInfo> {
+    return this.withWorkspaceLock(opts.workspaceId, () =>
+      gitClone(this.fs, this.store, opts),
+    );
   }
 
-  async commit(_opts: CommitOpts): Promise<{ oid: string }> {
-    throw Object.assign(new Error('commit not implemented yet (Track B4)'), {
-      code: 'INTERNAL',
-    });
+  async commit(opts: CommitOpts): Promise<{ oid: string }> {
+    return this.withWorkspaceLock(opts.workspaceId, () =>
+      gitCommit(this.fs, this.store, opts),
+    );
   }
 
-  async push(_opts: PushOpts): Promise<void> {
-    throw Object.assign(new Error('push not implemented yet (Track B4)'), {
-      code: 'INTERNAL',
-    });
+  async push(opts: PushOpts): Promise<void> {
+    return this.withWorkspaceLock(opts.workspaceId, () => gitPush(this.fs, this.store, opts));
   }
 
   async status(workspaceId: string): Promise<{
@@ -91,12 +100,21 @@ export class ZCodeBrowserAgent implements BrowserAgent {
     ahead: number;
     behind: number;
   }> {
-    const rec = this.store.get(workspaceId);
-    if (!rec) {
-      throw Object.assign(new Error(`workspace not found: ${workspaceId}`), { code: 'NOT_FOUND' });
-    }
-    // Pre-git: empty status
-    return { branch: 'main', dirty: false, ahead: 0, behind: 0 };
+    return gitStatus(this.fs, this.store, workspaceId);
+  }
+
+  async listFiles(workspaceId: string): Promise<string[]> {
+    return listWorkspaceFiles(this.fs, this.store, workspaceId);
+  }
+
+  async readFile(workspaceId: string, path: string): Promise<string> {
+    return readWorkspaceFile(this.fs, this.store, workspaceId, path);
+  }
+
+  async writeFile(workspaceId: string, path: string, content: string): Promise<void> {
+    return this.withWorkspaceLock(workspaceId, () =>
+      writeWorkspaceFile(this.fs, this.store, workspaceId, path, content),
+    );
   }
 
   async withWorkspaceLock<T>(workspaceId: string, fn: () => Promise<T>): Promise<T> {
@@ -104,6 +122,6 @@ export class ZCodeBrowserAgent implements BrowserAgent {
   }
 }
 
-export function createBrowserAgent(opts?: BrowserAgentOptions): BrowserAgent {
+export function createBrowserAgent(opts?: BrowserAgentOptions): BrowserAgent & ZCodeBrowserAgent {
   return new ZCodeBrowserAgent(opts);
 }

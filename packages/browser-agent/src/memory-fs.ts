@@ -11,6 +11,8 @@ export interface AgentFs {
   rm(path: string, opts?: { recursive?: boolean }): Promise<void>;
   exists(path: string): Promise<boolean>;
   estimate(): Promise<{ usage: number; quota: number }>;
+  /** List all file paths under prefix (for search / tree) */
+  listFiles?(prefix?: string): Promise<string[]>;
 }
 
 function norm(p: string): string {
@@ -49,8 +51,14 @@ export class MemoryFs implements AgentFs {
 
   async readdir(path: string): Promise<string[]> {
     const n = norm(path);
-    if (n && !this.dirs.has(n)) {
-      throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND' });
+    if (n && !this.dirs.has(n) && !this.files.has(n)) {
+      // dir may exist only via file prefixes
+      const hasChild = [...this.files.keys(), ...this.dirs].some(
+        (k) => k.startsWith(n + '/') || k === n,
+      );
+      if (!hasChild) {
+        throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND' });
+      }
     }
     const prefix = n ? `${n}/` : '';
     const names = new Set<string>();
@@ -63,6 +71,7 @@ export class MemoryFs implements AgentFs {
       if (!f.startsWith(prefix)) continue;
       const rest = f.slice(prefix.length);
       if (!rest.includes('/')) names.add(rest);
+      else names.add(rest.split('/')[0]!);
     }
     return [...names].sort();
   }
@@ -84,12 +93,25 @@ export class MemoryFs implements AgentFs {
 
   async exists(path: string): Promise<boolean> {
     const n = norm(path);
-    return this.files.has(n) || this.dirs.has(n);
+    if (this.files.has(n) || this.dirs.has(n)) return true;
+    for (const f of this.files.keys()) {
+      if (f.startsWith(n + '/')) return true;
+    }
+    return false;
   }
 
   async estimate(): Promise<{ usage: number; quota: number }> {
     let usage = 0;
     for (const f of this.files.values()) usage += f.byteLength;
     return { usage, quota: 512 * 1024 * 1024 };
+  }
+
+  async listFiles(prefix = ''): Promise<string[]> {
+    const n = norm(prefix);
+    const out: string[] = [];
+    for (const f of this.files.keys()) {
+      if (!n || f === n || f.startsWith(n + '/')) out.push(f);
+    }
+    return out.sort();
   }
 }

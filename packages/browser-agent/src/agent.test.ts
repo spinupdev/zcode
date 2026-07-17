@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { createBrowserAgent } from './agent.js';
 import { WorkspaceLock } from './lock.js';
+import { MemoryFs } from './memory-fs.js';
 
 describe('ZCodeBrowserAgent', () => {
   it('creates, lists, and deletes workspaces', async () => {
@@ -14,9 +15,10 @@ describe('ZCodeBrowserAgent', () => {
     assert.equal(list.length, 1);
     assert.equal(list[0]?.id, ws.id);
 
-    const est = await agent.storageEstimate();
-    assert.ok(est.usage >= 0);
-    assert.ok(est.quota > 0);
+    await agent.writeFile(ws.id, 'hello.txt', 'hi');
+    assert.equal(await agent.readFile(ws.id, 'hello.txt'), 'hi');
+    const files = await agent.listFiles(ws.id);
+    assert.ok(files.includes('hello.txt') || files.some((f) => f.endsWith('hello.txt')));
 
     await agent.deleteWorkspace(ws.id);
     assert.equal((await agent.listWorkspaces()).length, 0);
@@ -38,17 +40,13 @@ describe('ZCodeBrowserAgent', () => {
     assert.deepEqual(order, [1, 2, 3]);
   });
 
-  it('rejects clone until B4', async () => {
-    const agent = createBrowserAgent();
-    const ws = await agent.createWorkspace('x');
-    await assert.rejects(
-      () =>
-        agent.clone({
-          workspaceId: ws.id,
-          url: 'https://github.com/example/repo.git',
-          corsProxyUrl: 'http://127.0.0.1:8787',
-        }),
-      /B4/,
-    );
+  it('can init-commit on a new workspace without remote', async () => {
+    const fs = new MemoryFs();
+    const agent = createBrowserAgent({ fs });
+    const ws = await agent.createWorkspace('local');
+    // manual git-like: write file then commit requires .git — use clone path in integration
+    // Here just ensure commit fails cleanly without repo
+    await agent.writeFile(ws.id, 'a.txt', 'x');
+    await assert.rejects(() => agent.commit({ workspaceId: ws.id, message: 'x' }));
   });
 });

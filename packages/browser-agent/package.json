@@ -18,6 +18,7 @@
     "clean": "rm -rf dist dist-test *.tsbuildinfo"
   },
   "dependencies": {
-    "@zcode/protocol": "workspace:*"
+    "@zcode/protocol": "workspace:*",
+    "isomorphic-git": "^1.38.7"
   }
 }

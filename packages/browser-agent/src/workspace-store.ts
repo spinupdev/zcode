@@ -1,5 +1,12 @@
 import type { WorkspaceInfo } from '@zcode/protocol';
-import { randomUUID } from 'node:crypto';
+
+function newId(): string {
+  // Works in browsers (crypto.randomUUID) and Node
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export interface WorkspaceRecord extends WorkspaceInfo {
   /** Logical root key in the FS backend */
@@ -21,7 +28,7 @@ export class WorkspaceStore {
     return this.byId.get(id);
   }
 
-  create(name: string, id = randomUUID()): WorkspaceRecord {
+  create(name: string, id: string = newId()): WorkspaceRecord {
     if (this.byId.has(id)) {
       throw Object.assign(new Error(`workspace already exists: ${id}`), {
         code: 'ALREADY_EXISTS',
@@ -37,6 +44,12 @@ export class WorkspaceStore {
     };
     this.byId.set(id, rec);
     return rec;
+  }
+
+  /** Upsert name on existing record (used after clone). */
+  rename(id: string, name: string): void {
+    const rec = this.byId.get(id);
+    if (rec) rec.name = name;
   }
 
   delete(id: string): void {
