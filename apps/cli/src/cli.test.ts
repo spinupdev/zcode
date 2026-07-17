@@ -15,6 +15,7 @@ describe('zcode cli', () => {
     const r = run(['help']);
     assert.equal(r.status, 0);
     assert.match(r.stdout, /ZCode/);
+    assert.match(r.stdout, /git-proxy/);
   });
 
   it('prints version', () => {
@@ -23,8 +24,8 @@ describe('zcode cli', () => {
     assert.match(r.stdout, /0\.0\.0/);
   });
 
-  it('exits non-zero for unimplemented git-proxy', () => {
-    const r = run(['git-proxy']);
+  it('rejects unknown command', () => {
+    const r = run(['nope']);
     assert.notEqual(r.status, 0);
   });
 });
