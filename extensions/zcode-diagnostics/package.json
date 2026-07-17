@@ -1,20 +1,19 @@
 {
   "name": "zcode-diagnostics",
   "displayName": "ZCode Diagnostics",
-  "description": "Copy environment report for support / debugging",
-  "version": "0.0.0",
+  "description": "Copy environment report for support / debugging (mode, capabilities, redacted URLs)",
+  "version": "0.1.0",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "categories": ["Other"],
+  "extensionKind": ["ui", "workspace"],
   "browser": "./dist/web/extension.js",
-  "main": "./dist/extension.js",
   "activationEvents": [
-    "onCommand:zcode.diagnostics.copyReport"
+    "onCommand:zcode.diagnostics.copyReport",
+    "onStartupFinished"
   ],
   "contributes": {
     "commands": [
@@ -25,9 +24,14 @@
     ]
   },
   "scripts": {
-    "build": "node -e \"console.log('zcode-diagnostics: extension build stub (M2)')\"",
-    "typecheck": "node -e \"process.exit(0)\"",
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node -e \"process.exit(0)\"",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
   }
 }

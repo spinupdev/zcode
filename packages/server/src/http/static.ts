@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { applySecurityHeaders } from './csp.js';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -45,11 +46,16 @@ export function tryServeStatic(
   const ext = path.extname(filePath);
   const type = TYPES[ext] ?? 'application/octet-stream';
   const data = fs.readFileSync(filePath);
-  res.writeHead(200, {
+  const headers: Record<string, string | number | string[]> = {
     'content-type': type,
     'content-length': data.byteLength,
     'cache-control': ext === '.html' ? 'no-store' : 'public, max-age=60',
-  });
+  };
+  // HTML + workbench entrypoints get CSP (M2)
+  if (ext === '.html' || rel === '/index.html') {
+    applySecurityHeaders(headers);
+  }
+  res.writeHead(200, headers);
   if (req.method !== 'HEAD') res.end(data);
   else res.end();
   return true;
