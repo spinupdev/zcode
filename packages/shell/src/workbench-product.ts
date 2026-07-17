@@ -102,8 +102,16 @@ export function buildWorkbenchCreateOptions(
   }
 
   if (input.builtinExtensionPaths?.length) {
+    const origin = input.origin ? new URL(input.origin) : undefined;
     opts.additionalBuiltinExtensions = input.builtinExtensionPaths.map((p) => {
       const path = p.startsWith('/') ? p : `/${p}`;
+      if (origin) {
+        return {
+          scheme: origin.protocol.replace(':', '') || 'http',
+          authority: origin.host,
+          path,
+        };
+      }
       return { scheme: 'http', path };
     });
   }

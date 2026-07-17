@@ -188,49 +188,51 @@ function serveFile(res: http.ServerResponse, file: string): boolean {
 
 function serveIdeProduct(res: http.ServerResponse, url: URL, repoRoot: string): void {
   try {
-    // Lazy require built shell to avoid hard cycle at compile time of cli
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const productPath = path.join(repoRoot, 'product/product.json');
     const overlay = fs.existsSync(productPath)
       ? JSON.parse(fs.readFileSync(productPath, 'utf8'))
-      : {};
+      : { nameShort: 'ZCode', nameLong: 'ZCode', applicationName: 'zcode' };
     const mode = (url.searchParams.get('mode') as 'browser' | 'remote' | null) ?? 'browser';
-    const authority = url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority') ?? undefined;
-    // Dynamic import not available sync — inline dual-mode product
+    const remoteAuth =
+      url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority') ?? undefined;
+    const host = url.host;
+    const scheme = url.protocol === 'https:' ? 'https' : 'http';
+    const ext = (p: string) => ({ scheme, authority: host, path: p });
+    const builtins = [
+      ext('/extensions/zcode-browser-fs'),
+      ext('/extensions/zcode-git'),
+      ext('/extensions/zcode-diagnostics'),
+    ];
+    const configurationDefaults = {
+      'security.workspace.trust.enabled': false,
+      'security.workspace.trust.startupPrompt': 'never',
+    };
     const body =
-      mode === 'remote' && authority
+      mode === 'remote' && remoteAuth
         ? {
-            productConfiguration: overlay,
-            remoteAuthority: authority,
+            productConfiguration: { ...overlay, configurationDefaults },
+            remoteAuthority: remoteAuth,
             folderUri: {
               scheme: 'vscode-remote',
-              authority,
+              authority: remoteAuth,
               path: url.searchParams.get('path') || '/home/workspace',
             },
-            additionalBuiltinExtensions: [
-              { scheme: 'http', path: '/extensions/zcode-browser-fs' },
-              { scheme: 'http', path: '/extensions/zcode-git' },
-              { scheme: 'http', path: '/extensions/zcode-diagnostics' },
-            ],
+            additionalBuiltinExtensions: builtins,
             windowIndicator: {
               label: '$(remote) ZCode remote',
-              tooltip: `Remote ${authority}`,
+              tooltip: `Remote ${remoteAuth}`,
             },
           }
         : {
-            productConfiguration: overlay,
+            productConfiguration: { ...overlay, configurationDefaults },
             folderUri: {
               scheme: 'zcode-opfs',
               path: `/workspace/${url.searchParams.get('workspace') || 'default'}`,
             },
-            additionalBuiltinExtensions: [
-              { scheme: 'http', path: '/extensions/zcode-browser-fs' },
-              { scheme: 'http', path: '/extensions/zcode-git' },
-              { scheme: 'http', path: '/extensions/zcode-diagnostics' },
-            ],
+            additionalBuiltinExtensions: builtins,
             windowIndicator: {
               label: '$(remote) ZCode browser',
-              tooltip: 'Browser mode',
+              tooltip: 'Browser mode — zcode-opfs virtual FS',
             },
           };
     const data = JSON.stringify(body);

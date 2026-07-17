@@ -214,27 +214,39 @@ function readBody(req: IncomingMessage): Promise<string> {
 }
 
 function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
-  const overlay = ctx.productOverlay ?? {
+  const overlay = {
     nameShort: 'ZCode',
     nameLong: 'ZCode',
     applicationName: 'zcode',
+    ...ctx.productOverlay,
+    configurationDefaults: {
+      'security.workspace.trust.enabled': false,
+      'security.workspace.trust.startupPrompt': 'never',
+      ...(ctx.productOverlay?.configurationDefaults as object | undefined),
+    },
   };
   const mode = url.searchParams.get('mode') ?? 'browser';
-  const authority = url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority');
+  const remoteAuth =
+    url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority');
+  const scheme = url.protocol === 'https:' ? 'https' : 'http';
+  const host = url.host;
+  const ext = (p: string) => ({ scheme, authority: host, path: p });
+  const builtins = [
+    ext('/extensions/zcode-browser-fs'),
+    ext('/extensions/zcode-git'),
+    ext('/extensions/zcode-diagnostics'),
+  ];
   const body =
-    mode === 'remote' && authority
+    mode === 'remote' && remoteAuth
       ? {
           productConfiguration: overlay,
-          remoteAuthority: authority,
+          remoteAuthority: remoteAuth,
           folderUri: {
             scheme: 'vscode-remote',
-            authority,
+            authority: remoteAuth,
             path: url.searchParams.get('path') || '/home/workspace',
           },
-          additionalBuiltinExtensions: [
-            { scheme: 'http', path: '/extensions/zcode-browser-fs' },
-            { scheme: 'http', path: '/extensions/zcode-git' },
-          ],
+          additionalBuiltinExtensions: builtins,
         }
       : {
           productConfiguration: overlay,
@@ -242,10 +254,7 @@ function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
             scheme: 'zcode-opfs',
             path: `/workspace/${url.searchParams.get('workspace') || 'default'}`,
           },
-          additionalBuiltinExtensions: [
-            { scheme: 'http', path: '/extensions/zcode-browser-fs' },
-            { scheme: 'http', path: '/extensions/zcode-git' },
-          ],
+          additionalBuiltinExtensions: builtins,
         };
   json(res, 200, body);
 }

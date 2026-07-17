@@ -64,15 +64,29 @@ Or: `pnpm dev:ide`
 
 [`product/product.json`](../product/product.json) — Open VSX gallery, ZCode names.
 
+## Virtual workspace (browser mode)
+
+`zcode-browser-fs` registers the `zcode-opfs` scheme and seeds `/workspace/default` with sample files.
+
+`/ide/product.json` points `folderUri` at that folder and loads the extension via:
+
+```json
+"additionalBuiltinExtensions": [
+  { "scheme": "http", "authority": "<host>", "path": "/extensions/zcode-browser-fs" }
+]
+```
+
+Bootstrap injects `location.host` so extension URIs are absolute same-origin.
+
 ## Status
 
 | Piece | Status |
 | --- | --- |
-| Load VS Code Web workbench | ✅ via staged `/vscode` + `/ide` |
+| Load VS Code Web workbench | ✅ `/vscode` + `/ide` |
 | ZCode product.json | ✅ |
-| Dual-mode product payload | ✅ query + `/ide/product.json` |
-| Built-in extension packages served | ✅ `/extensions/*` |
-| Extension fully wired to workbench FS | ⏳ needs workbench + provider activation smoke |
-| Owned 1.129 web compile in CI | ⏳ long-running; dogfood npm for local |
+| Dual-mode product payload | ✅ |
+| Built-in extensions served | ✅ `/extensions/*` |
+| `zcode-opfs` FileSystemProvider | ✅ seeded sample workspace |
+| Owned 1.129 web compile in CI | ⏳ dogfood npm for local |
 
-**Custom SPA is not the product editor** — it coexists until extensions + owned build are solid.
+**Custom SPA (`/`) is tools/dogfood.** **Primary IDE is `/ide/`.**
