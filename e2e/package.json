@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "scripts": {
     "test": "playwright test",
+    "test:reh": "playwright test -c playwright.reh.config.ts",
     "test:ui": "playwright test --ui",
     "install-browsers": "playwright install chromium"
   },

@@ -19,6 +19,14 @@ export { startServer } from './http/start.js';
 export type { StartedServer } from './http/start.js';
 export { spawnReh } from './reh/spawn.js';
 export { handleRehUpgrade, tryProxyHttp, isReservedPath } from './reh/proxy.js';
+export {
+  findRehBinary,
+  hasRehPackageMarker,
+  hasRunnableRehArtifact,
+  inspectRehArtifact,
+} from './reh/artifact.js';
+export type { RehArtifactInfo } from './reh/artifact.js';
+export { waitForUrl } from './reh/wait.js';
 
 export interface ServerOptions {
   host: string;

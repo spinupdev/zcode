@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { serverArtifactDir, vscodeVendorDir } from '../paths.js';
+import { monorepoRoot, vscodeVendorDir } from '../paths.js';
+import { findRehBinary } from './artifact.js';
 
 export interface RehSpawnOptions {
   connectionToken: string;
@@ -24,11 +25,10 @@ export interface RehHandle {
  * when compiled in-tree. Returns mode none if neither is available.
  */
 export function spawnReh(opts: RehSpawnOptions): RehHandle {
-  const root = opts.root ?? process.cwd();
-  const artifact = serverArtifactDir(root);
+  const root = opts.root ?? monorepoRoot();
   const host = opts.rehHost ?? '127.0.0.1';
 
-  const artifactServer = findArtifactBinary(artifact);
+  const artifactServer = findRehBinary(path.join(root, 'dist', 'server'));
   if (artifactServer) {
     // Prefer explicit connection-token so the shell proxy can inject it after cookie auth (R3b).
     // Fallback env vars keep older OSS builds working.
@@ -89,36 +89,6 @@ export function spawnReh(opts: RehSpawnOptions): RehHandle {
       /* no-op */
     },
   };
-}
-
-function findArtifactBinary(dir: string): string | null {
-  if (!fs.existsSync(dir)) return null;
-  const candidates = [
-    'bin/code-server-oss',
-    'bin/code-server',
-    'server.sh',
-    'bin/remote-cli/code',
-  ];
-  for (const c of candidates) {
-    const p = path.join(dir, c);
-    if (fs.existsSync(p)) return p;
-  }
-  // recursive shallow search for code-server-oss
-  try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const e of entries) {
-      if (e.isDirectory() && (e.name.startsWith('bin') || e.name.includes('server'))) {
-        const hit = findArtifactBinary(path.join(dir, e.name));
-        if (hit) return hit;
-      }
-      if (e.isFile() && /code-server/.test(e.name)) {
-        return path.join(dir, e.name);
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
 }
 
 function pipeLogs(child: ChildProcess, tag: string): void {
