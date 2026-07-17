@@ -30,9 +30,12 @@ bash scripts/e2e-reh-terminal.sh
 # Hard fail without artifact (CI after REH job):
 ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh
 
-# STRICT (M1 polish): require terminal UI + echo ok
+# STRICT: remote workbench + product contract; PTY best-effort (annotates if missing)
 # Needs: dist/server REH, owned or dogfood vscode-web, Chromium
 ZCODE_E2E_REH_STRICT=1 ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh
+
+# STRICT + hard-fail when integrated terminal does not print zcode_echo_ok
+ZCODE_E2E_REH_STRICT=1 ZCODE_E2E_REH_PTY_REQUIRED=1 ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh
 
 # Optional: longer REH boot wait (default 45–60s)
 ZCODE_REH_READY_MS=90000 ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh
