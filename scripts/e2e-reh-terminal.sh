@@ -36,9 +36,14 @@ pnpm --filter zcode-browser-fs build
 pnpm --filter zcode-git build
 pnpm --filter @zcode/workbench build
 
-if [[ ! -f dist/vscode-web/out/vs/loader.js ]]; then
+# Owned esbuild (1.129) uses workbench.web.main.internal.js; dogfood uses loader.js.
+if [[ ! -f dist/vscode-web/out/vs/workbench/workbench.web.main.internal.js ]] \
+  && [[ ! -f dist/vscode-web/out/vs/loader.js ]]; then
   log "staging vscode-web (dogfood or owned)"
   bash scripts/fetch-vscode-web.sh
+elif [[ -f dist/vscode-web/.zcode-vscode-web.json ]] \
+  && grep -q '"source": "owned"' dist/vscode-web/.zcode-vscode-web.json 2>/dev/null; then
+  log "keeping owned dist/vscode-web (source=owned)"
 fi
 
 log "install e2e deps + chromium"

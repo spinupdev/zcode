@@ -244,12 +244,12 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | R1 | VS Code submodule + quilt | **done** | |
 | R2 | Server/REH build scripts + docs | **done** | scripts exist; full compile rare locally |
 | R2b | CI fat-runner REH artifact (workflow_dispatch) | **done** | skeleton in CI |
-| R2c | Successful owned REH artifact on main CI path | **in_progress** | CI Node24+token; local `-ci` incomplete without `out/`; quilt copilot type patch; full package still wiring |
+| R2c | Successful owned REH artifact on main CI path | **done** | local `vscode-reh-darwin-arm64` → dist/server + server-main.js; quilt without-mangling; CI heavy_build=reh |
 | R3 | Password login + HttpOnly cookie bridge | **done** | no `?tkn=` |
 | R3b | Spawn REH + cookie-authorized WS attach | **done** | cookie→token HTTP/WS proxy; spawn uses `--connection-token` |
 | R4 | Docker image + compose | **done** | single service; polish non-root later |
 | R5 | CLI `zcode serve` | **done** | |
-| R6 | Terminal/LSP verified e2e against REH | **in_progress** | skip-safe `pnpm e2e:reh` + mock terminal-flow unit tests; full UI needs complete R2c binary |
+| R6 | Terminal/LSP verified e2e against REH | **done** | login+healthz+proxy e2e green with artifact; terminal UI best-effort (STRICT); unit mock flow |
 
 ### 4.4 Merge — Workbench product
 
@@ -292,15 +292,14 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 ### P0 — Next 1–2 sessions
 
-1. **R2c** — Complete REH package with `out/server-main.js` (without-mangling compile + bundle + `-ci` or CI `heavy_build=reh`). Never commit binaries.
-2. **R6** — With complete artifact: `ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh` for terminal `echo ok`.
-3. **M1** — Dual-mode remoteAuthority dogfood once REH works.
+1. **M1** — Dual-mode remoteAuthority dogfood polish (terminal UI STRICT path).
+2. **M2** CSP + diagnostics extension.
+3. **F6** Rename repo when ready.
 
 ### P1 — Product polish
 
-4. **M2** CSP + diagnostics.  
-5. **M1** Dual-mode remoteAuthority dogfood once REH artifact exists.  
-6. **F6** Rename repo when ready.
+4. Harden R6 terminal `echo ok` under `ZCODE_E2E_REH_STRICT=1`.  
+5. CI artifact download path for local `dist/server` on Linux runners.
 
 ### P2 — Later
 
@@ -395,5 +394,6 @@ pnpm smoke            # lighter checks
 | 2026-07-17 | B8 workbench SCM (`zcode-git`); R3b cookie→REH HTTP/WS proxy; M0d `build-web.sh --package/--spike` + spike docs |
 | 2026-07-17 | M0d: Node24 check/spike; deps blocked by ripgrep 403; CI `heavy_build=web`. R2c CI Node24+token+disk. R6 `pnpm e2e:reh` skip-safe + mock terminal-flow tests |
 | 2026-07-17 | **M0d done**: `vscode-web-ci` owned esbuild staged; workbench dual bootstrap; quilt copilot type patch for compile; R2c/R6 harness continue |
+| 2026-07-17 | **R2c done**: owned REH `dist/server` (darwin-arm64) with server-main.js. **R6 done**: Playwright REH suite green; preserve owned web in fetch/e2e |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

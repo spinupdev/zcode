@@ -14,17 +14,32 @@ TARBALL_URL="${VSCODE_WEB_TARBALL_URL:-https://registry.npmjs.org/vscode-web/-/v
 log() { printf '==> %s\n' "$*"; }
 die() { echo "error: $*" >&2; exit 1; }
 
-# Prefer owned gulp output if the monorepo already built it
+# Keep already-staged owned tree (do not clobber with dogfood npm)
+if [[ -f "${OUT}/.zcode-vscode-web.json" ]] \
+  && grep -q '"source": "owned"' "${OUT}/.zcode-vscode-web.json" 2>/dev/null \
+  && { [[ -f "${OUT}/out/vs/workbench/workbench.web.main.internal.js" ]] \
+    || [[ -f "${OUT}/out/vs/loader.js" ]]; }; then
+  log "Keeping existing owned dist/vscode-web"
+  exit 0
+fi
+
+# Prefer owned gulp/esbuild output if the monorepo already built it
 OWNED_CANDIDATES=(
   "${ROOT}/vendor/vscode/.build/vscode-web"
   "${ROOT}/vendor/vscode/out-vscode-web"
+  "${ROOT}/vscode-web"
 )
 for c in "${OWNED_CANDIDATES[@]}"; do
-  if [[ -d "${c}/out/vs/workbench" ]]; then
+  if [[ -d "${c}/out/vs/workbench" ]] || [[ -d "${c}/vs/workbench" ]]; then
     log "Staging OWNED vscode-web from ${c}"
     rm -rf "${OUT}"
     mkdir -p "${OUT}"
-    cp -R "${c}/." "${OUT}/"
+    if [[ -d "${c}/out/vs" ]]; then
+      cp -R "${c}/." "${OUT}/"
+    else
+      mkdir -p "${OUT}/out"
+      cp -R "${c}/." "${OUT}/out/"
+    fi
     cat > "${OUT}/.zcode-vscode-web.json" <<EOF
 {
   "source": "owned",
