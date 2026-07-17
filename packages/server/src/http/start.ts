@@ -29,6 +29,16 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
 
   const staticDir = resolveStaticDir(options.staticDir);
   const root = options.repoRoot ?? monorepoRoot();
+  const vscodeWebDir = resolveDir(path.join(root, 'dist/vscode-web'), 'out/vs');
+  const workbenchDir = resolveDir(path.join(root, 'apps/workbench/dist'), 'index.html');
+  const extensionsDir = resolveDir(path.join(root, 'extensions'));
+  let productOverlay: Record<string, unknown> | undefined;
+  try {
+    const p = path.join(root, 'product/product.json');
+    if (fs.existsSync(p)) productOverlay = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
+  } catch {
+    /* ignore */
+  }
 
   let reh: RehHandle | undefined;
   const rehPort = options.rehPort ?? options.port + 1;
@@ -58,6 +68,10 @@ export async function startServer(options: ServerOptions): Promise<StartedServer
     authority: `${displayHost}:${options.port}`,
     secureCookies: process.env.ZCODE_SECURE_COOKIES === '1',
     staticDir,
+    vscodeWebDir,
+    workbenchDir,
+    extensionsDir,
+    productOverlay,
     rehEndpoint: reh?.endpoint,
     rehMode: reh?.mode ?? 'none',
     gitProxy: options.gitProxy !== false,
@@ -103,4 +117,10 @@ function resolveStaticDir(explicit?: string): string | undefined {
     if (fs.existsSync(path.join(c, 'index.html'))) return c;
   }
   return undefined;
+}
+
+function resolveDir(dir: string, mustContain?: string): string | undefined {
+  if (!fs.existsSync(dir)) return undefined;
+  if (mustContain && !fs.existsSync(path.join(dir, mustContain))) return undefined;
+  return dir;
 }

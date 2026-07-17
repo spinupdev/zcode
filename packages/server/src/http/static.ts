@@ -11,6 +11,10 @@ const TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.map': 'application/json',
   '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.ico': 'image/x-icon',
+  '.wasm': 'application/wasm',
   '.txt': 'text/plain; charset=utf-8',
 };
 

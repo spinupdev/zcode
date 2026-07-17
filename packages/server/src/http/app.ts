@@ -16,10 +16,17 @@ export interface AppContext {
   authority: string;
   secureCookies: boolean;
   staticDir?: string;
+  /** dist/vscode-web */
+  vscodeWebDir?: string;
+  /** apps/workbench/dist */
+  workbenchDir?: string;
+  /** monorepo extensions/ */
+  extensionsDir?: string;
   rehEndpoint?: string;
   rehMode?: string;
   /** Mount isomorphic-git corsProxy at this path (default /git-proxy). Set false to disable. */
   gitProxy?: boolean | { prefix?: string; allowHosts?: string[] };
+  productOverlay?: Record<string, unknown>;
 }
 
 export function createRequestHandler(ctx: AppContext) {
@@ -80,7 +87,34 @@ export function createRequestHandler(ctx: AppContext) {
         return;
       }
 
-      // Static workbench / browser app (same-origin MVP)
+      // IDE product (dual-mode)
+      if (url.pathname === '/ide/product.json' || url.pathname === '/product.json') {
+        serveIdeProduct(res, url, ctx);
+        return;
+      }
+
+      if (url.pathname === '/ide' || url.pathname === '/ide/') {
+        if (ctx.workbenchDir && tryServeStatic(req, res, ctx.workbenchDir, '/index.html')) {
+          return;
+        }
+        res.writeHead(503, { 'content-type': 'text/plain' });
+        res.end('Workbench not built. pnpm --filter @zcode/workbench build && ./scripts/fetch-vscode-web.sh\n');
+        return;
+      }
+      if (url.pathname.startsWith('/ide/') && ctx.workbenchDir) {
+        const rel = url.pathname.slice('/ide'.length);
+        if (tryServeStatic(req, res, ctx.workbenchDir, rel)) return;
+      }
+      if (url.pathname.startsWith('/vscode/') && ctx.vscodeWebDir) {
+        const rel = url.pathname.slice('/vscode'.length);
+        if (tryServeStatic(req, res, ctx.vscodeWebDir, rel)) return;
+      }
+      if (url.pathname.startsWith('/extensions/') && ctx.extensionsDir) {
+        const rel = url.pathname.slice('/extensions'.length);
+        if (tryServeStatic(req, res, ctx.extensionsDir, rel)) return;
+      }
+
+      // Static SPA / browser app
       if (ctx.staticDir && tryServeStatic(req, res, ctx.staticDir, url.pathname)) {
         return;
       }
@@ -179,15 +213,56 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
+function serveIdeProduct(res: ServerResponse, url: URL, ctx: AppContext): void {
+  const overlay = ctx.productOverlay ?? {
+    nameShort: 'ZCode',
+    nameLong: 'ZCode',
+    applicationName: 'zcode',
+  };
+  const mode = url.searchParams.get('mode') ?? 'browser';
+  const authority = url.searchParams.get('authority') ?? url.searchParams.get('remoteAuthority');
+  const body =
+    mode === 'remote' && authority
+      ? {
+          productConfiguration: overlay,
+          remoteAuthority: authority,
+          folderUri: {
+            scheme: 'vscode-remote',
+            authority,
+            path: url.searchParams.get('path') || '/home/workspace',
+          },
+          additionalBuiltinExtensions: [
+            { scheme: 'http', path: '/extensions/zcode-browser-fs' },
+            { scheme: 'http', path: '/extensions/zcode-git' },
+          ],
+        }
+      : {
+          productConfiguration: overlay,
+          folderUri: {
+            scheme: 'zcode-opfs',
+            path: `/workspace/${url.searchParams.get('workspace') || 'default'}`,
+          },
+          additionalBuiltinExtensions: [
+            { scheme: 'http', path: '/extensions/zcode-browser-fs' },
+            { scheme: 'http', path: '/extensions/zcode-git' },
+          ],
+        };
+  json(res, 200, body);
+}
+
 function loginPage(authenticated: boolean, authority: string, ctx: AppContext): string {
   if (authenticated) {
     const appLink = ctx.staticDir
-      ? `<p><a href="/index.html">Open browser workspace</a></p>`
+      ? `<p><a href="/index.html">Open browser workspace (SPA)</a></p>`
       : '';
+    const ideLink = ctx.workbenchDir
+      ? `<p><a href="/ide/">Open VS Code Web IDE</a> · <a href="/ide/?mode=remote&authority=${encodeURIComponent(authority)}">Remote mode</a></p>`
+      : `<p>IDE: run <code>./scripts/fetch-vscode-web.sh</code> and rebuild workbench.</p>`;
     return `<!DOCTYPE html><html><body>
       <h1>ZCode server</h1>
       <p>Authenticated. authority=<code>${escapeHtml(authority)}</code></p>
       <p>REH mode: <code>${escapeHtml(ctx.rehMode ?? 'none')}</code></p>
+      ${ideLink}
       ${appLink}
       <form method="post" action="/logout"><button type="submit">Log out</button></form>
     </body></html>`;

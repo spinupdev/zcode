@@ -14,24 +14,34 @@
 ```bash
 pnpm install
 pnpm build
+./scripts/fetch-vscode-web.sh          # stage VS Code Web static assets
+pnpm --filter @zcode/workbench build
 
-# SPA + stateless /git-proxy on the same origin
+# SPA + /git-proxy + /ide (VS Code Web) on one origin
 node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
+# or: pnpm dev:ide
 ```
-
-Open **http://127.0.0.1:5000/**
-
-1. **Test proxy** → should show **proxy ok** (`/git-proxy/healthz`)
-2. **Clone** → runs in a **Web Worker** (UI stays responsive); workspace saved to **IndexedDB**
-3. Reopen from the **Workspace** dropdown after reload  
-4. **Search** across text files · Edit → **Save** → **Commit**
-
-No second proxy process is required. Defaults:
 
 | URL | Role |
 | --- | --- |
-| `http://127.0.0.1:5000/` | Browser workspace SPA |
-| `http://127.0.0.1:5000/git-proxy` | Stateless CORS bridge for GitHub/GitLab |
+| **http://127.0.0.1:5000/ide/** | **VS Code Web workbench (the IDE)** |
+| http://127.0.0.1:5000/ | Lightweight browser git SPA (dogfood tools) |
+| http://127.0.0.1:5000/git-proxy | Stateless CORS bridge for GitHub/GitLab |
+
+### SPA tools (`/`)
+
+1. **Test proxy** → **proxy ok**
+2. **Clone** (Web Worker + IndexedDB)
+3. **Search** · **Save** · **Commit**
+
+### VS Code IDE (`/ide/`)
+
+Real workbench from staged `dist/vscode-web`. Dual mode:
+
+- Browser: `/ide/`
+- Remote: `/ide/?mode=remote&authority=127.0.0.1:8080`
+
+See [docs/vscode-web.md](./docs/vscode-web.md).
 
 ## Hosting (frontend + edge)
 

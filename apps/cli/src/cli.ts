@@ -2,9 +2,9 @@
 /**
  * ZCode CLI
  *
- *   zcode serve [dir] [--port] [--password] [--host] [--static-dir] [--no-reh] [--no-git-proxy]
- *   zcode git-proxy [--port] [--host] [--allow-hosts]
- *   zcode web --dir dist [--port] [--host] [--no-git-proxy]
+ *   zcode web --dir apps/web/dist --port 5000
+ *   zcode serve . --port 8080 --password secret
+ *   zcode git-proxy [--port]
  */
 
 const HELP = `
@@ -14,24 +14,19 @@ Usage:
   zcode <command> [options]
 
 Commands:
-  serve       Login + static workspace + same-origin /git-proxy + optional REH
-  git-proxy   Standalone CORS proxy (usually unnecessary if you use serve/web)
-  web         Static SPA + same-origin /git-proxy (dev / simple host)
+  web         SPA + /git-proxy + /ide (VS Code Web) + /vscode assets
+  serve       Login wrapper + same routes + optional REH
+  git-proxy   Standalone CORS proxy (usually unnecessary)
 
-  help        Show this help
-  version     Print version
+  help | version
 
 Examples:
-  # One process: SPA + /git-proxy on :5000
+  ./scripts/fetch-vscode-web.sh          # stage VS Code Web (dogfood or owned)
+  pnpm --filter @zcode/workbench build
   zcode web --dir apps/web/dist --port 5000
+  # open http://127.0.0.1:5000/       → lightweight workspace SPA
+  # open http://127.0.0.1:5000/ide/   → VS Code Web workbench
 
-  # Self-host with password
-  zcode serve . --port 8080 --password secret --no-reh
-
-  # Standalone proxy only (optional)
-  zcode git-proxy --port 8787
-
-Browser config default: {origin}/git-proxy
 Not affiliated with coder/code-server.
 `.trim();
 
@@ -75,14 +70,13 @@ switch (cmd) {
       password,
       workspace,
       staticDir,
-      // REH only when --reh or packaged dist/server exists (see startServer)
       spawnReh: hasFlag(args, '--reh') ? true : hasFlag(args, '--no-reh') ? false : undefined,
       gitProxy: !hasFlag(args, '--no-git-proxy'),
     });
     console.log(`ZCode serve ${srv.url}`);
     console.log(`authority=${srv.authority} reh=${srv.rehMode}`);
-    console.log(`git-proxy ${new URL('git-proxy', srv.url).href} (same-origin, stateless)`);
-    console.log('Login at /login — workspace at /index.html when apps/web/dist is present.');
+    console.log(`git-proxy ${new URL('git-proxy', srv.url).href}`);
+    console.log(`ide      ${new URL('ide/', srv.url).href}  (VS Code Web when staged)`);
     break;
   }
   case 'git-proxy': {
@@ -94,9 +88,7 @@ switch (cmd) {
       .map((s) => s.trim())
       .filter(Boolean);
     const proxy = await startGitProxy({ host, port, allowHosts: allow });
-    console.log(`zcode git-proxy ${proxy.url} (standalone root mount)`);
-    console.log(`allow-hosts: ${allow.join(', ')}`);
-    console.log(`Prefer same-origin: zcode web … → {origin}/git-proxy`);
+    console.log(`zcode git-proxy ${proxy.url}`);
     break;
   }
   case 'web': {
@@ -109,11 +101,12 @@ switch (cmd) {
       port,
       dir,
       gitProxy: !hasFlag(args, '--no-git-proxy'),
+      repoRoot: process.cwd(),
     });
     console.log(`zcode web ${srv.url} → ${dir}`);
-    if (srv.gitProxyUrl) {
-      console.log(`git-proxy ${srv.gitProxyUrl} (same-origin, stateless)`);
-    }
+    if (srv.gitProxyUrl) console.log(`git-proxy ${srv.gitProxyUrl}`);
+    if (srv.ideUrl) console.log(`ide      ${srv.ideUrl}`);
+    else console.log('ide      (missing) run: ./scripts/fetch-vscode-web.sh && pnpm --filter @zcode/workbench build');
     break;
   }
   default:
