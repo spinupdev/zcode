@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@zcode/protocol": "workspace:*",
+    "@zenfs/core": "^2.5.7",
+    "@zenfs/dom": "^1.2.9",
     "isomorphic-git": "^1.38.7"
   }
 }

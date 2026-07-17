@@ -1,18 +1,26 @@
 /**
- * VS Code FileSystemProvider over the same IndexedDB layout as @zcode/browser-agent IdbFs.
- * DB: zcode-fs-v1 / store entries / keys like workspace/<id>/path
+ * VS Code FileSystemProvider over AgentFs (B2b: OPFS/ZenFS primary, IDB fallback).
+ * Path layout matches SPA: workspace/<id>/... under scheme zcode-opfs.
  */
-import type * as vscode from 'vscode';
+import type { AgentFs } from '@zcode/browser-agent';
 import { IdbFs } from '@zcode/browser-agent';
+import type * as vscode from 'vscode';
 
 declare const vscode: typeof import('vscode');
 
 export class IdbFileSystemProvider implements vscode.FileSystemProvider {
-  private readonly fs = new IdbFs();
+  private readonly fs: AgentFs;
   private readonly emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   readonly onDidChangeFile = this.emitter.event;
+  /** Storage backend label for diagnostics / seed text */
+  readonly storageLabel: string;
 
-  /** Map vscode URI path → IdbFs key (no leading/trailing slash). */
+  constructor(fs: AgentFs = new IdbFs(), storageLabel = 'IndexedDB zcode-fs-v1') {
+    this.fs = fs;
+    this.storageLabel = storageLabel;
+  }
+
+  /** Map vscode URI path → AgentFs key (no leading/trailing slash). */
   private key(uri: vscode.Uri): string {
     return uri.path.replace(/^\/+/, '').replace(/\/+$/, '');
   }
@@ -159,7 +167,7 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
     await this.fs.mkdir(root);
     await this.fs.writeFile(
       `${root}/README.md`,
-      `# ZCode workspace\n\nVirtual FS shared with the browser SPA (IndexedDB \`zcode-fs-v1\`).\n\nClone repos at [/](/) then open \`/ide/?workspace=${workspaceId}\`.\n`,
+      `# ZCode workspace\n\nVirtual FS: **${this.storageLabel}** (scheme \`zcode-opfs\`).\n\nClone repos at [/](/) then open \`/ide/?workspace=${workspaceId}\`.\n`,
     );
     await this.fs.writeFile(
       `${root}/hello.ts`,
@@ -175,3 +183,6 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
     );
   }
 }
+
+/** @deprecated name kept for imports; same as IdbFileSystemProvider */
+export { IdbFileSystemProvider as ZcodeFileSystemProvider };

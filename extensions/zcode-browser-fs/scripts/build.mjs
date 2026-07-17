@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 mkdirSync(join(root, 'dist/web'), { recursive: true });
 
-// Bundle IdbFs from @zcode/browser-agent into the web extension (vscode stays external)
+// Bundle AgentFs + ZenFS OPFS from @zcode/browser-agent (vscode stays external)
 await esbuild.build({
   entryPoints: [join(root, 'src/extension.ts')],
   bundle: true,
@@ -21,4 +21,4 @@ await esbuild.build({
   conditions: ['browser', 'import', 'default'],
 });
 
-console.log('zcode-browser-fs: built dist/web/extension.js (IDB shared with SPA)');
+console.log('zcode-browser-fs: built dist/web/extension.js (OPFS/ZenFS + IDB fallback)');

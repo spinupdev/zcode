@@ -10,7 +10,8 @@ function b64decode(b64: string): Uint8Array {
 }
 
 /**
- * Clone in a Web Worker (responsive UI), then import files into the main agent FS (IDB).
+ * Clone in a Web Worker (responsive UI), then import files into the main agent FS
+ * (B2b OPFS/ZenFS primary, IndexedDB fallback).
  */
 export async function cloneInWorker(
   agent: ZCodeBrowserAgent,

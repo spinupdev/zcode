@@ -1,6 +1,7 @@
 /**
  * Minimal async FS used by the browser agent in Node tests and as a
- * stand-in before ZenFS+OPFS is wired in the browser (B2/B3).
+ * last-resort fallback when OPFS and IndexedDB are unavailable.
+ * Primary browser store: ZenFS+OPFS (B2b); interim: IndexedDB (B7).
  */
 
 export interface AgentFs {

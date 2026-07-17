@@ -15,7 +15,7 @@ export interface WorkspaceRecord extends WorkspaceInfo {
 
 /**
  * Metadata registry for browser workspaces.
- * File bytes live in a FS backend (memory for tests, ZenFS+OPFS in browser).
+ * File bytes live in a FS backend (memory for tests; ZenFS+OPFS primary, IDB fallback in browser).
  */
 export class WorkspaceStore {
   private readonly byId = new Map<string, WorkspaceRecord>();

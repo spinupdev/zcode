@@ -18,8 +18,8 @@ test.describe('IDE workspace handoff', () => {
     const extJs = await request.get('/extensions/zcode-browser-fs/dist/web/extension.js');
     expect(extJs.ok()).toBeTruthy();
     const text = await extJs.text();
-    // Bundled IDB provider should reference shared DB name
-    expect(text).toMatch(/zcode-fs-v1|IdbFs|zcode-opfs/);
+    // Bundled provider: IDB and/or OPFS/ZenFS path
+    expect(text).toMatch(/zcode-fs-v1|IdbFs|zcode-opfs|ZenFS|OPFS|WebAccess|zcode-workspaces/);
   });
 
   test('IDE page bootstraps without hard error when vscode-web staged', async ({ page }) => {

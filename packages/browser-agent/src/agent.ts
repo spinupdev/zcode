@@ -183,3 +183,16 @@ export class ZCodeBrowserAgent implements BrowserAgent {
 export function createBrowserAgent(opts?: BrowserAgentOptions): BrowserAgent & ZCodeBrowserAgent {
   return new ZCodeBrowserAgent(opts);
 }
+
+/**
+ * Browser-preferred factory: OPFS (ZenFS) → IDB → Memory (B2b).
+ * Pass an explicit `fs` in opts to skip async default selection.
+ */
+export async function createBrowserAgentAsync(
+  opts: BrowserAgentOptions = {},
+): Promise<BrowserAgent & ZCodeBrowserAgent> {
+  if (opts.fs) return new ZCodeBrowserAgent(opts);
+  const { createDefaultFsAsync } = await import('./default-fs.js');
+  const fs = await createDefaultFsAsync();
+  return new ZCodeBrowserAgent({ ...opts, fs });
+}

@@ -1,7 +1,7 @@
 {
   "name": "zcode-browser-fs",
   "displayName": "ZCode Browser FS",
-  "description": "Shared IndexedDB FileSystemProvider (zcode-opfs) for SPA + VS Code Web",
+  "description": "zcode-opfs FileSystemProvider: OPFS (ZenFS) primary, IndexedDB fallback for SPA + VS Code Web",
   "version": "0.2.0",
   "publisher": "spinupdev",
   "private": true,

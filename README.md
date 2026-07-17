@@ -48,7 +48,7 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 7. **Open in IDE** (or confirm dialog) → `/ide/?workspace=<id>` shows the **same files** in VS Code Web  
 8. Edit → **Save** → **Commit** → **Push** (token needs write access)
 
-Shared storage: IndexedDB database **`zcode-fs-v1`** (SPA + workbench).
+Shared storage: **OPFS** (ZenFS, primary) with IndexedDB **`zcode-fs-v1`** fallback (SPA + workbench).
 
 Deep link (auto-start after proxy check):
 

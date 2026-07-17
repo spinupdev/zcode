@@ -1,7 +1,7 @@
 {
   "name": "zcode-git",
   "displayName": "ZCode Git (Browser)",
-  "description": "SCM provider: status, commit, push via isomorphic-git + shared IDB (browser mode)",
+  "description": "SCM provider: status, commit, push via isomorphic-git + shared OPFS/IDB (browser mode)",
   "version": "0.2.0",
   "publisher": "spinupdev",
   "private": true,

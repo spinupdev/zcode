@@ -1,9 +1,14 @@
 /**
  * ZCode browser workspace app.
- * Clone via worker + isomorphic-git + same-origin /git-proxy; durable IDB FS.
+ * Clone via worker + isomorphic-git + same-origin /git-proxy;
+ * durable FS: OPFS (ZenFS) primary with IndexedDB fallback (B2b / B7).
  */
 import './shims/buffer-polyfill.js';
-import { createBrowserAgent, type ZCodeBrowserAgent } from '@zcode/browser-agent';
+import {
+  createBrowserAgent,
+  createBrowserAgentAsync,
+  type ZCodeBrowserAgent,
+} from '@zcode/browser-agent';
 import type { CloneProgress } from '@zcode/protocol';
 import { bootstrapFromUrl } from '@zcode/shell';
 import { cloneInWorker } from './clone-client.js';
@@ -15,7 +20,12 @@ import {
   testGitProxy,
 } from './config.js';
 
-const agent = createBrowserAgent() as ZCodeBrowserAgent;
+/** Upgraded to OPFS when available; starts as sync default (IDB/Memory). */
+let agent = createBrowserAgent() as ZCodeBrowserAgent;
+const agentReady = createBrowserAgentAsync().then((a) => {
+  agent = a as ZCodeBrowserAgent;
+  return agent;
+});
 let config: AppConfig = loadConfig();
 let workspaceId: string | null = null;
 let currentFile: string | null = null;
@@ -223,6 +233,12 @@ async function doClone() {
     return;
   }
 
+  try {
+    await agentReady;
+  } catch {
+    /* use sync default agent */
+  }
+
   cloning = true;
   el.btnClone.disabled = true;
   const id = crypto.randomUUID();
@@ -264,7 +280,7 @@ async function doClone() {
     await refreshWorkspaceList();
     const st = await agent.status(ws.id);
     setStatus(`${st.branch} · ready · ${allFiles.length} files`);
-    log(`ready on branch ${st.branch} (persisted in IndexedDB)`);
+    log(`ready on branch ${st.branch} (persisted in browser FS: OPFS or IndexedDB)`);
     log('Next: edit → Save → Commit → Push (token required for private remotes)');
     const ideUrl = `${location.origin}/ide/?workspace=${encodeURIComponent(ws.id)}`;
     log(`Open in VS Code Web: ${ideUrl}`);
@@ -400,7 +416,12 @@ function wire() {
   log('ZCode browser workspace ready.');
   log(`proxy: ${config.gitProxyUrl} (same-origin /git-proxy preferred)`);
   log('To clone: set Clone URL → Test proxy (green) → Clone.');
-  log('Clones run in a Web Worker; workspaces persist in IndexedDB.');
+  log('Clones run in a Web Worker; workspaces persist in OPFS (ZenFS) or IndexedDB.');
+  void agentReady
+    .then(() => refreshWorkspaceList())
+    .catch(() => {
+      /* keep sync agent */
+    });
   void checkProxy().then(() => {
     const params = new URLSearchParams(location.search);
     // ?clone=https://…&autoclone=1 starts clone after proxy check

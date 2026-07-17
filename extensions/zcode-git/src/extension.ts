@@ -5,6 +5,7 @@
 import { Buffer } from 'buffer';
 import {
   createBrowserAgent,
+  createBrowserAgentAsync,
   IdbFs,
   type GitChange,
   type ZCodeBrowserAgent,
@@ -63,10 +64,16 @@ function decorations(kind: GitChange['kind']): vscode.SourceControlResourceDecor
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const agent = createBrowserAgent({
+  // Start on IDB so SCM is live immediately; upgrade to OPFS (B2b) when ready.
+  let agent = createBrowserAgent({
     fs: new IdbFs(),
     hydrateFromFs: true,
   }) as ZCodeBrowserAgent;
+
+  void createBrowserAgentAsync({ hydrateFromFs: true }).then((upgraded) => {
+    agent = upgraded as ZCodeBrowserAgent;
+    void refresh();
+  });
 
   const scm = vscode.scm.createSourceControl('zcode-git', 'ZCode Git');
   scm.inputBox.placeholder = 'Message (⌘Enter / Ctrl+Enter to commit)';

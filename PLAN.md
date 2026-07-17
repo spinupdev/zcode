@@ -189,7 +189,7 @@ Optional:
 | KD2 | Dual-mode = workbench config, not BackendFacade | |
 | KD3 | MVP remote = same-origin co-serve | CDN shell later (OQ10) |
 | KD4 | Upstream remote protocol only | |
-| KD5 | Browser FS: IDB now; ZenFS/OPFS preferred later | Memory in workers/tests |
+| KD5 | Browser FS: ZenFS/OPFS primary; IDB fallback | Memory in workers/tests |
 | KD6 | Custom SCM / SPA git for browser; Node git on remote | |
 | KD8 | HTTP git-proxy only (no SW tunnel) | Same-origin `/git-proxy` |
 | KD9 | Open VSX marketplace | |
@@ -225,7 +225,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | --- | --- | --- | --- |
 | B1 | Shell bootstrap matrix / mode resolution | **done** | `@zcode/shell` |
 | B2 | Browser agent workspace + locks | **done** | Memory + **IndexedDB** |
-| B2b | ZenFS + OPFS backend (design primary) | **remaining** | IDB is interim durable store |
+| B2b | ZenFS + OPFS backend (design primary) | **done** | OPFS primary via ZenFS WebAccess; IDB fallback + migrate; see `docs/b2b-opfs-zenfs.md` |
 | B3 | `zcode-browser-fs` FileSystemProvider | **done** | Seeds sample workspace for `/ide` |
 | B4 | isomorphic-git + git-proxy + SPA SCM UX | **done** | Clone/commit/push + PAT |
 | B4b | Same-origin `/git-proxy` mount | **done** | CLI web/serve + CF Worker |
@@ -293,13 +293,10 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 ### P0 — Next 1–2 sessions
 
 1. **F6** Rename repo → `spinupdev/zcode` when ready (ops).
-2. ~~CI Linux REH artifact download~~ **done** — `scripts/fetch-reh-artifact.sh` / `pnpm fetch:reh`; CI normalize step on reh-and-e2e.
-3. **B2b** ZenFS + OPFS primary store (in progress if unfinished).
-
-### P1 — Product polish
-
-4. Full PTY `printf zcode_echo_ok` under STRICT when web remote shell is reliable.  
-5. Production Pages+Worker deploy dry-run against a real account (H3 runbook exists).
+2. Full PTY `printf zcode_echo_ok` under STRICT when web remote shell is reliable.
+3. Production Pages+Worker deploy dry-run against a real account (H3 runbook exists).
+4. **H4** Docker multi-arch / non-root harden.
+5. Optional: SPA git-worker dual-open OPFS coordinator (today: MemoryFs clone → main-thread OPFS/IDB import).
 
 ---
 
@@ -375,6 +372,7 @@ pnpm smoke            # lighter checks
 | [`docs/m1-dual-mode.md`](./docs/m1-dual-mode.md) | Dual-mode remoteAuthority product |
 | [`docs/m2-diagnostics-csp.md`](./docs/m2-diagnostics-csp.md) | Diagnostics, CSP, redaction |
 | [`docs/hosting-production.md`](./docs/hosting-production.md) | H3 Pages+Worker production checklist |
+| [`docs/b2b-opfs-zenfs.md`](./docs/b2b-opfs-zenfs.md) | B2b OPFS primary + IDB fallback |
 | [`docs/vscode-pin.md`](./docs/vscode-pin.md) | Pin SHA / upgrade |
 | [`docs/quilt-workflow.md`](./docs/quilt-workflow.md) | Patch discipline |
 | [`deploy/cloudflare/README.md`](./deploy/cloudflare/README.md) | Worker deploy |
@@ -396,5 +394,6 @@ pnpm smoke            # lighter checks
 | 2026-07-17 | **M1 done**: dual-mode product + capabilities + session gate. **M2 done**: diagnostics extension, CSP HTML headers, log redaction |
 | 2026-07-17 | STRICT remote e2e green; REH without-connection-token; `/login` route; workspacePath alignment; H3 production runbook |
 | 2026-07-18 | CI Linux REH download: `scripts/fetch-reh-artifact.sh` + `pnpm fetch:reh`; reh-and-e2e normalize (+x/flatten) |
+| 2026-07-18 | **B2b done**: ZenFS OPFS primary (`createDefaultFsAsync`), IDB migrate/fallback; SPA + zcode-browser-fs + zcode-git |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.
