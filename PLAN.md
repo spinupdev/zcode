@@ -260,7 +260,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | M0c | Serve `/vscode` + `/extensions` | **done** | |
 | M0d | **Owned** OSS web build at pin 1.129 | **done** | `vscode-web-ci` esbuild → dist/vscode-web source=owned; dual bootstrap (ESM/AMD); CI heavy_build=web |
 | M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
-| M1 | Dual-mode remoteAuthority connect end-to-end | **remaining** | product payload ready; REH missing |
+| M1 | Dual-mode remoteAuthority connect end-to-end | **remaining** | product + REH + cookie proxy ready; polish remote workbench UX / STRICT terminal |
 | M2 | Diagnostics extension, CSP, log redaction | **remaining** | stubs only |
 | M3 | Playwright e2e: routes + SPA clone + IDE product handoff | **done** | `e2e/` + CI job; Buffer polyfill for worker clone; remote terminal still R6 |
 
