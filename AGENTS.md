@@ -5,8 +5,9 @@ You are working on **ZCode**, a dual-mode VS Code OSS browser IDE (repo may stil
 ## Read first
 
 1. **[`PLAN.md`](./PLAN.md)** — architecture diagrams, **done / in progress / remaining**, next queue, invariants  
-2. [`README.md`](./README.md) — how to run  
-3. [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) — full design RFC  
+2. **[`RESUME.md`](./RESUME.md)** — paste-ready agent handoff / resume prompt  
+3. [`README.md`](./README.md) — how to run  
+4. [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) — full design RFC  
 
 ## Product facts
 
@@ -33,10 +34,10 @@ NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 50
 See **PLAN.md §5**. M0d–M2, R2c/R6, H3 runbook done on this path.
 
 - Repo: **https://github.com/spinupdev/zcode**
-- Next: CI `ZCODE_E2E_REH_PTY_REQUIRED=1` on heavy REH job; live CF deploy; optional OPFS dual-open
+- Next: see **PLAN.md §5** / **RESUME.md** — CI PTY hard-fail on heavy REH; optional CF custom domain; OPFS dual-open; H5
 - Rebuild owned assets: Node 24 + `GITHUB_TOKEN` + `./scripts/build-web.sh --package` / `./scripts/build-server.sh`
 - R6: `pnpm e2e:reh` · STRICT: `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh` · PTY hard-fail: `ZCODE_E2E_REH_PTY_REQUIRED=1`
-- Docker: `bash scripts/docker-build.sh` · Hosting dry-run: `bash scripts/hosting-dry-run.sh`
+- Docker: `pnpm docker:build` · Hosting: `pnpm hosting:dry-run` · Deploy: `pnpm deploy:cloudflare`
 
 ## Rules
 

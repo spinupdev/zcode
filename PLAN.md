@@ -6,7 +6,7 @@
 | **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
 | **Local path** | may still be checked out as `code-server` — product is **ZCode** |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-18 (B8 open-repo in-IDE clone + Zeish favicon) |
+| **Last updated** | 2026-07-18 (RESUME.md agent handoff; B8b open-repo + live CF) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -378,6 +378,7 @@ pnpm smoke            # lighter checks
 | [`docs/quilt-workflow.md`](./docs/quilt-workflow.md) | Patch discipline |
 | [`deploy/cloudflare/README.md`](./deploy/cloudflare/README.md) | Worker deploy |
 | [`AGENTS.md`](./AGENTS.md) | Short agent bootstrap |
+| [`RESUME.md`](./RESUME.md) | Paste-ready agent resume / handoff prompt |
 
 ---
 
@@ -404,5 +405,6 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | Removed legacy `/ide` routes (IDE is only `/`) |
 | 2026-07-18 | **H3 live**: Cloudflare Pages + Worker + same-origin Pages Function; `scripts/deploy-cloudflare.sh` |
 | 2026-07-18 | **B8b**: Welcome **Open Repository** → in-IDE HTTPS clone (`zcode.git.openRepository` + `remoteHub.openRepository`); notification progress/errors; git-proxy default allow `*` (SSRF still blocked); Zeish favicon (`product/icon.svg`) replaces VS Code `favicon.ico` |
+| 2026-07-18 | **RESUME.md**: paste-ready agent handoff reflecting `/` IDE, `/debug` SPA, H3–H4 done, §5 next queue |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.
