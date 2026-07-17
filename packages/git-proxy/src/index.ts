@@ -1,6 +1,6 @@
 /**
  * HTTP CORS proxy for isomorphic-git (browser mode).
- * Required for GitHub/GitLab-class hosts. Not a control plane.
+ * Stateless: no session store. Prefer same-origin mount at `/git-proxy`.
  */
 
 export interface GitProxyOptions {
@@ -10,15 +10,18 @@ export interface GitProxyOptions {
   allowHosts: string[];
 }
 
-export const DEFAULT_ALLOW_HOSTS = ['github.com', 'gitlab.com', 'bitbucket.org'] as const;
+export {
+  DEFAULT_ALLOW_HOSTS,
+  DEFAULT_GIT_PROXY_PREFIX,
+  isHostAllowed,
+  isBlockedHostname,
+  resolveUpstream,
+  stripProxyPrefix,
+  matchesProxyPrefix,
+} from './allowlist.js';
 
-export function isHostAllowed(hostname: string, allowHosts: readonly string[]): boolean {
-  const host = hostname.toLowerCase();
-  return allowHosts.some((allowed) => {
-    const a = allowed.toLowerCase();
-    return host === a || host.endsWith(`.${a}`);
-  });
-}
+export { createGitProxyHandler } from './handler.js';
+export type { GitProxyHandlerOptions } from './handler.js';
 
-export { startGitProxy, resolveUpstream } from './proxy.js';
+export { startGitProxy } from './proxy.js';
 export type { StartedGitProxy } from './proxy.js';
