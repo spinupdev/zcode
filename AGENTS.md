@@ -33,9 +33,10 @@ node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 See **PLAN.md §5**. M0d–M2, R2c/R6, H3 runbook done on this path.
 
 - Repo: **https://github.com/spinupdev/zcode**
-- Next: STRICT PTY polish, H3 deploy dry-run, H4 Docker harden
+- Next: CI `ZCODE_E2E_REH_PTY_REQUIRED=1` on heavy REH job; live CF deploy; optional OPFS dual-open
 - Rebuild owned assets: Node 24 + `GITHUB_TOKEN` + `./scripts/build-web.sh --package` / `./scripts/build-server.sh`
-- R6: `pnpm e2e:reh` · STRICT: `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh`
+- R6: `pnpm e2e:reh` · STRICT: `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh` · PTY hard-fail: `ZCODE_E2E_REH_PTY_REQUIRED=1`
+- Docker: `bash scripts/docker-build.sh` · Hosting dry-run: `bash scripts/hosting-dry-run.sh`
 
 ## Rules
 

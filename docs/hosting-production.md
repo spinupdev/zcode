@@ -125,8 +125,23 @@ Self-host IDE CSP is applied by `@zcode/server` on HTML (M2) — not by Pages fo
 | REH / terminal | `dist/server` + cookie proxy (R2c/R3b/R6) |
 | Multi-tenant SaaS | microVM orchestrator (P3) — not Docker multi-tenant |
 
+## 9. Agent dry-run (no Cloudflare account)
+
+Local validation without pushing to a live zone:
+
+```bash
+bash scripts/hosting-dry-run.sh
+# after wrangler login (shared external action — ask before --deploy):
+# bash scripts/hosting-dry-run.sh --deploy
+```
+
+This builds the SPA, checks Worker sources / `wrangler.toml`, and attempts
+`wrangler deploy --dry-run` when the CLI is available. Live Pages+Worker attach
+still needs a Cloudflare account (see checklist above).
+
 ## Related
 
 - [hosting.md](./hosting.md) — local topology
 - [deploy/cloudflare/README.md](../deploy/cloudflare/README.md) — Worker details
 - [m2-diagnostics-csp.md](./m2-diagnostics-csp.md) — CSP on IDE host
+- [deploy/docker/README.md](../deploy/docker/README.md) — H4 Docker self-host

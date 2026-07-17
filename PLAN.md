@@ -6,7 +6,7 @@
 | **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
 | **Local path** | may still be checked out as `code-server` — product is **ZCode** |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-18 (F6 → spinupdev/zcode) |
+| **Last updated** | 2026-07-18 (H4 Docker harden + R6 PTY polish) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -249,7 +249,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | R3b | Spawn REH + cookie-authorized WS attach | **done** | cookie→token HTTP/WS proxy; spawn uses `--connection-token` |
 | R4 | Docker image + compose | **done** | single service; polish non-root later |
 | R5 | CLI `zcode serve` | **done** | |
-| R6 | Terminal/LSP verified e2e against REH | **done** | STRICT workbench+remote product green; REH `--without-connection-token` + cookie proxy; PTY best-effort |
+| R6 | Terminal/LSP verified e2e against REH | **done** | STRICT workbench green; PTY via shortcuts+palette + `printf zcode_echo_ok`; hard-fail with `ZCODE_E2E_REH_PTY_REQUIRED=1` |
 
 ### 4.4 Merge — Workbench product
 
@@ -270,8 +270,8 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | --- | --- | --- | --- |
 | H1 | Cloudflare Worker git-proxy | **done** | `deploy/cloudflare/git-proxy` |
 | H2 | Hosting docs | **done** | `docs/hosting.md` |
-| H3 | Production Pages+Worker deploy runbook tested | **done** | `docs/hosting-production.md` checklist; live deploy needs Cloudflare account |
-| H4 | Docker multi-arch / non-root harden | **remaining** | |
+| H3 | Production Pages+Worker deploy runbook tested | **done** | runbook + `scripts/hosting-dry-run.sh`; live deploy needs Cloudflare account (`--deploy` after login) |
+| H4 | Docker multi-arch / non-root harden | **done** | non-root 10001, tini, healthcheck, compose harden, `scripts/docker-build.sh` multi-arch, `deploy/docker/README.md` |
 | H5 | Observability (metrics, structured logs) | **remaining** | design only |
 
 ### 4.6 Post-MVP / SaaS
@@ -292,10 +292,10 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 ### P0 — Next 1–2 sessions
 
-1. Full PTY `printf zcode_echo_ok` under STRICT when web remote shell is reliable.
-2. Production Pages+Worker deploy dry-run against a real account (H3 runbook exists).
-3. **H4** Docker multi-arch / non-root harden.
-4. Optional: SPA git-worker dual-open OPFS coordinator (today: MemoryFs clone → main-thread OPFS/IDB import).
+1. Turn on `ZCODE_E2E_REH_PTY_REQUIRED=1` in CI heavy REH job once remote shell is stable on Linux artifact.
+2. Live Cloudflare Pages+Worker attach (`bash scripts/hosting-dry-run.sh --deploy` after `wrangler login`).
+3. Optional: SPA git-worker dual-open OPFS coordinator (today: MemoryFs clone → main-thread OPFS/IDB import).
+4. **H5** observability (metrics / structured logs) when ops needs it.
 
 ---
 
@@ -371,6 +371,7 @@ pnpm smoke            # lighter checks
 | [`docs/m1-dual-mode.md`](./docs/m1-dual-mode.md) | Dual-mode remoteAuthority product |
 | [`docs/m2-diagnostics-csp.md`](./docs/m2-diagnostics-csp.md) | Diagnostics, CSP, redaction |
 | [`docs/hosting-production.md`](./docs/hosting-production.md) | H3 Pages+Worker production checklist |
+| [`deploy/docker/README.md`](./deploy/docker/README.md) | H4 Docker non-root / multi-arch |
 | [`docs/b2b-opfs-zenfs.md`](./docs/b2b-opfs-zenfs.md) | B2b OPFS primary + IDB fallback |
 | [`docs/vscode-pin.md`](./docs/vscode-pin.md) | Pin SHA / upgrade |
 | [`docs/quilt-workflow.md`](./docs/quilt-workflow.md) | Patch discipline |
@@ -395,5 +396,7 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | CI Linux REH download: `scripts/fetch-reh-artifact.sh` + `pnpm fetch:reh`; reh-and-e2e normalize (+x/flatten) |
 | 2026-07-18 | **B2b done**: ZenFS OPFS primary (`createDefaultFsAsync`), IDB migrate/fallback; SPA + zcode-browser-fs + zcode-git |
 | 2026-07-18 | **F6 done**: remote `origin` → `github.com/spinupdev/zcode`; `main` pushed |
+| 2026-07-18 | **R6 PTY polish**: terminal open via shortcuts+palette; `printf zcode_echo_ok`; `ZCODE_E2E_REH_PTY_REQUIRED=1` hard-fail. **H3** `scripts/hosting-dry-run.sh`. **H4 done**: non-root Docker, multi-arch build script, compose harden |
+| 2026-07-18 | Verified M0d (`source=owned` + `--check`), R2c (`dist/server` + `--check`), `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh` 4/4 green |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

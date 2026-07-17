@@ -30,6 +30,8 @@
     "e2e:playwright": "bash scripts/e2e-playwright.sh",
     "e2e:reh": "bash scripts/e2e-reh-terminal.sh",
     "e2e": "pnpm e2e:browser && pnpm e2e:playwright",
+    "docker:build": "bash scripts/docker-build.sh",
+    "hosting:dry-run": "bash scripts/hosting-dry-run.sh",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
