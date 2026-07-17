@@ -57,3 +57,6 @@ e2e/playwright-report/
 e2e/blob-report/
 e2e/playwright/.cache/
 e2e/.reh-workspace/
+
+# Cloudflare Pages staged assets (built from apps/web)
+deploy/cloudflare/site/dist/

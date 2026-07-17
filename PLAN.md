@@ -270,7 +270,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | --- | --- | --- | --- |
 | H1 | Cloudflare Worker git-proxy | **done** | `deploy/cloudflare/git-proxy` |
 | H2 | Hosting docs | **done** | `docs/hosting.md` |
-| H3 | Production Pages+Worker deploy runbook tested | **done** | runbook + `scripts/hosting-dry-run.sh`; live deploy needs Cloudflare account (`--deploy` after login) |
+| H3 | Production Pages+Worker deploy runbook tested | **done** | live: Pages `zcode-69r.pages.dev` + Worker `zcode-git-proxy.*.workers.dev`; `pnpm deploy:cloudflare` |
 | H4 | Docker multi-arch / non-root harden | **done** | non-root 10001, tini, healthcheck, compose harden, `scripts/docker-build.sh` multi-arch, `deploy/docker/README.md` |
 | H5 | Observability (metrics, structured logs) | **remaining** | design only |
 
@@ -293,7 +293,7 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 ### P0 — Next 1–2 sessions
 
 1. Turn on `ZCODE_E2E_REH_PTY_REQUIRED=1` in CI heavy REH job once remote shell is stable on Linux artifact.
-2. Live Cloudflare Pages+Worker attach (`bash scripts/hosting-dry-run.sh --deploy` after `wrangler login`).
+2. Optional custom domain on Pages + Worker routes (live `*.pages.dev` already up).
 3. Optional: SPA git-worker dual-open OPFS coordinator (today: MemoryFs clone → main-thread OPFS/IDB import).
 4. **H5** observability (metrics / structured logs) when ops needs it.
 
@@ -401,5 +401,6 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | SPA `/` is **debug only**: `isSpaDebugEnabled` gates serve; production redirects `/` → `/ide/`; `ZCODE_SPA_DEBUG` / `--spa-debug` overrides |
 | 2026-07-18 | Product IDE moved to **`/`**; debug SPA at **`/debug/`** |
 | 2026-07-18 | Removed legacy `/ide` routes (IDE is only `/`) |
+| 2026-07-18 | **H3 live**: Cloudflare Pages + Worker + same-origin Pages Function; `scripts/deploy-cloudflare.sh` |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

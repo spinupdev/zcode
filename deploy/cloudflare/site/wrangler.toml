@@ -1,0 +1,8 @@
+# Cloudflare Pages project: static SPA (apps/web/dist) + /git-proxy Pages Function.
+# Deploy: bash scripts/deploy-cloudflare.sh
+#
+# Name must match --project-name (default: zcode).
+
+name = "zcode"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "dist"

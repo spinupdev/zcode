@@ -32,6 +32,7 @@
     "e2e": "pnpm e2e:browser && pnpm e2e:playwright",
     "docker:build": "bash scripts/docker-build.sh",
     "hosting:dry-run": "bash scripts/hosting-dry-run.sh",
+    "deploy:cloudflare": "bash scripts/deploy-cloudflare.sh",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
