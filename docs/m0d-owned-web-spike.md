@@ -13,7 +13,7 @@ Replace dogfood `vscode-web@1.91.1` with an **owned** static tree from `vendor/v
 | `dist/vscode-web/.zcode-vscode-web.json` `"source":"owned"` | **yes** |
 | Entry `out/vs/workbench/workbench.web.main.internal.js` | **yes** (esbuild; no AMD `loader.js`) |
 | Workbench dual bootstrap (owned ESM + dogfood AMD) | **yes** (`apps/workbench` bootstrap) |
-| `/ide/` + `/vscode/...internal.js` HTTP 200 | **yes** (smoke) |
+| `/` + `/vscode/...internal.js` HTTP 200 | **yes** (smoke) |
 
 ## Prerequisites
 

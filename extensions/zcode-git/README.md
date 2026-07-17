@@ -7,4 +7,4 @@ Browser-mode SCM for ZCode Web (B8):
 - **Push** through same-origin `/git-proxy` (optional PAT in settings)
 - **Clone** deep-links to the SPA autoclone flow (shared OPFS/IDB)
 
-Uses `@zcode/browser-agent` (`createBrowserAgentAsync`) so clones from `/` appear under `/ide/?workspace=<id>` on the same durable store (OPFS primary, IDB fallback).
+Uses `@zcode/browser-agent` (`createBrowserAgentAsync`) so clones from `/debug/` appear under `/?workspace=<id>` on the same durable store (OPFS primary, IDB fallback).

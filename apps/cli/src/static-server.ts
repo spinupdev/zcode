@@ -118,39 +118,9 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
       const url = new URL(req.url ?? '/', `http://${host}`);
       const pathname = decodeURIComponent(url.pathname);
 
-      // Dual-mode product (canonical + legacy /ide/product.json)
-      if (
-        pathname === '/product.json' ||
-        pathname === '/ide/product.json'
-      ) {
+      // Dual-mode product for workbench bootstrap
+      if (pathname === '/product.json') {
         serveIdeProduct(res, url, repoRoot);
-        return;
-      }
-
-      // Legacy /ide → product root (preserve query)
-      if (pathname === '/ide' || pathname === '/ide/' || pathname.startsWith('/ide/')) {
-        const dest =
-          pathname === '/ide' || pathname === '/ide/'
-            ? `/${url.search}`
-            : `/${pathname.slice('/ide/'.length)}${url.search}`;
-        // Only redirect bare /ide and /ide/ to /; subpaths like /ide/bootstrap.js → /bootstrap.js
-        if (pathname === '/ide' || pathname === '/ide/') {
-          res.writeHead(302, {
-            Location: `/${url.search}`,
-            'cache-control': 'no-store',
-            'x-zcode-ide-legacy': '1',
-          });
-          res.end();
-          return;
-        }
-        // Map /ide/* assets onto workbench root assets
-        const rel = pathname.slice('/ide/'.length);
-        if (workbenchDir && tryStatic(res, workbenchDir, rel)) return;
-        res.writeHead(302, {
-          Location: dest.startsWith('/') ? dest : `/${dest}`,
-          'cache-control': 'no-store',
-        });
-        res.end();
         return;
       }
 

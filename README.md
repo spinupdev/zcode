@@ -29,7 +29,6 @@ NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 50
 | **http://127.0.0.1:5000/** | **VS Code Web workbench (the product IDE)** |
 | http://127.0.0.1:5000/debug/ | Debug SPA (git dogfood) — **DEV only**; off when `NODE_ENV=production` |
 | http://127.0.0.1:5000/git-proxy | Stateless CORS bridge for GitHub/GitLab |
-| http://127.0.0.1:5000/ide/ | Legacy alias → redirects to `/` |
 
 ### Clone a Git repo (browser debug SPA)
 
@@ -67,7 +66,6 @@ Real workbench from staged `dist/vscode-web`. Dual mode:
 
 - Browser: `/` or `/?workspace=<id>`
 - Remote: `/?mode=remote&authority=127.0.0.1:8080`
-- Legacy: `/ide/` redirects to `/`
 
 See [docs/vscode-web.md](./docs/vscode-web.md).
 

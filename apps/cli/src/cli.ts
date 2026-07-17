@@ -86,7 +86,7 @@ switch (cmd) {
     console.log(`ZCode serve ${srv.url}`);
     console.log(`authority=${srv.authority} reh=${srv.rehMode}`);
     console.log(`git-proxy ${new URL('git-proxy', srv.url).href}`);
-    console.log(`ide      ${srv.url}  (VS Code Web when staged; legacy /ide/ redirects here)`);
+    console.log(`ide      ${srv.url}  (VS Code Web when staged)`);
     break;
   }
   case 'git-proxy': {

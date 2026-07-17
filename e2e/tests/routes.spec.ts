@@ -31,9 +31,6 @@ test.describe('same-origin routes', () => {
     );
     expect(fsExt).toBeTruthy();
     expect(fsExt.authority).toMatch(/127\.0\.0\.1:\d+/);
-    // Legacy alias still works
-    const legacy = await request.get('/ide/product.json?workspace=e2e-ws-1');
-    expect(legacy.ok()).toBeTruthy();
   });
 
   test('IDE host page at / and vscode loader when staged', async ({ request }) => {
@@ -41,10 +38,9 @@ test.describe('same-origin routes', () => {
     expect(ide.ok()).toBeTruthy();
     const html = await ide.text();
     expect(html).toMatch(/bootstrap\.js|ZCode IDE/);
-    // Legacy /ide/ still lands on the workbench (redirect followed)
-    const legacy = await request.get('/ide/');
-    expect(legacy.ok()).toBeTruthy();
-    expect(await legacy.text()).toMatch(/bootstrap\.js|ZCode IDE/);
+    // /ide removed — must not serve the workbench there
+    const gone = await request.get('/ide/');
+    expect(gone.status()).toBeGreaterThanOrEqual(400);
 
     const loader = await request.get('/vscode/out/vs/loader.js');
     // 200 if fetch-vscode-web was run; otherwise 404 — soft assert

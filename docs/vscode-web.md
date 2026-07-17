@@ -1,19 +1,18 @@
 # VS Code Web integration (M0)
 
-ZCode’s **primary IDE UI is VS Code Web**, served at **`/`** (legacy **`/ide/`** redirects here).
+ZCode’s **primary IDE UI is VS Code Web**, served at **`/`**.
 
-The lightweight SPA at `/` remains a dogfood surface for browser git/OPFS without loading the full workbench.
+The lightweight SPA at `/debug/` is a DEV-only dogfood surface for browser git/OPFS without loading the full workbench.
 
 ## Architecture
 
 ```text
-/                  → apps/web (SPA: clone/edit/search)
-/                  → apps/workbench (loads VS Code Web)
-/ide/              → 302 → /  (legacy)
+/                  → apps/workbench (loads VS Code Web — product IDE)
+/debug/            → apps/web (SPA: clone/edit/search — DEV only)
 /vscode/*          → dist/vscode-web (static Code-OSS web compile)
 /extensions/*      → extensions/zcode-*
 /git-proxy/*       → stateless CORS bridge
-/product.json      → dual-mode create() options (browser | remote; /ide/product.json alias)
+/product.json      → dual-mode create() options (browser | remote)
 ```
 
 Dual mode (workbench):
@@ -89,7 +88,7 @@ Bootstrap injects `location.host` so extension URIs are absolute same-origin.
 
 | Piece | Status |
 | --- | --- |
-| Load VS Code Web workbench | ✅ `/vscode` + `/` (legacy `/ide`) |
+| Load VS Code Web workbench | ✅ `/vscode` + `/` |
 | ZCode product.json | ✅ |
 | Dual-mode product payload | ✅ |
 | Built-in extensions served | ✅ `/extensions/*` |

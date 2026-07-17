@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage a dogfood VS Code Web static tree for /ide.
+# Stage a dogfood VS Code Web static tree for the product IDE at /.
 #
 # Default: third-party npm package `vscode-web` (Microsoft web compile packaged for browsers).
 # This is **dogfood**, not the long-term owned build from vendor/vscode (see build-web.sh / M0).
@@ -85,4 +85,4 @@ cat > "${OUT}/.zcode-vscode-web.json" <<EOF
 EOF
 
 log "Staged dogfood vscode-web@${VERSION} → dist/vscode-web"
-log "Serve via: zcode web  (routes /vscode/* and /ide)"
+log "Serve via: zcode web  (routes / + /vscode/*)"

@@ -13,7 +13,7 @@ You are working on **ZCode**, a dual-mode VS Code OSS browser IDE (repo may stil
 - Brand: **ZCode** · CLI: **`zcode`** · not affiliated with [coder/code-server](https://github.com/coder/code-server)  
 - UI always in the browser; dual-mode = `remoteAuthority` / EH / providers, not a custom editor RPC  
 - Browser git needs **stateless** `/git-proxy` (CORS); not a control plane  
-- Primary IDE: **`/`** (VS Code Web). Debug SPA **`/debug/`** = dogfood only (off when `NODE_ENV=production`). Legacy `/ide/` → `/`.  
+- Primary IDE: **`/`** (VS Code Web). Debug SPA **`/debug/`** = dogfood only (off when `NODE_ENV=production`).  
 
 ## Quick start
 

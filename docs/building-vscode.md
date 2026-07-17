@@ -136,4 +136,4 @@ On **macOS**, a Linux REH binary will not execute; use a local `./scripts/build-
 - Local host: disk often **&lt;20–40 GB free**; package not attempted after deps failed.
 - Node host default was **26**; portable **24.18.0** used for `--check`.
 - `npm ci` in `vendor/vscode` failed on ripgrep GitHub **403** without token.
-- Dogfood path remains green for `/ide/` until owned package lands via CI or a fat machine.
+- Dogfood path remains green for `/` until owned package lands via CI or a fat machine.

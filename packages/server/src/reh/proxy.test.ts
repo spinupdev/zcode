@@ -9,7 +9,6 @@ describe('isReservedPath', () => {
     assert.equal(isReservedPath('/'), true);
     assert.equal(isReservedPath('/login'), true);
     assert.equal(isReservedPath('/git-proxy/healthz'), true);
-    assert.equal(isReservedPath('/ide/'), true);
     assert.equal(isReservedPath('/debug/'), true);
     assert.equal(isReservedPath('/bootstrap.js'), true);
     assert.equal(isReservedPath('/vscode/out/vs/loader.js'), true);

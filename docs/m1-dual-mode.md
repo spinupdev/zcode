@@ -11,8 +11,7 @@ No custom `zcode+` resolver in MVP. Cookie session maps to REH connection-token 
 
 ## Product payload
 
-`GET /product.json?mode=browser|remote&authority=host:port&workspace=id`  
-(Legacy: `/ide/product.json` — same payload.)
+`GET /product.json?mode=browser|remote&authority=host:port&workspace=id`
 
 Built by `@zcode/shell` `buildWorkbenchCreateOptions`:
 

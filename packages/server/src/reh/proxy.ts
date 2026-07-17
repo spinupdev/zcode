@@ -35,7 +35,6 @@ const DEFAULT_RESERVED = [
   '/logout',
   '/v1/',
   '/git-proxy',
-  '/ide', // legacy alias → /
   '/debug', // DEV SPA dogfood
   '/vscode',
   '/extensions',

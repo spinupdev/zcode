@@ -109,30 +109,9 @@ export function createRequestHandler(ctx: AppContext) {
         return;
       }
 
-      // Dual-mode product (canonical /product.json + legacy /ide/product.json)
-      if (url.pathname === '/ide/product.json' || url.pathname === '/product.json') {
+      // Dual-mode product for workbench bootstrap
+      if (url.pathname === '/product.json') {
         serveIdeProduct(res, url, ctx);
-        return;
-      }
-
-      // Legacy /ide → product root
-      if (url.pathname === '/ide' || url.pathname === '/ide/') {
-        res.writeHead(302, {
-          Location: `/${url.search}`,
-          'cache-control': 'no-store',
-          'x-zcode-ide-legacy': '1',
-        });
-        res.end();
-        return;
-      }
-      if (url.pathname.startsWith('/ide/') && ctx.workbenchDir) {
-        const rel = url.pathname.slice('/ide'.length);
-        if (tryServeStatic(req, res, ctx.workbenchDir, rel)) return;
-        res.writeHead(302, {
-          Location: `${rel}${url.search}`,
-          'cache-control': 'no-store',
-        });
-        res.end();
         return;
       }
 

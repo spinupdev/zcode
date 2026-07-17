@@ -69,11 +69,10 @@ flowchart TB
 | --- | --- | --- |
 | `/` | **Primary IDE** — VS Code Web host page | Client + optional REH |
 | `/debug/` | **Debug SPA only** (DEV): git clone/commit/push; off when `NODE_ENV=production` | Client only |
-| `/ide/` | Legacy alias → **302** to `/` | No |
 | `/vscode/*` | Staged VS Code Web static tree (`dist/vscode-web`) | No |
 | `/extensions/*` | Builtin web extensions (`zcode-*`) | No |
 | `/git-proxy/*` | CORS proxy for smart HTTP git | **No** (stateless) |
-| `/product.json` | Dual-mode `window.product` / create() options (`/ide/product.json` alias) | No |
+| `/product.json` | Dual-mode `window.product` / create() options | No |
 | `/login` · `/healthz` | Password session (serve) | Session cookie in memory |
 
 ### 2.3 Browser git data path
@@ -227,13 +226,13 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | B1 | Shell bootstrap matrix / mode resolution | **done** | `@zcode/shell` |
 | B2 | Browser agent workspace + locks | **done** | Memory + **IndexedDB** |
 | B2b | ZenFS + OPFS backend (design primary) | **done** | OPFS primary via ZenFS WebAccess; IDB fallback + migrate; see `docs/b2b-opfs-zenfs.md` |
-| B3 | `zcode-browser-fs` FileSystemProvider | **done** | Seeds sample workspace for `/ide` |
+| B3 | `zcode-browser-fs` FileSystemProvider | **done** | Seeds sample workspace for `/` |
 | B4 | isomorphic-git + git-proxy + SPA SCM UX | **done** | Clone/commit/push + PAT |
 | B4b | Same-origin `/git-proxy` mount | **done** | CLI web/serve + CF Worker |
 | B4c | Private HTTPS (PAT) + push | **done** | sessionStorage token |
 | B5 | Best-effort text search | **done** | SPA search |
 | B6 | Git Web Worker for responsive clone | **done** | `git-worker.js` |
-| B7 | Bridge SPA IDB workspace ↔ workbench `zcode-opfs` | **done** | Same IDB `zcode-fs-v1`; `/ide/?workspace=<id>`; Open in IDE |
+| B7 | Bridge SPA IDB workspace ↔ workbench `zcode-opfs` | **done** | Same IDB `zcode-fs-v1`; `/?workspace=<id>`; Open in IDE |
 | B8 | Full SCM inside workbench (not only SPA) | **done** | `zcode-git` status/commit/push via IDB + isomorphic-git |
 | B9 | SSH remotes / LFS / submodules | **deferred** | non-goals MVP |
 | B10 | Offline PWA | **deferred** | OQ7 |
@@ -257,7 +256,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | ID | Work package | Status | Last note |
 | --- | --- | --- | --- |
 | M0a | Stage VS Code Web static assets | **done** | dogfood `vscode-web@1.91.1` via fetch script |
-| M0b | `/ide` host + bootstrap + product.json | **done** | |
+| M0b | `/` host + bootstrap + product.json | **done** | |
 | M0c | Serve `/vscode` + `/extensions` | **done** | |
 | M0d | **Owned** OSS web build at pin 1.129 | **done** | `vscode-web-ci` esbuild → dist/vscode-web source=owned; dual bootstrap (ESM/AMD); CI heavy_build=web |
 | M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
@@ -363,7 +362,7 @@ pnpm smoke            # lighter checks
 | Doc | Content |
 | --- | --- |
 | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) | Full RFC, threat model, original PR plan |
-| [`docs/vscode-web.md`](./docs/vscode-web.md) | `/ide` integration |
+| [`docs/vscode-web.md`](./docs/vscode-web.md) | `/` workbench integration |
 | [`docs/hosting.md`](./docs/hosting.md) | Static + edge proxy |
 | [`docs/building-vscode.md`](./docs/building-vscode.md) | REH/web compile requirements |
 | [`docs/m0d-owned-web-spike.md`](./docs/m0d-owned-web-spike.md) | Owned web package spike + session log |
@@ -400,6 +399,7 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | **R6 PTY polish**: terminal open via shortcuts+palette; `printf zcode_echo_ok`; `ZCODE_E2E_REH_PTY_REQUIRED=1` hard-fail. **H3** `scripts/hosting-dry-run.sh`. **H4 done**: non-root Docker, multi-arch build script, compose harden |
 | 2026-07-18 | Verified M0d (`source=owned` + `--check`), R2c (`dist/server` + `--check`), `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh` 4/4 green |
 | 2026-07-18 | SPA `/` is **debug only**: `isSpaDebugEnabled` gates serve; production redirects `/` → `/ide/`; `ZCODE_SPA_DEBUG` / `--spa-debug` overrides |
-| 2026-07-18 | Product IDE moved to **`/`**; debug SPA at **`/debug/`**; legacy `/ide/` → `/` |
+| 2026-07-18 | Product IDE moved to **`/`**; debug SPA at **`/debug/`** |
+| 2026-07-18 | Removed legacy `/ide` routes (IDE is only `/`) |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

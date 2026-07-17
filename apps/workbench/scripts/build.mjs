@@ -128,11 +128,7 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     let authority = params.get('authority') || params.get('remoteAuthority');
     // Prefer server-built dual-mode payload (capabilities, configurationDefaults)
     try {
-      // Prefer /product.json; fall back to legacy /ide/product.json
-      let res = await fetch('/product.json' + location.search, { cache: 'no-store' });
-      if (!res.ok) {
-        res = await fetch('/ide/product.json' + location.search, { cache: 'no-store' });
-      }
+      const res = await fetch('/product.json' + location.search, { cache: 'no-store' });
       if (res.ok) window.product = await res.json();
     } catch (_) { /* embedded product */ }
 

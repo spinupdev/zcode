@@ -10,7 +10,7 @@ Remote IDE (REH / `zcode serve`) is a **separate** self-host path — not requir
 https://zcode.example.com/
   ├── /                 → Cloudflare Pages (apps/web/dist)
   ├── /git-proxy/*      → Cloudflare Worker (deploy/cloudflare/git-proxy)
-  └── (optional later)  → /ide + REH on a Node host (not Pages)
+  └── (optional later)  → / + REH on a Node host (not Pages)
 ```
 
 Invariants:
@@ -41,7 +41,7 @@ pnpm --filter @zcode/web build
 ls apps/web/dist/index.html
 ```
 
-Optional: stage VS Code Web only if you also host `/ide` on the same Pages project (usually **not** — keep IDE on Node/`zcode serve`).
+Optional: stage VS Code Web only if you also host the workbench on the same Pages project (usually **not** — keep IDE on Node/`zcode serve`).
 
 ## 2. Deploy Worker (`/git-proxy`)
 
@@ -121,7 +121,7 @@ Self-host IDE CSP is applied by `@zcode/server` on HTML (M2) — not by Pages fo
 
 | Path | Where |
 | --- | --- |
-| `/ide` VS Code Web | Self-host `zcode serve` or fat Docker (R5/R4) |
+| `/` VS Code Web | Self-host `zcode serve` or fat Docker (R5/R4) |
 | REH / terminal | `dist/server` + cookie proxy (R2c/R3b/R6) |
 | Multi-tenant SaaS | microVM orchestrator (P3) — not Docker multi-tenant |
 
