@@ -2,11 +2,20 @@
   "name": "@zcode/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Staged static workbench assets (owned OSS web build lands in M0). Dev harness only until then.",
+  "description": "ZCode browser workspace UI (clone/edit/commit via browser-agent + git-proxy)",
+  "type": "module",
   "scripts": {
-    "build": "node ./scripts/placeholder-build.mjs",
-    "typecheck": "node -e \"process.exit(0)\"",
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node -e \"process.exit(0)\"",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "dev": "node ../cli/dist/cli.js web --dir dist --port 3000"
+  },
+  "dependencies": {
+    "@zcode/browser-agent": "workspace:*",
+    "@zcode/shell": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.5"
   }
 }

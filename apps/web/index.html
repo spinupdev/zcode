@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ZCode — Browser Workspace</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <header>
+      <strong>ZCode</strong>
+      <span id="mode" class="muted"></span>
+      <span id="status" class="status">idle</span>
+    </header>
+    <section class="toolbar">
+      <label>
+        Git URL
+        <input id="clone-url" type="url" size="48" />
+      </label>
+      <label>
+        corsProxy
+        <input id="proxy-url" type="url" size="28" />
+      </label>
+      <button id="btn-clone" type="button">Clone</button>
+      <button id="btn-refresh" type="button">Refresh tree</button>
+      <button id="btn-save" type="button">Save file</button>
+      <input id="commit-msg" type="text" placeholder="Commit message" size="24" />
+      <button id="btn-commit" type="button">Commit</button>
+    </section>
+    <main>
+      <aside id="tree" aria-label="Files"></aside>
+      <textarea id="editor" spellcheck="false" placeholder="Open a file…"></textarea>
+    </main>
+    <pre id="log" aria-label="Log"></pre>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
