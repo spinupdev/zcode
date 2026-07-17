@@ -7,6 +7,7 @@
   --muted: #8b949e;
   --accent: #58a6ff;
   --ok: #3fb950;
+  --bad: #f85149;
 }
 
 * {
@@ -20,7 +21,7 @@ body {
   color: var(--text);
   height: 100vh;
   display: grid;
-  grid-template-rows: auto auto 1fr 140px;
+  grid-template-rows: auto auto auto auto 1fr 150px;
 }
 
 header {
@@ -44,11 +45,76 @@ header {
   font-size: 0.85rem;
 }
 
-.toolbar {
+.proxy-status {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.proxy-status.ok {
+  color: var(--ok);
+  border-color: #238636;
+}
+
+.proxy-status.bad {
+  color: var(--bad);
+  border-color: #da3633;
+}
+
+.config {
+  padding: 0.6rem 1rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  background: #0f141a;
+}
+
+.config h2 {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.config-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: end;
+}
+
+.hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.hint code {
+  color: #a5d6ff;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 1rem;
+  border-bottom: 1px solid var(--border);
+  min-height: 2rem;
+}
+
+#progress {
+  width: min(360px, 50vw);
+  height: 0.65rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
   background: #0f141a;
@@ -85,14 +151,29 @@ button {
   cursor: pointer;
 }
 
+button.primary {
+  background: #238636;
+  border-color: #2ea043;
+}
+
 button:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
+button.primary:hover {
+  color: #fff;
+  border-color: #3fb950;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 main {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 280px 1fr;
   min-height: 0;
 }
 
@@ -114,6 +195,9 @@ button.file {
   border: none;
   padding: 0.25rem 0.4rem;
   border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 button.file:hover {
@@ -141,4 +225,5 @@ button.file:hover {
   background: #010409;
   color: var(--muted);
   font-size: 0.75rem;
+  white-space: pre-wrap;
 }

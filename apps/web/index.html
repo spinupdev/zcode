@@ -10,23 +10,45 @@
     <header>
       <strong>ZCode</strong>
       <span id="mode" class="muted"></span>
+      <span id="proxy-status" class="proxy-status">proxy ?</span>
       <span id="status" class="status">idle</span>
     </header>
+
+    <section class="config" aria-label="App config">
+      <h2>App config</h2>
+      <div class="config-row">
+        <label>
+          Git proxy URL
+          <input id="proxy-url" type="url" size="36" placeholder="http://127.0.0.1:8787" />
+        </label>
+        <label>
+          Clone URL
+          <input id="clone-url" type="url" size="48" placeholder="https://github.com/org/repo.git" />
+        </label>
+        <button id="btn-test-proxy" type="button">Test proxy</button>
+        <button id="btn-save-config" type="button">Save config</button>
+        <button id="btn-clone" type="button" class="primary">Clone</button>
+      </div>
+      <p class="hint">
+        Proxy is required for GitHub/GitLab (CORS). Saved in <code>localStorage</code>.
+        Override: <code>?proxy=http://127.0.0.1:8787&amp;clone=https://…</code>
+      </p>
+    </section>
+
+    <section class="progress-row" aria-label="Clone progress">
+      <progress id="progress" max="100" value="0" hidden></progress>
+      <span id="progress-label" class="muted"></span>
+    </section>
+
     <section class="toolbar">
-      <label>
-        Git URL
-        <input id="clone-url" type="url" size="48" />
-      </label>
-      <label>
-        corsProxy
-        <input id="proxy-url" type="url" size="28" />
-      </label>
-      <button id="btn-clone" type="button">Clone</button>
       <button id="btn-refresh" type="button">Refresh tree</button>
       <button id="btn-save" type="button">Save file</button>
       <input id="commit-msg" type="text" placeholder="Commit message" size="24" />
       <button id="btn-commit" type="button">Commit</button>
+      <input id="tree-filter" type="search" placeholder="Filter files…" size="20" />
+      <span id="tree-meta" class="muted"></span>
     </section>
+
     <main>
       <aside id="tree" aria-label="Files"></aside>
       <textarea id="editor" spellcheck="false" placeholder="Open a file…"></textarea>

@@ -23,7 +23,13 @@ node apps/cli/dist/cli.js git-proxy --port 8787
 node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000
 ```
 
-Open **http://127.0.0.1:5000/** → set clone URL → **Clone** → edit → **Save** → **Commit**.
+Open **http://127.0.0.1:5000/**
+
+1. Confirm **Git proxy URL** (`http://127.0.0.1:8787`) and click **Test proxy** (should show green “proxy ok”).
+2. Set clone URL → **Clone** — progress bar + log should update (large repos may briefly freeze during checkout).
+3. Open a file → edit → **Save** → **Commit**.
+
+Proxy/clone settings persist in `localStorage`. Override via `?proxy=http://127.0.0.1:8787&clone=https://github.com/…`.
 
 ### Or one server (login + static app)
 

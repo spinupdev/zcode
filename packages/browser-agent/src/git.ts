@@ -1,6 +1,6 @@
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
-import type { CloneOpts, CommitOpts, PushOpts, WorkspaceInfo } from '@zcode/protocol';
+import type { CloneOpts, CloneProgress, CommitOpts, PushOpts, WorkspaceInfo } from '@zcode/protocol';
 import type { AgentFs } from './memory-fs.js';
 import { createIsoFs } from './iso-fs.js';
 import type { WorkspaceStore } from './workspace-store.js';
@@ -22,32 +22,58 @@ export async function gitClone(
   }
 
   const iso = createIsoFs(fs, rec.rootKey);
+  const proxy = opts.corsProxyUrl.replace(/\/$/, '');
 
-  await git.clone({
-    fs: iso,
-    http,
-    dir: '.',
-    url: opts.url,
-    corsProxy: opts.corsProxyUrl.replace(/\/$/, ''),
-    ref: opts.ref,
-    singleBranch: true,
-    depth: opts.depth ?? 1,
-    onProgress: (e) => {
-      opts.onProgress?.({
-        phase:
-          e.phase === 'Receiving objects'
-            ? 'receiving'
-            : e.phase === 'Resolving deltas'
-              ? 'resolving'
-              : 'negotiating',
-        receivedObjects: e.loaded,
-        totalObjects: e.total,
-        message: e.phase,
-      });
-    },
-  });
+  let lastEmit = 0;
+  const emit = (p: CloneProgress) => {
+    // Throttle UI callbacks slightly but always emit terminal phases
+    const now = Date.now();
+    if (p.phase === 'done' || p.phase === 'negotiating' || now - lastEmit >= 80) {
+      lastEmit = now;
+      opts.onProgress?.(p);
+    }
+  };
 
-  opts.onProgress?.({ phase: 'done' });
+  emit({ phase: 'negotiating', message: 'starting clone' });
+
+  try {
+    await git.clone({
+      fs: iso,
+      http,
+      dir: '.',
+      url: opts.url,
+      corsProxy: proxy,
+      ref: opts.ref,
+      singleBranch: true,
+      depth: opts.depth ?? 1,
+      onProgress: (e) => {
+        const phase = mapPhase(e.phase);
+        emit({
+          phase,
+          receivedObjects: typeof e.loaded === 'number' ? e.loaded : undefined,
+          totalObjects: typeof e.total === 'number' && e.total > 0 ? e.total : undefined,
+          message: e.phase,
+        });
+      },
+      onMessage: (msg) => {
+        emit({ phase: 'negotiating', message: String(msg).trim() });
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Common failure: proxy down / CORS / SSRF block
+    if (/Failed to fetch|NetworkError|CORS|403|502|504/i.test(message)) {
+      throw Object.assign(
+        new Error(
+          `${message} — check git-proxy is running at ${proxy} (zcode git-proxy --port 8787)`,
+        ),
+        { code: 'PROXY_REQUIRED', cause: err },
+      );
+    }
+    throw Object.assign(new Error(message), { code: 'GIT_ERROR', cause: err });
+  }
+
+  emit({ phase: 'done', message: 'clone complete' });
   await refreshBytes(fs, store, rec.id, rec.rootKey);
 
   const fresh = store.get(rec.id)!;
@@ -58,6 +84,14 @@ export async function gitClone(
     createdAt: fresh.createdAt,
     approxBytes: fresh.approxBytes,
   };
+}
+
+function mapPhase(phase: string | undefined): CloneProgress['phase'] {
+  const p = (phase ?? '').toLowerCase();
+  if (p.includes('receiv') || p.includes('object')) return 'receiving';
+  if (p.includes('resolv') || p.includes('delta') || p.includes('check')) return 'resolving';
+  if (p.includes('done') || p.includes('complete')) return 'done';
+  return 'negotiating';
 }
 
 export async function gitCommit(
