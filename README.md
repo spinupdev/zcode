@@ -4,87 +4,82 @@
 
 | Mode | Description |
 | --- | --- |
-| **Browser** | Full client-side workbench: OPFS workspace, isomorphic-git clone/commit, web extension host |
-| **Remote** | Browser UI connects to a VS Code server in Docker (MVP) or microVM (later) |
-
-The IDE **always starts in the browser**. Mode is workbench configuration (`remoteAuthority`, extension hosts, providers)—not a custom parallel editor RPC.
+| **Browser** | Client-side workspace: clone via isomorphic-git + git-proxy, edit, commit |
+| **Remote** | Browser UI + password login; optional REH spawn when server artifacts exist |
 
 > **Not [coder/code-server](https://github.com/coder/code-server).**  
-> This repository (`spinupdev/code-server` today; preferred rename **`spinupdev/zcode`**) is a separate greenfield product. CLI binary: **`zcode`**.
+> Preferred repo rename: `spinupdev/zcode`. CLI: **`zcode`**.
 
-## Status
-
-Early scaffolding (PR1 monorepo + R1 VS Code pin). See the architecture doc:
-
-- [docs/design-dual-mode-vscode-ide.md](./docs/design-dual-mode-vscode-ide.md)
-- [docs/vscode-pin.md](./docs/vscode-pin.md) — current VS Code tag/SHA
-- [docs/quilt-workflow.md](./docs/quilt-workflow.md)
-
-## Repo layout
-
-```text
-packages/     protocol, shell, browser-agent, server, git-proxy, …
-apps/         cli (zcode), web (static workbench staging)
-extensions/   zcode-browser-fs, zcode-git, zcode-diagnostics, …
-vendor/       vscode (git submodule)
-patches/      quilt series for vendor/vscode
-scripts/      sync-vscode, build helpers
-docs/         design + ADRs
-```
-
-## Prerequisites
-
-- Node.js ≥ 20
-- [pnpm](https://pnpm.io) 11+
-- Git
-- Optional: [quilt](https://savannah.nongnu.org/projects/quilt) for VS Code patches
-- Optional: Docker (remote mode later)
-
-## Quick start
+## Quick start — run the integrated browser workspace
 
 ```bash
 pnpm install
 pnpm build
-pnpm test
 
-# CLI skeleton
-node apps/cli/dist/cli.js help
+# terminal 1 — CORS proxy for GitHub/GitLab git HTTP
+node apps/cli/dist/cli.js git-proxy --port 8787
 
-# Shell bootstrap harness (Track B1 — not the full workbench)
-pnpm dev:shell
-# open http://127.0.0.1:4173/?mode=browser
-
-# VS Code submodule (already pinned on main; re-init if needed)
-./scripts/add-vscode-submodule.sh
-./scripts/sync-vscode.sh
-
-# Server build prerequisites (full REH compile is long — see docs/building-vscode.md)
-pnpm build:server:check
-# ./scripts/build-server.sh          # full package when ready
+# terminal 2 — browser workspace UI
+node apps/cli/dist/cli.js web --dir apps/web/dist --port 3000
 ```
 
-**Dev vs production:** `@vscode/test-web` is never a production path. Set `ZCODE_ALLOW_TEST_WEB=1` only for local extension experiments. Owned web assets come from the OSS web build (M0).
+Open **http://127.0.0.1:3000/** → set clone URL → **Clone** → edit → **Save** → **Commit**.
+
+### Or one server (login + static app)
+
+```bash
+node apps/cli/dist/cli.js serve . --port 8080 --password secret --no-reh
+```
+
+Open http://127.0.0.1:8080/ → login → browser workspace at `/index.html` (when `apps/web/dist` exists).
+
+### Shell bootstrap harness (config only)
+
+```bash
+pnpm dev:shell
+# http://127.0.0.1:4173/?mode=browser
+```
 
 ## CLI
 
 ```bash
-# HTTP wrapper: password login + HttpOnly session cookie (REH attach next)
-node apps/cli/dist/cli.js serve . --port 8080 --password secret
-
-zcode git-proxy --port 8787 --allow-hosts github.com,gitlab.com   # B4
-zcode web --dir dist/web --port 3000                               # later
+zcode serve [dir] --port 8080 --password secret [--static-dir apps/web/dist] [--no-reh]
+zcode git-proxy --port 8787 --allow-hosts github.com,gitlab.com
+zcode web --dir apps/web/dist --port 3000
 ```
 
-## Implementation tracks
+## Tests & checks
 
-After monorepo bootstrap, work proceeds in **parallel**:
+```bash
+pnpm test
+pnpm build:server:check   # REH build prerequisites
+pnpm smoke
+```
 
-1. **Track R** — VS Code submodule → server build → cookie auth bridge → Docker → `zcode serve`
-2. **Track B** — browser shell → OPFS → FileSystemProvider → git + proxy → search
+## Layout
 
-Then merge: owned web build, dual-mode wiring, e2e.
+```text
+packages/     protocol · shell · browser-agent · server · git-proxy · …
+apps/         cli · web (browser workspace UI)
+extensions/   zcode-browser-fs · zcode-git · …
+vendor/       vscode @ 1.129.0 (submodule)
+deploy/docker compose + Dockerfile
+docs/         design + build guides
+```
+
+## Docker
+
+```bash
+docker compose -f deploy/docker/compose.yaml up --build
+# app :8080  git-proxy :8787
+```
+
+## Docs
+
+- [Architecture design](./docs/design-dual-mode-vscode-ide.md)
+- [VS Code pin](./docs/vscode-pin.md)
+- [Building VS Code REH](./docs/building-vscode.md)
 
 ## License
 
-Product code: TBD.  
-`vendor/vscode` remains under its upstream license (MIT).
+Product code: TBD. `vendor/vscode` remains MIT (upstream).

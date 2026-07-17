@@ -2,5 +2,10 @@ packages:
   - "packages/*"
   - "apps/*"
   - "extensions/*"
+
+# pnpm 11: allow lifecycle scripts for native bundler
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
+
+onlyBuiltDependencies:
+  - esbuild
