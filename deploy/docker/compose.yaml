@@ -1,15 +1,40 @@
 services:
   # One service: SPA/static + password login + same-origin /git-proxy (stateless)
+  # Non-root (uid 10001), healthcheck, workspace volume at /home/workspace (H4).
   zcode:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.server
+      # Uncomment for explicit multi-arch build with buildx:
+      # platforms:
+      #   - linux/amd64
+      #   - linux/arm64
+    image: zcode:local
     ports:
       - "8080:8080"
     environment:
       ZCODE_PASSWORD: ${ZCODE_PASSWORD:-zcode}
+      # Never put connection tokens in URLs (KD12)
+      ZCODE_SECURE_COOKIES: ${ZCODE_SECURE_COOKIES:-0}
     volumes:
-      - zcode-workspace:/workspace
+      - zcode-workspace:/home/workspace
+    # Match image USER (non-root)
+    user: "10001:10001"
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
     restart: unless-stopped
 
 volumes:

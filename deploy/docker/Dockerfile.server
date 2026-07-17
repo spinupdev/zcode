@@ -1,8 +1,19 @@
-# ZCode self-host image: Node runtime + monorepo product packages.
-# Full VS Code REH can be layered later via multi-stage build-server.sh.
-FROM node:22-bookworm-slim
+# ZCode self-host image: SPA + login + same-origin /git-proxy (+ optional REH later).
+# H4: non-root runtime, multi-arch friendly (linux/amd64 + linux/arm64 via buildx).
+#
+# Build (host arch):
+#   docker build -f deploy/docker/Dockerfile.server -t zcode:local .
+# Multi-arch:
+#   bash scripts/docker-build.sh --platforms linux/amd64,linux/arm64 --tag zcode:dev
+#
+# Full VS Code REH is NOT baked in by default (multi-GB, platform-specific).
+# Mount or multi-stage layer dist/server when you need remote terminal.
 
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+# ---- deps (cached) ----
+FROM node:22-bookworm-slim AS deps
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
   && corepack enable
 
@@ -12,16 +23,65 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json tsconfig.base.js
 COPY packages ./packages
 COPY apps ./apps
 COPY extensions ./extensions
+COPY product ./product
 COPY scripts ./scripts
-COPY patches ./patches
 
-RUN pnpm install --frozen-lockfile \
-  && pnpm build \
-  && pnpm --filter @zcode/web build
+# Workspace package.json files only for install cache; full sources copied above.
+RUN pnpm install --frozen-lockfile
 
-ENV NODE_ENV=production
-ENV ZCODE_PASSWORD=zcode
-EXPOSE 8080 8787
+# ---- build ----
+FROM deps AS build
 
-# Default: product server with browser workspace + same-origin /git-proxy
-CMD ["node", "apps/cli/dist/cli.js", "serve", "/workspace", "--host", "0.0.0.0", "--port", "8080", "--no-reh"]
+RUN pnpm build \
+  && pnpm --filter @zcode/web build \
+  && pnpm --filter @zcode/workbench build \
+  && pnpm --filter zcode-browser-fs build \
+  && pnpm --filter zcode-git build \
+  && pnpm --filter zcode-diagnostics build || true
+
+# ---- runtime ----
+FROM node:22-bookworm-slim AS runtime
+
+LABEL org.opencontainers.image.title="ZCode" \
+  org.opencontainers.image.description="ZCode browser IDE self-host (SPA + git-proxy + optional REH)" \
+  org.opencontainers.image.source="https://github.com/spinupdev/zcode"
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates tini \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --gid 10001 zcode \
+  && useradd --uid 10001 --gid zcode --home-dir /home/zcode --create-home --shell /usr/sbin/nologin zcode \
+  && mkdir -p /home/workspace /app \
+  && chown -R zcode:zcode /home/workspace /home/zcode /app
+
+WORKDIR /app
+
+# Production node_modules + built surfaces only (no vendor/vscode, no REH binaries).
+COPY --from=build --chown=zcode:zcode /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/
+COPY --from=build --chown=zcode:zcode /app/node_modules /app/node_modules
+COPY --from=build --chown=zcode:zcode /app/packages /app/packages
+COPY --from=build --chown=zcode:zcode /app/apps /app/apps
+COPY --from=build --chown=zcode:zcode /app/extensions /app/extensions
+COPY --from=build --chown=zcode:zcode /app/product /app/product
+
+# Drop privileges
+USER zcode:zcode
+
+# Password: set at runtime (compose/env), never bake secrets into the image.
+ENV NODE_ENV=production \
+  HOME=/home/zcode \
+  # Default workspace for serve (compose mounts volume here)
+  ZCODE_WORKSPACE=/home/workspace
+
+WORKDIR /home/workspace
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+# tini as PID 1 for signal reaping (image still non-root via USER)
+ENTRYPOINT ["tini", "--"]
+
+# Default: browser workspace + login + /git-proxy; REH off unless dist/server present + ZCODE_SPAWN_REH=1
+CMD ["node", "/app/apps/cli/dist/cli.js", "serve", "/home/workspace", "--host", "0.0.0.0", "--port", "8080", "--no-reh"]
