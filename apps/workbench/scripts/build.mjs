@@ -18,13 +18,21 @@ const productOverlay = JSON.parse(
 const defaultProduct = {
   productConfiguration: {
     ...productOverlay,
-    // Helpful web defaults
+    // Helpful web defaults — dark theme matches monaco-parts-splash skeleton
     configurationDefaults: {
       'security.workspace.trust.enabled': false,
       'security.workspace.trust.startupPrompt': 'never',
       'workbench.startupEditor': 'readme',
+      'workbench.colorTheme': 'Default Dark Modern',
+      'window.autoDetectColorScheme': false,
       'files.exclude': { '**/.git': true, '**/.git/**': true },
     },
+  },
+  zcodeMode: 'browser',
+  zcodeCapabilities: {
+    terminal: false,
+    browserGit: true,
+    search: 'client',
   },
   // Open virtual workspace; shared IndexedDB with SPA (browser-agent IdbFs)
   folderUri: {
@@ -43,7 +51,7 @@ const defaultProduct = {
     title: 'ZCode Home',
   },
   windowIndicator: {
-    label: '$(remote) ZCode browser',
+    label: '$(folder) ZCode browser',
     tooltip: 'Browser mode — virtual FS (zcode-opfs)',
   },
   // Workspace is trusted so FS provider can write without prompts
@@ -52,8 +60,8 @@ const defaultProduct = {
 
 writeFileSync(join(dist, 'product.json'), JSON.stringify(defaultProduct, null, 2));
 
-// Pre-workbench skeleton mirrors VS Code's monaco-parts-splash (electron workbench.ts)
-// so production loads show IDE chrome instead of a debug/error "app page" blip.
+// Pre-workbench skeleton = VS Code monaco-parts-splash.
+// Toast styles live outside initialShellColors so hideSplash() cannot unhide errors.
 const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,7 +76,7 @@ const indexHtml = `<!DOCTYPE html>
       width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
       background-color: #1e1e1e; color: #cccccc;
     }
-    /* VS Code parts splash (see vendor/vscode .../workbench/workbench.ts #monaco-parts-splash) */
+    /* VS Code parts splash (vendor/vscode .../workbench/workbench.ts #monaco-parts-splash) */
     #monaco-parts-splash {
       position: fixed; inset: 0; z-index: 100;
       background-color: #1e1e1e; color: #cccccc;
@@ -122,21 +130,54 @@ const indexHtml = `<!DOCTYPE html>
       left: 0; right: 0; bottom: 0; height: 22px;
       background: #007acc;
     }
-    /* Error surface only when bootstrap fails (not shown during normal load) */
-    #fallback {
+  </style>
+  <!-- Permanent: never removed by hideSplash (avoids error toast leaking into IDE) -->
+  <style id="zcode-toast-styles">
+    #zcode-toast {
       display: none;
-      font-family: system-ui, sans-serif; padding: 2rem; max-width: 42rem; margin: 0 auto;
-      color: #e6edf3; background: #0d1117; min-height: 100%; box-sizing: border-box;
-      position: relative; z-index: 200;
+      position: fixed;
+      z-index: 10000;
+      right: 16px;
+      bottom: 28px;
+      max-width: min(420px, calc(100vw - 32px));
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #f3f3f3;
+      background: #252526;
+      border: 1px solid #be1100;
+      border-left: 4px solid #f14c4c;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      padding: 12px 14px 12px 14px;
+      box-sizing: border-box;
     }
-    #fallback.visible { display: block; }
-    #fallback a { color: #58a6ff; }
-    #fallback code { background: #21262d; padding: 0.1rem 0.35rem; border-radius: 4px; }
-    #fallback pre { background: #161b22; padding: 0.75rem; border-radius: 6px; overflow: auto; }
+    #zcode-toast.visible { display: block; }
+    #zcode-toast .zcode-toast-title {
+      font-weight: 600;
+      margin: 0 28px 6px 0;
+      color: #f14c4c;
+    }
+    #zcode-toast .zcode-toast-body { margin: 0; color: #cccccc; word-break: break-word; }
+    #zcode-toast .zcode-toast-body a { color: #3794ff; }
+    #zcode-toast .zcode-toast-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      border: 0;
+      background: transparent;
+      color: #cccccc;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    #zcode-toast .zcode-toast-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
   </style>
 </head>
 <body>
-  <!-- Early shell skeleton (VS Code monaco-parts-splash). Removed when workbench paints. -->
+  <!-- Early shell skeleton. Hidden when workbench paints. -->
   <div id="monaco-parts-splash" class="vs-dark" aria-hidden="true">
     <div class="part titlebar"></div>
     <div class="part activitybar"></div>
@@ -150,14 +191,11 @@ const indexHtml = `<!DOCTYPE html>
     </div>
     <div class="part statusbar"></div>
   </div>
-  <div id="fallback" role="alert">
-    <h1>ZCode IDE</h1>
-    <p>VS Code Web could not start. Check that assets are staged:</p>
-    <pre>./scripts/fetch-vscode-web.sh
-pnpm --filter @zcode/workbench build
-pnpm --filter zcode-browser-fs build
-pnpm deploy:cloudflare   # or: zcode web / zcode serve</pre>
-    <p>Optional git dogfood: <a href="/debug/">/debug/</a></p>
+  <!-- Error toast only (not a full-page banner) -->
+  <div id="zcode-toast" role="alert" aria-live="assertive" hidden>
+    <button type="button" class="zcode-toast-close" aria-label="Dismiss">×</button>
+    <p class="zcode-toast-title">ZCode IDE</p>
+    <p class="zcode-toast-body" id="zcode-toast-body"></p>
   </div>
   <script>
     window.product = ${JSON.stringify(defaultProduct)};
@@ -172,21 +210,38 @@ writeFileSync(join(dist, 'index.html'), indexHtml);
 const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject extension URIs */
 (async function () {
   const splash = document.getElementById('monaco-parts-splash');
-  const fallback = document.getElementById('fallback');
+  const toast = document.getElementById('zcode-toast');
+  const toastBody = document.getElementById('zcode-toast-body');
+  const toastClose = toast && toast.querySelector('.zcode-toast-close');
+  if (toastClose) {
+    toastClose.addEventListener('click', () => hideToast());
+  }
   function hideSplash() {
-    if (splash) splash.classList.add('hidden');
-    // Match VS Code PartsSplash: drop initial shell color style once workbench owns the page
+    if (splash) {
+      splash.classList.add('hidden');
+      splash.setAttribute('aria-hidden', 'true');
+    }
+    // Only remove splash shell colors — toast CSS is permanent (#zcode-toast-styles)
     document.head.querySelectorAll('style.initialShellColors').forEach((el) => el.remove());
   }
-  function showFallback(msg) {
+  function hideToast() {
+    if (!toast) return;
+    toast.classList.remove('visible');
+    toast.hidden = true;
+  }
+  function showToast(msg) {
     hideSplash();
-    if (!fallback) return;
-    fallback.classList.add('visible');
-    if (msg) {
-      const p = document.createElement('p');
-      p.textContent = msg;
-      fallback.appendChild(p);
-    }
+    if (!toast) return;
+    const text =
+      msg ||
+      'VS Code Web could not start. Stage assets (fetch-vscode-web / workbench build) or redeploy.';
+    if (toastBody) toastBody.textContent = text;
+    toast.hidden = false;
+    toast.classList.add('visible');
+  }
+  // Back-compat name used below
+  function showFallback(msg) {
+    showToast(msg);
   }
 
   function withHostAuthority(product) {
@@ -455,16 +510,19 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
   await loadScript('/vscode/out/vs/workbench/workbench.web.main.js');
   await loadScript('/vscode/out/vs/code/browser/workbench/workbench.js');
   setTimeout(hideSplash, 0);
+  hideToast();
 })().catch((err) => {
   console.error(err);
-  const splash = document.getElementById('monaco-parts-splash');
-  if (splash) splash.classList.add('hidden');
-  const fallback = document.getElementById('fallback');
-  if (fallback) {
-    fallback.classList.add('visible');
-    const p = document.createElement('p');
-    p.textContent = String(err && err.message ? err.message : err);
-    fallback.appendChild(p);
+  // showToast is scoped inside the IIFE — duplicate minimal toast path here
+  const splashEl = document.getElementById('monaco-parts-splash');
+  if (splashEl) splashEl.classList.add('hidden');
+  document.head.querySelectorAll('style.initialShellColors').forEach((el) => el.remove());
+  const t = document.getElementById('zcode-toast');
+  const b = document.getElementById('zcode-toast-body');
+  if (b) b.textContent = String(err && err.message ? err.message : err);
+  if (t) {
+    t.hidden = false;
+    t.classList.add('visible');
   }
 });
 `;

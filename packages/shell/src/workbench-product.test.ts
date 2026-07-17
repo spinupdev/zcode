@@ -50,9 +50,11 @@ describe('buildWorkbenchCreateOptions', () => {
   it('browser defaults soft-hide terminal; remote enables it', () => {
     const browser = configurationDefaultsForMode('browser', browserCapabilities());
     assert.equal(browser['terminal.integrated.enablePersistentSessions'], false);
+    assert.equal(browser['workbench.colorTheme'], 'Default Dark Modern');
     const remote = configurationDefaultsForMode('remote', remoteCapabilities());
     assert.equal(remote['terminal.integrated.enablePersistentSessions'], true);
     assert.equal(remote['remote.autoForwardPorts'], true);
+    assert.equal(remote['workbench.colorTheme'], 'Default Dark Modern');
   });
 
   it('serializes window.product script', () => {

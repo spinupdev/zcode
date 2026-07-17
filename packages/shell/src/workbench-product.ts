@@ -85,6 +85,9 @@ export function configurationDefaultsForMode(
     'security.workspace.trust.enabled': false,
     'security.workspace.trust.startupPrompt': 'never',
     'workbench.startupEditor': 'readme',
+    // Align with monaco-parts-splash skeleton (dark); avoid light flash on first paint
+    'workbench.colorTheme': 'Default Dark Modern',
+    'window.autoDetectColorScheme': false,
   };
 
   if (!caps.terminal || mode === 'browser') {
