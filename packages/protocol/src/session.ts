@@ -5,6 +5,8 @@
  * file / terminal / extension-host IPC (that remains upstream).
  */
 
+import type { ExecutionBackendId } from './execution.js';
+
 export type IdeMode = 'browser' | 'remote';
 
 /** UI capability matrix — drives chrome visibility, not editor IPC. */
@@ -18,6 +20,13 @@ export interface ProductCapabilities {
   search: 'ripgrep' | 'web-best-effort' | 'none';
   fileWatcher: 'native' | 'polling' | 'none';
   maxWorkspaceBytes?: number;
+  /**
+   * Execution backends available in this mode (SA2 / ADR 0001).
+   * Optional for backward compatibility; shell/extensions may fill defaults.
+   */
+  executionBackends?: ExecutionBackendId[];
+  /** Preferred default when auto-selecting Run target */
+  defaultExecutionBackend?: ExecutionBackendId;
 }
 
 /**
@@ -77,6 +86,9 @@ export function browserCapabilities(): ProductCapabilities {
     debug: false,
     search: 'web-best-effort',
     fileWatcher: 'polling',
+    // WASM runtimes are the default Run targets without REH (WB*)
+    executionBackends: ['browser-python', 'browser-node'],
+    defaultExecutionBackend: 'browser-node',
   };
 }
 
@@ -90,5 +102,7 @@ export function remoteCapabilities(): ProductCapabilities {
     debug: true,
     search: 'ripgrep',
     fileWatcher: 'native',
+    executionBackends: ['remote-reh', 'browser-python', 'browser-node'],
+    defaultExecutionBackend: 'remote-reh',
   };
 }

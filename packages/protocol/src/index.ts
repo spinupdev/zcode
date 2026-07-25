@@ -31,3 +31,23 @@ export {
   createWorkbenchLoadConfig,
   capabilitiesForMode,
 } from './mode.js';
+
+export type {
+  ExecutionBackendId,
+  ConnectionScope,
+  RemoteConnectionStatus,
+  ConnectionState,
+  ExecutionBackendInfo,
+  ExecutionBackend,
+  RunFileOpts,
+  RunSelectionOpts,
+  RunResult,
+  ExecutionRegistrySnapshot,
+} from './execution.js';
+
+export {
+  disconnectedConnectionState,
+  defaultBrowserExecutionBackends,
+  remoteExecutionBackendInfo,
+  resolveDefaultExecutionBackend,
+} from './execution.js';

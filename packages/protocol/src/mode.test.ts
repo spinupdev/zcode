@@ -67,4 +67,16 @@ describe('capabilitiesForMode', () => {
     assert.equal(capabilitiesForMode('remote').terminal, true);
     assert.equal(capabilitiesForMode('remote').search, 'ripgrep');
   });
+
+  it('lists browser WASM backends in browser mode', () => {
+    const caps = capabilitiesForMode('browser');
+    assert.deepEqual(caps.executionBackends, ['browser-python', 'browser-node']);
+    assert.equal(caps.defaultExecutionBackend, 'browser-node');
+  });
+
+  it('prefers remote-reh when remote mode', () => {
+    const caps = capabilitiesForMode('remote');
+    assert.equal(caps.defaultExecutionBackend, 'remote-reh');
+    assert.ok(caps.executionBackends?.includes('remote-reh'));
+  });
 });
