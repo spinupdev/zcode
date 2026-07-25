@@ -6,7 +6,7 @@
 | **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
 | **Local path** | may still be checked out as `code-server` — product is **ZCode** |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-18 (RESUME.md agent handoff; B8b open-repo + live CF) |
+| **Last updated** | 2026-07-18 (plan file + WB0–2/RA1–2 runtime & remote extensions) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -275,15 +275,39 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | H4 | Docker multi-arch / non-root harden | **done** | non-root 10001, tini, healthcheck, compose harden, `scripts/docker-build.sh` multi-arch, `deploy/docker/README.md` |
 | H5 | Observability (metrics, structured logs) | **remaining** | design only |
 
-### 4.6 Post-MVP / SaaS
+### 4.6 Server-agnostic IDE (same-origin · live attach · WASM)
+
+Product north star: **IDE does not depend on a server**. Same-origin only. See ADRs.
 
 | ID | Work package | Status | Last note |
 | --- | --- | --- | --- |
-| P0 | ADR browser↔remote workspace sync | **remaining** | gates upgrade |
-| P1 | Browser→remote upgrade | **remaining** | |
-| P2 | Session API + OIDC attach codes | **remaining** | package stub |
+| SA0 | ADR server-agnostic IDE | **done** | `docs/adr/0001-server-agnostic-ide.md` |
+| SA1 | ADR browser↔remote workspace sync | **done** | `docs/adr/0002-browser-remote-workspace-sync.md` (was P0) |
+| SA2 | Protocol: ExecutionBackend + ConnectionState | **done** | `@zcode/protocol` `execution.ts` |
+| RA0 | Spike: remote attach without reload | **done** | no-go mid-session authority; Tier1 reload + WASM; RA3 = execution-only later |
+| RA1 | `zcode-remote` extension (connect/disconnect) | **done** | `extensions/zcode-remote` Tier 1 reload attach |
+| RA2 | Tier 1 seamless attach (state-preserving reload) | **done** | save dirty + continuity + `?mode=remote`; full OPFS→server sync still WS1 |
+| RA3 | Execution-only remote (no reload) | **remaining** | after RA0 |
+| RA4 | Status bar / diagnostics for backend + connection | **done** | runtime + remote status bars |
+| RA5 | E2E browser → connect remote | **remaining** | |
+| WB0 | Runtime provider interface (shared) | **done** | `zcode-runtime-core` + `globalThis.zcodeRuntime` |
+| WB1 | `zcode-runtime-python` (Pyodide) | **done** | CDN Pyodide; Run File |
+| WB2 | `zcode-runtime-node` (+ tech spike) | **done** | browser worker JS (not full Node); WC later |
+| WB3–WB6 | Run UX, FS bridge, CSP, e2e | **done** | Run UX + CSP; dual-mode e2e extensions; import API on e2e:reh |
+| WS1 | Workspace import API + connect upload (files-v1) | **done** | `POST /v1/workspace/import` · zcode-remote upload before reload |
+| WS2 | Pre-attach flush dirty editors | **done** | part of zcode-remote connect |
+| WS3 | Detach remote→browser OPFS pull | **done** | zcode-remote disconnect: export → applyFilesV1 → reload browser |
+
+### 4.7 Post-MVP / SaaS
+
+| ID | Work package | Status | Last note |
+| --- | --- | --- | --- |
+| P0 | ADR browser↔remote workspace sync | **done** | → SA1 / ADR 0002 |
+| P1 | Browser→remote upgrade / live attach | **in_progress** | → RA* track |
+| P2 | Session API + OIDC attach codes | **remaining** | package stub; not needed for same-origin |
 | P3 | microVM orchestrator (Firecracker) | **remaining** | interface sketch only |
 | P4 | Billing metering | **deferred** | |
+| OQ10 | Cross-origin CDN shell cookies | **deferred** | same-origin product path accepted |
 
 ---
 
@@ -291,12 +315,21 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 
 Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared agent.
 
-### P0 — Next 1–2 sessions
+**North star:** server-agnostic IDE (ADR 0001). Same-origin remote. WASM run without REH. Live attach via extensions.
 
-1. Turn on `ZCODE_E2E_REH_PTY_REQUIRED=1` in CI heavy REH job once remote shell is stable on Linux artifact.
-2. Optional custom domain on Pages + Worker routes (live `*.pages.dev` already up).
-3. Optional: SPA git-worker dual-open OPFS coordinator (today: MemoryFs clone → main-thread OPFS/IDB import).
-4. **H5** observability (metrics / structured logs) when ops needs it.
+### P0 — Next 1–2 sessions (server-agnostic track)
+
+1. **WB0 + WB1** — runtime interface + `zcode-runtime-python` (Pyodide); Run File without server.  
+2. **RA1 + RA2** — `zcode-remote` Connect / Tier 1 seamless attach (same-origin cookie + reload + state).  
+3. **RA0** — finish spike table on pin 1.129; record go/no-go for no-reload full remote.  
+4. **WB2** — Node-in-browser tech spike then `zcode-runtime-node`.
+
+### P1 — Parallel / ops (do not block P0)
+
+1. CI: `ZCODE_E2E_REH_PTY_REQUIRED=1` on heavy REH job when Linux REH stable.  
+2. Optional custom domain on Pages + Worker.  
+3. Optional SPA git-worker OPFS dual-open coordinator.  
+4. **H5** observability when ops needs it.
 
 ---
 
@@ -353,7 +386,7 @@ pnpm smoke            # lighter checks
 | OQ2 | Dual marketplace (Open VSX + private) for enterprise? | product.json / gallery |
 | OQ6 | SaaS billing model | session-api |
 | OQ9 | ~~When to rename GitHub repo to `zcode`~~ | **done** — `spinupdev/zcode` |
-| OQ10 | CDN shell cookie domain for cross-origin remote | blocks full Topology B CDN |
+| OQ10 | ~~CDN shell cookie domain for cross-origin remote~~ | **deferred** — same-origin path accepted (ADR 0001) |
 | OQ11 | Dogfood `vscode-web@1.91` vs block on owned 1.129 web | quality vs speed |
 
 ---
@@ -374,6 +407,10 @@ pnpm smoke            # lighter checks
 | [`docs/hosting-production.md`](./docs/hosting-production.md) | H3 Pages+Worker production checklist |
 | [`deploy/docker/README.md`](./deploy/docker/README.md) | H4 Docker non-root / multi-arch |
 | [`docs/b2b-opfs-zenfs.md`](./docs/b2b-opfs-zenfs.md) | B2b OPFS primary + IDB fallback |
+| [`docs/plan-server-agnostic-ide.md`](./docs/plan-server-agnostic-ide.md) | **Active plan** — WASM runtimes + live attach |
+| [`docs/adr/0001-server-agnostic-ide.md`](./docs/adr/0001-server-agnostic-ide.md) | SA0 — IDE without server; same-origin; backends |
+| [`docs/adr/0002-browser-remote-workspace-sync.md`](./docs/adr/0002-browser-remote-workspace-sync.md) | SA1 — bundle/tar sync for Tier 1 attach |
+| [`docs/spikes/remote-attach-no-reload.md`](./docs/spikes/remote-attach-no-reload.md) | RA0 — no-reload feasibility |
 | [`docs/vscode-pin.md`](./docs/vscode-pin.md) | Pin SHA / upgrade |
 | [`docs/quilt-workflow.md`](./docs/quilt-workflow.md) | Patch discipline |
 | [`deploy/cloudflare/README.md`](./deploy/cloudflare/README.md) | Worker deploy |
@@ -406,5 +443,9 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | **H3 live**: Cloudflare Pages + Worker + same-origin Pages Function; `scripts/deploy-cloudflare.sh` |
 | 2026-07-18 | **B8b**: Welcome **Open Repository** → in-IDE HTTPS clone (`zcode.git.openRepository` + `remoteHub.openRepository`); notification progress/errors; git-proxy default allow `*` (SSRF still blocked); Zeish favicon (`product/icon.svg`) replaces VS Code `favicon.ico` |
 | 2026-07-18 | **RESUME.md**: paste-ready agent handoff reflecting `/` IDE, `/debug` SPA, H3–H4 done, §5 next queue |
+| 2026-07-18 | **SA0–SA2 done**: ADR 0001 server-agnostic IDE; ADR 0002 workspace sync; `@zcode/protocol` execution backends + connection state. **RA0** spike baseline. Queue → WASM runtimes + `zcode-remote` Tier 1. OQ10 deferred. |
+| 2026-07-18 | **WB0–WB2 + RA1/RA2**: `zcode-runtime-core/python/node`, `zcode-remote` connect; plan at `docs/plan-server-agnostic-ide.md`; CSP allows Pyodide CDN |
+| 2026-07-18 | **WS1**: files-v1 import/export routes; connect uploads OPFS before remote reload; seed `hello.py`/`hello.js` |
+| 2026-07-18 | **WS3 + RA0**: disconnect pulls remote→OPFS; RA0 concluded no mid-session remoteAuthority; e2e workspace-sync on reh config |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

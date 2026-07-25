@@ -43,6 +43,7 @@ Trackers in PLAN.md are authoritative. Summary of major packages **done**:
 | Remote | R1–R6 | REH artifact, cookie→token proxy, STRICT e2e, PTY `printf zcode_echo_ok` + `ZCODE_E2E_REH_PTY_REQUIRED=1` |
 | Workbench | M0a–M3, M1–M2 | Owned web path local; dual-mode; CSP/diagnostics; Playwright |
 | Hosting | H1–H4 | CF Worker + live Pages; Docker non-root multi-arch |
+| Server-agnostic | SA0–SA2, WB0–2, RA1–2 | ADRs; plan `docs/plan-server-agnostic-ide.md`; runtime-core/python/node; zcode-remote Tier1 |
 | URL layout | — | Product at `/`; SPA at `/debug/`; no `/ide` |
 
 Useful recent themes on `main` (not exhaustive):
@@ -63,33 +64,25 @@ Local artifacts often present (never commit binaries):
 
 Work through **PLAN.md §5 in order**. Do not pause for product decisions. If blocked by environment (disk, CF auth, missing REH binary), document the exact blocker in PLAN.md, implement everything that can still ship (scripts, tests, docs, CI), mark the tracker accurately, and continue.
 
-### P0 — next packages (from PLAN §5)
+### P0 — next packages (from PLAN §5) — server-agnostic IDE
 
-1. **CI: enable `ZCODE_E2E_REH_PTY_REQUIRED=1`** on the heavy REH e2e job (`workflow_dispatch` / `heavy_build=reh-and-e2e`) once Linux REH + remote shell is stable.  
-   - Soft local: `pnpm e2e:reh`  
-   - STRICT: `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh`  
-   - PTY hard-fail: `ZCODE_E2E_REH_PTY_REQUIRED=1`  
-   - Docs: [docs/r6-terminal-e2e.md](./docs/r6-terminal-e2e.md), [docs/reh-cookie-proxy.md](./docs/reh-cookie-proxy.md)  
-   - Fetch Linux artifact: `pnpm fetch:reh` (needs `gh` + prior CI REH build)
+North star: **IDE without a required server** (same-origin remote optional). ADRs:
 
-2. **Optional custom domain** on Cloudflare Pages + Worker routes (live `*.pages.dev` already up).  
-   - [docs/hosting-production.md](./docs/hosting-production.md), [deploy/cloudflare/README.md](./deploy/cloudflare/README.md)  
-   - `pnpm hosting:dry-run` · `pnpm deploy:cloudflare`  
-   - Domain attaches to **Pages**, not the Worker alone (see recent deploy docs commits).
+- [docs/adr/0001-server-agnostic-ide.md](./docs/adr/0001-server-agnostic-ide.md) (SA0)  
+- [docs/adr/0002-browser-remote-workspace-sync.md](./docs/adr/0002-browser-remote-workspace-sync.md) (SA1)  
+- Protocol: `@zcode/protocol` execution backends (SA2)  
+- Spike: [docs/spikes/remote-attach-no-reload.md](./docs/spikes/remote-attach-no-reload.md) (RA0)
 
-3. **Optional: SPA git-worker dual-open OPFS coordinator**  
-   - Today: clone in MemoryFs worker → import into main-thread OPFS/IDB.  
-   - Design target: single FS coordinator / no dual open on same OPFS path ([docs/b2b-opfs-zenfs.md](./docs/b2b-opfs-zenfs.md)).  
-   - Do **not** expand the debug SPA as the product IDE.
+1. **RA5 / WB6** — Playwright UI smoke for Run File (optional); API import covered in `e2e:reh`.  
+2. **RA3** — execution-only remote (PTY/tasks, no remoteAuthority) when needed.  
+3. **WB2+** — optional WebContainers for real Node (current = worker JS).
 
-4. **H5 observability** (metrics / structured logs) when ops needs it — design first if scope unclear.
+### P1 — ops / parallel (do not block WASM + attach)
 
-### P1 / post-MVP (only if P0 clear)
-
-- **P0 ADR** browser↔remote workspace sync (gates upgrade)  
-- **P1** browser→remote upgrade  
-- **P2** session API + OIDC  
-- **P3** microVM orchestrator  
+1. CI: `ZCODE_E2E_REH_PTY_REQUIRED=1` on heavy REH job when Linux REH stable.  
+2. Optional CF custom domain; OPFS dual-open coordinator; H5 observability.  
+3. Cross-origin CDN (OQ10) **deferred** — same-origin accepted.  
+4. Full SaaS session API / OIDC / microVM — later.  
 
 ## Quick start
 

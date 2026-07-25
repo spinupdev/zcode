@@ -1,0 +1,83 @@
+{
+  "name": "zcode-runtime-core",
+  "displayName": "ZCode Runtime Core",
+  "description": "Pluggable execution backends (Run File) for server-agnostic ZCode",
+  "version": "0.1.0",
+  "publisher": "spinupdev",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "extensionKind": ["ui"],
+  "browser": "./dist/web/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:zcode.runtime.runFile",
+    "onCommand:zcode.runtime.runSelection",
+    "onCommand:zcode.runtime.selectBackend",
+    "onCommand:zcode.runtime.showStatus"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "zcode.runtime.runFile",
+        "title": "ZCode: Run File",
+        "icon": "$(play)"
+      },
+      {
+        "command": "zcode.runtime.runSelection",
+        "title": "ZCode: Run Selection"
+      },
+      {
+        "command": "zcode.runtime.selectBackend",
+        "title": "ZCode: Select Execution Backend"
+      },
+      {
+        "command": "zcode.runtime.showStatus",
+        "title": "ZCode: Show Runtime Status"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "zcode.runtime.runFile",
+          "group": "navigation",
+          "when": "resourceLangId == python || resourceLangId == javascript || resourceLangId == typescript"
+        }
+      ],
+      "commandPalette": [
+        { "command": "zcode.runtime.runFile" },
+        { "command": "zcode.runtime.runSelection" },
+        { "command": "zcode.runtime.selectBackend" },
+        { "command": "zcode.runtime.showStatus" }
+      ]
+    },
+    "configuration": {
+      "title": "ZCode Runtime",
+      "properties": {
+        "zcode.execution.backend": {
+          "type": "string",
+          "default": "auto",
+          "description": "Execution backend id, or 'auto' to pick by language / remote attachment"
+        },
+        "zcode.execution.pyodideIndexUrl": {
+          "type": "string",
+          "default": "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
+          "description": "Pyodide indexURL (WASM assets)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
+  }
+}

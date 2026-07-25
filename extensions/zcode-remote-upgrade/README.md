@@ -1,3 +1,9 @@
-# zcode-remote-upgrade
+# zcode-remote-upgrade (stub)
 
-Post-MVP. Gated on workspace sync ADR (PR P0) before implementation (P1).
+**Superseded by [`zcode-remote`](../zcode-remote/)** for Connect / Tier 1 attach.
+
+This package remains as a placeholder name for older docs. Prefer **`zcode-remote`** commands:
+
+- `zcode.remote.connect`
+- `zcode.remote.upgrade` (alias)
+- `zcode.remote.disconnect`

@@ -39,7 +39,9 @@ const defaultProduct = {
   zcodeCapabilities: {
     terminal: false,
     browserGit: true,
-    search: 'client',
+    search: 'web-best-effort',
+    executionBackends: ['browser-python', 'browser-node'],
+    defaultExecutionBackend: 'browser-node',
   },
   // Open virtual workspace; shared IndexedDB with SPA (browser-agent IdbFs)
   folderUri: {
@@ -51,6 +53,10 @@ const defaultProduct = {
     { path: '/extensions/zcode-browser-fs' },
     { path: '/extensions/zcode-git' },
     { path: '/extensions/zcode-diagnostics' },
+    { path: '/extensions/zcode-runtime-core' },
+    { path: '/extensions/zcode-runtime-python' },
+    { path: '/extensions/zcode-runtime-node' },
+    { path: '/extensions/zcode-remote' },
   ],
   homeIndicator: {
     href: '/',
@@ -566,7 +572,15 @@ writeFileSync(join(dist, 'bootstrap.js'), bootstrap);
 // Copy extension packages (must include package.json + dist/web/extension.js)
 const extRoot = join(monorepo, 'extensions');
 const extOut = join(dist, 'extensions');
-for (const name of ['zcode-browser-fs', 'zcode-git', 'zcode-diagnostics']) {
+for (const name of [
+  'zcode-browser-fs',
+  'zcode-git',
+  'zcode-diagnostics',
+  'zcode-runtime-core',
+  'zcode-runtime-python',
+  'zcode-runtime-node',
+  'zcode-remote',
+]) {
   const src = join(extRoot, name);
   if (existsSync(src)) {
     cpSync(src, join(extOut, name), { recursive: true });

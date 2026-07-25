@@ -1,0 +1,28 @@
+{
+  "name": "zcode-runtime-node",
+  "displayName": "ZCode Runtime Node / JS",
+  "description": "Run JavaScript/TypeScript in a browser worker (lightweight Node-less runtime)",
+  "version": "0.1.0",
+  "publisher": "spinupdev",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "extensionKind": ["ui"],
+  "extensionDependencies": ["spinupdev.zcode-runtime-core"],
+  "browser": "./dist/web/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {},
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
+  }
+}

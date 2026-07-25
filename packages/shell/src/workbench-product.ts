@@ -70,6 +70,11 @@ const DEFAULT_BUILTIN_EXTENSIONS = [
   '/extensions/zcode-browser-fs',
   '/extensions/zcode-git',
   '/extensions/zcode-diagnostics',
+  // Server-agnostic runtimes + same-origin remote attach (ADR 0001)
+  '/extensions/zcode-runtime-core',
+  '/extensions/zcode-runtime-python',
+  '/extensions/zcode-runtime-node',
+  '/extensions/zcode-remote',
 ];
 
 /**

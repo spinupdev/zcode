@@ -1,0 +1,63 @@
+{
+  "name": "zcode-remote",
+  "displayName": "ZCode Remote",
+  "description": "Same-origin connect / disconnect to REH (Tier 1 seamless attach)",
+  "version": "0.1.0",
+  "publisher": "spinupdev",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "extensionKind": ["ui"],
+  "browser": "./dist/web/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:zcode.remote.connect",
+    "onCommand:zcode.remote.disconnect",
+    "onCommand:zcode.remote.status",
+    "onCommand:zcode.remote.upgrade"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "zcode.remote.connect",
+        "title": "ZCode: Connect to Remote",
+        "icon": "$(cloud)"
+      },
+      {
+        "command": "zcode.remote.disconnect",
+        "title": "ZCode: Disconnect Remote (Browser Mode)",
+        "icon": "$(cloud-offline)"
+      },
+      {
+        "command": "zcode.remote.status",
+        "title": "ZCode: Remote Connection Status"
+      },
+      {
+        "command": "zcode.remote.upgrade",
+        "title": "ZCode: Upgrade Workspace to Remote",
+        "icon": "$(arrow-up)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "zcode.remote.connect" },
+        { "command": "zcode.remote.disconnect" },
+        { "command": "zcode.remote.status" },
+        { "command": "zcode.remote.upgrade" }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
+  }
+}

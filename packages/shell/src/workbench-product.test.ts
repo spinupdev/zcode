@@ -36,6 +36,10 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.ok(paths.includes('/extensions/zcode-browser-fs'));
     assert.ok(paths.includes('/extensions/zcode-git'));
     assert.ok(paths.includes('/extensions/zcode-diagnostics'));
+    assert.ok(paths.includes('/extensions/zcode-runtime-core'));
+    assert.ok(paths.includes('/extensions/zcode-runtime-python'));
+    assert.ok(paths.includes('/extensions/zcode-runtime-node'));
+    assert.ok(paths.includes('/extensions/zcode-remote'));
   });
 
   it('embeds custom builtin extension paths with origin', () => {

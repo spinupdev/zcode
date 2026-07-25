@@ -1,0 +1,12 @@
+# zcode-remote
+
+Same-origin **Connect / Disconnect** for ZCode remote REH (RA1 / RA2 Tier 1).
+
+| Command | Behavior |
+| --- | --- |
+| **ZCode: Connect to Remote** | Save editors → require cookie session → reload `?mode=remote&ready=1&authority=…` |
+| **ZCode: Disconnect Remote** | Reload browser mode |
+| **ZCode: Remote Connection Status** | Session + mode report |
+| **ZCode: Upgrade Workspace to Remote** | Alias of Connect (workspace export later / ADR 0002) |
+
+Replaces the empty `zcode-remote-upgrade` stub for product use. See [docs/plan-server-agnostic-ide.md](../../docs/plan-server-agnostic-ide.md).

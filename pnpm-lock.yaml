@@ -101,7 +101,55 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  extensions/zcode-remote:
+    devDependencies:
+      '@types/vscode':
+        specifier: ^1.95.0
+        version: 1.125.0
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.12
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   extensions/zcode-remote-upgrade: {}
+
+  extensions/zcode-runtime-core:
+    devDependencies:
+      '@types/vscode':
+        specifier: ^1.95.0
+        version: 1.125.0
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.12
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  extensions/zcode-runtime-node:
+    devDependencies:
+      '@types/vscode':
+        specifier: ^1.95.0
+        version: 1.125.0
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.12
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  extensions/zcode-runtime-python:
+    devDependencies:
+      '@types/vscode':
+        specifier: ^1.95.0
+        version: 1.125.0
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.12
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   packages/auth: {}
 

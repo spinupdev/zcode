@@ -13,7 +13,7 @@ const workspace = process.env.ZCODE_E2E_WORKSPACE ?? path.join(repoRoot, 'e2e', 
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: '**/reh-terminal.spec.ts',
+  testMatch: ['**/reh-terminal.spec.ts', '**/workspace-sync.spec.ts'],
   timeout: 240_000,
   expect: { timeout: 45_000 },
   fullyParallel: false,

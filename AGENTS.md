@@ -31,10 +31,13 @@ NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 50
 
 ## Highest-priority remaining work
 
-See **PLAN.md §5**. M0d–M2, R2c/R6, H3 runbook done on this path.
+See **PLAN.md §5**. M0d–M2, R2c/R6, H3 runbook, **SA0–SA2** (server-agnostic ADRs) done on this path.
 
 - Repo: **https://github.com/spinupdev/zcode**
-- Next: see **PLAN.md §5** / **RESUME.md** — CI PTY hard-fail on heavy REH; optional CF custom domain; OPFS dual-open; H5
+- North star: IDE without required server (same-origin remote optional; WASM Run in browser)
+- Next: **WB1** Pyodide runtime · **RA1/RA2** `zcode-remote` Tier 1 attach · finish **RA0** spike · **WB2** Node WASM  
+  (ops: CI PTY hard-fail, CF domain, OPFS dual-open, H5 — parallel)
+- ADRs: `docs/adr/0001-server-agnostic-ide.md`, `docs/adr/0002-browser-remote-workspace-sync.md`
 - Rebuild owned assets: Node 24 + `GITHUB_TOKEN` + `./scripts/build-web.sh --package` / `./scripts/build-server.sh`
 - R6: `pnpm e2e:reh` · STRICT: `ZCODE_E2E_REH_STRICT=1 pnpm e2e:reh` · PTY hard-fail: `ZCODE_E2E_REH_PTY_REQUIRED=1`
 - Docker: `pnpm docker:build` · Hosting: `pnpm hosting:dry-run` · Deploy: `pnpm deploy:cloudflare`

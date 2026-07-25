@@ -8,7 +8,8 @@ const repoRoot = path.resolve(__dirname, '..');
 export default defineConfig({
   testDir: './tests',
   // R6 REH terminal suite uses playwright.reh.config.ts (needs dist/server).
-  testIgnore: ['**/reh-terminal.spec.ts'],
+  // REH/serve-only suites (login + workspace import API)
+  testIgnore: ['**/reh-terminal.spec.ts', '**/workspace-sync.spec.ts'],
   timeout: 180_000,
   expect: { timeout: 30_000 },
   fullyParallel: false,
