@@ -176,11 +176,28 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
     // Browser WASM runtimes (zcode-runtime-*) — dogfood without remote
     await this.fs.writeFile(
       `${root}/hello.js`,
-      `// ZCode: Run File (browser worker) — no remote server required\nconsole.log('Hello from browser JS');\nconsole.log(2 + 2);\n`,
+      `// ZCode: Run File — WebContainer (multi-file) or worker fallback\nconsole.log('Hello from browser JS');\nconsole.log(2 + 2);\n`,
     );
     await this.fs.writeFile(
       `${root}/hello.py`,
       `# ZCode: Run File (Pyodide) — no remote server required\nprint("Hello from browser Python")\nprint(2 + 2)\n`,
+    );
+    // Minimal package for WebContainer npm dogfood (no deps)
+    await this.fs.writeFile(
+      `${root}/package.json`,
+      JSON.stringify(
+        {
+          name: 'zcode-workspace',
+          private: true,
+          type: 'module',
+          scripts: {
+            start: 'node hello.js',
+            test: 'node hello.js',
+          },
+        },
+        null,
+        2,
+      ) + '\n',
     );
     await this.fs.writeFile(
       `${root}/.zcode-workspace.json`,

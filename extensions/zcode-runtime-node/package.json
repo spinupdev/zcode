@@ -1,8 +1,8 @@
 {
   "name": "zcode-runtime-node",
   "displayName": "ZCode Runtime Node / JS",
-  "description": "Run JavaScript/TypeScript in a browser worker (lightweight Node-less runtime)",
-  "version": "0.1.0",
+  "description": "Run JavaScript/TypeScript via WebContainers (multi-file + npm) or worker fallback",
+  "version": "0.2.0",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
@@ -19,9 +19,27 @@
   ],
   "browser": "./dist/web/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onCommand:zcode.runtime.node.npmInstall",
+    "onCommand:zcode.runtime.node.npmRun",
+    "onCommand:zcode.runtime.node.mountStatus"
   ],
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "zcode.runtime.node.npmInstall",
+        "title": "ZCode: npm install (WebContainer)"
+      },
+      {
+        "command": "zcode.runtime.node.npmRun",
+        "title": "ZCode: npm run… (WebContainer)"
+      },
+      {
+        "command": "zcode.runtime.node.mountStatus",
+        "title": "ZCode: WebContainer Mount Preview"
+      }
+    ]
+  },
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",

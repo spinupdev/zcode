@@ -303,7 +303,7 @@ Product north star: **IDE does not depend on a server**. Same-origin only. See A
 | ID | Work package | Status | Last note |
 | --- | --- | --- | --- |
 | P0 | ADR browser↔remote workspace sync | **done** | → SA1 / ADR 0002 |
-| P1 | Browser→remote upgrade / live attach | **in_progress** | → RA* track |
+| P1 | Browser→remote upgrade / live attach | **done** | RA1–RA5 + WS1–WS3 shipped (Tier1 + exec-only) |
 | P2 | Session API + OIDC attach codes | **remaining** | package stub; not needed for same-origin |
 | P3 | microVM orchestrator (Firecracker) | **remaining** | interface sketch only |
 | P4 | Billing metering | **deferred** | |
@@ -317,16 +317,17 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 **North star:** server-agnostic IDE (ADR 0001). Same-origin remote. WASM run without REH. Live attach via extensions.
 
-### P0 — Next 1–2 sessions (server-agnostic track)
+### P0 — Next 1–2 sessions
 
-1. **WB0 + WB1** — runtime interface + `zcode-runtime-python` (Pyodide); Run File without server.  
-2. **RA1 + RA2** — `zcode-remote` Connect / Tier 1 seamless attach (same-origin cookie + reload + state).  
-3. **RA0** — finish spike table on pin 1.129; record go/no-go for no-reload full remote.  
-4. **WB2** — Node-in-browser tech spike then `zcode-runtime-node`.
+Server-agnostic core (SA/RA/WB/WS through RA5 + WebContainers multi-file) is **shipped**. Prefer polish:
 
-### P1 — Parallel / ops (do not block P0)
+1. Dogfood WebContainer mount + npm on real small projects; tune limits / status UX.  
+2. Optional: interactive REH PTY without full attach (beyond `/v1/exec`).  
+3. Optional: UI Playwright for **Run File** (API/connect e2e already on `e2e:reh`).
 
-1. CI: `ZCODE_E2E_REH_PTY_REQUIRED=1` on heavy REH job when Linux REH stable.  
+### P1 — Ops / parallel
+
+1. ~~CI PTY hard-fail on heavy REH~~ → **done** (`reh-and-e2e` sets STRICT + `ZCODE_E2E_REH_PTY_REQUIRED=1`).  
 2. Optional custom domain on Pages + Worker.  
 3. Optional SPA git-worker OPFS dual-open coordinator.  
 4. **H5** observability when ops needs it.
@@ -448,5 +449,6 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | **WS1**: files-v1 import/export routes; connect uploads OPFS before remote reload; seed `hello.py`/`hello.js` |
 | 2026-07-18 | **WS3 + RA0**: disconnect pulls remote→OPFS; RA0 concluded no mid-session remoteAuthority; e2e workspace-sync on reh config |
 | 2026-07-18 | **RA3**: `/v1/exec` + zcode-runtime-remote. **RA5**: connect-flow e2e. **WB2+**: WebContainers node engine + worker fallback; optional `ZCODE_COI=1` |
+| 2026-07-18 | **WB2 multi-file**: OPFS→WebContainer mount + auto npm install + npm run commands; **CI** `reh-and-e2e` enables STRICT + `ZCODE_E2E_REH_PTY_REQUIRED=1` |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

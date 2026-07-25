@@ -73,9 +73,9 @@ North star: **IDE without a required server** (same-origin remote optional). ADR
 - Protocol: `@zcode/protocol` execution backends (SA2)  
 - Spike: [docs/spikes/remote-attach-no-reload.md](./docs/spikes/remote-attach-no-reload.md) (RA0)
 
-1. Optional: richer WebContainer UX (npm install UI, multi-file mount from OPFS).  
+1. Dogfood WebContainer multi-file + npm; polish limits/status if needed.  
 2. Optional: true REH PTY without full attach (beyond `/v1/exec`).  
-3. Ops: H5 observability; CI PTY hard-fail; CF custom domain.
+3. Ops: H5 observability; CF custom domain (CI PTY hard-fail on `reh-and-e2e` is on).
 
 ### P1 — ops / parallel (do not block WASM + attach)
 

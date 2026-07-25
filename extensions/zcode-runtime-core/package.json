@@ -81,6 +81,11 @@
           "type": "boolean",
           "default": false,
           "description": "Prefer remote-reh execution when authenticated (RA3)"
+        },
+        "zcode.execution.webcontainerAutoNpmInstall": {
+          "type": "boolean",
+          "default": true,
+          "description": "When mounting a workspace with package.json, run npm install once per session before node"
         }
       }
     }

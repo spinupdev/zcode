@@ -74,8 +74,11 @@ node apps/cli/dist/cli.js serve ./workspace --port 8080 --password secret
 
 - **Default PR**: M3 Playwright only (no multi-hour REH).
 - **workflow_dispatch** `heavy_build=reh`: package REH → artifact `zcode-reh-linux-x64`.
-- **workflow_dispatch** `heavy_build=reh-and-e2e`: package + download into `dist/server` + normalize (+x) + `ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh`.
-- **Local Linux agents**: `pnpm fetch:reh` then `ZCODE_E2E_REH_REQUIRED=1 pnpm e2e:reh`.
+- **workflow_dispatch** `heavy_build=reh-and-e2e`: package + download into `dist/server` + normalize (+x) +  
+  `ZCODE_E2E_REH_REQUIRED=1` · `ZCODE_E2E_REH_STRICT=1` · **`ZCODE_E2E_REH_PTY_REQUIRED=1`**  
+  (PTY hard-fail: terminal must print `zcode_echo_ok`).
+- **Local Linux agents**: `pnpm fetch:reh` then  
+  `ZCODE_E2E_REH_REQUIRED=1 ZCODE_E2E_REH_STRICT=1 ZCODE_E2E_REH_PTY_REQUIRED=1 pnpm e2e:reh`.
 
 ## Blockers (agent host notes)
 
