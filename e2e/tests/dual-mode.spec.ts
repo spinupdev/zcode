@@ -24,6 +24,7 @@ test.describe('dual-mode product (M1)', () => {
     expect(paths).toContain('/extensions/zcode-runtime-core');
     expect(paths).toContain('/extensions/zcode-runtime-python');
     expect(paths).toContain('/extensions/zcode-runtime-node');
+    expect(paths).toContain('/extensions/zcode-runtime-remote');
     expect(paths).toContain('/extensions/zcode-remote');
     expect(body.zcodeCapabilities?.executionBackends).toEqual(
       expect.arrayContaining(['browser-python', 'browser-node']),

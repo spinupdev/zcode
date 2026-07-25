@@ -65,6 +65,22 @@
           "type": "string",
           "default": "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
           "description": "Pyodide indexURL (WASM assets)"
+        },
+        "zcode.execution.nodeEngine": {
+          "type": "string",
+          "enum": ["auto", "webcontainer", "worker"],
+          "default": "auto",
+          "description": "JS/TS engine: WebContainers (real Node), worker fallback, or auto (try WC then worker)"
+        },
+        "zcode.execution.webcontainerCdnUrl": {
+          "type": "string",
+          "default": "https://cdn.jsdelivr.net/npm/@webcontainer/api@1.6.1/+esm",
+          "description": "ESM URL for @webcontainer/api (loaded dynamically)"
+        },
+        "zcode.execution.preferRemote": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prefer remote-reh execution when authenticated (RA3)"
         }
       }
     }

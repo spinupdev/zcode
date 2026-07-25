@@ -73,9 +73,9 @@ North star: **IDE without a required server** (same-origin remote optional). ADR
 - Protocol: `@zcode/protocol` execution backends (SA2)  
 - Spike: [docs/spikes/remote-attach-no-reload.md](./docs/spikes/remote-attach-no-reload.md) (RA0)
 
-1. **RA5 / WB6** — Playwright UI smoke for Run File (optional); API import covered in `e2e:reh`.  
-2. **RA3** — execution-only remote (PTY/tasks, no remoteAuthority) when needed.  
-3. **WB2+** — optional WebContainers for real Node (current = worker JS).
+1. Optional: richer WebContainer UX (npm install UI, multi-file mount from OPFS).  
+2. Optional: true REH PTY without full attach (beyond `/v1/exec`).  
+3. Ops: H5 observability; CI PTY hard-fail; CF custom domain.
 
 ### P1 — ops / parallel (do not block WASM + attach)
 

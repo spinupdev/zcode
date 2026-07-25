@@ -57,6 +57,23 @@ test.describe('workspace sync files-v1 (WS1)', () => {
     const expBody = await exp.json();
     expect(expBody.format).toBe('files-v1');
     expect(expBody.files[rel]?.data).toContain('hello-from-e2e');
+
+    // RA3 execution-only (no remoteAuthority)
+    expect(s.executionOnly).toBe(true);
+    const exec = await request.post('/v1/exec', {
+      headers: {
+        cookie: cookie!,
+        'content-type': 'application/json',
+      },
+      data: {
+        language: 'javascript',
+        code: 'console.log("ra5-exec-ok");',
+      },
+    });
+    expect(exec.ok()).toBeTruthy();
+    const execBody = await exec.json();
+    expect(execBody.exitCode).toBe(0);
+    expect(execBody.stdout).toContain('ra5-exec-ok');
   });
 
   test('import rejects unauthenticated requests when login exists', async ({ request }) => {

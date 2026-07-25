@@ -128,6 +128,10 @@ importers:
         version: 5.9.3
 
   extensions/zcode-runtime-node:
+    dependencies:
+      '@webcontainer/api':
+        specifier: 1.6.1
+        version: 1.6.1
     devDependencies:
       '@types/vscode':
         specifier: ^1.95.0
@@ -140,6 +144,18 @@ importers:
         version: 5.9.3
 
   extensions/zcode-runtime-python:
+    devDependencies:
+      '@types/vscode':
+        specifier: ^1.95.0
+        version: 1.125.0
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.12
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  extensions/zcode-runtime-remote:
     devDependencies:
       '@types/vscode':
         specifier: ^1.95.0
@@ -395,6 +411,9 @@ packages:
 
   '@types/vscode@1.125.0':
     resolution: {integrity: sha512-0icm/ZQAaism87P0ekHqi4/Ju9du+Tm0RUW+y7vqRsxY2cY0FNRX1nAnaW7nT6npPt2tfHiheZ55Zm9UhqonFA==}
+
+  '@webcontainer/api@1.6.1':
+    resolution: {integrity: sha512-2RS2KiIw32BY1Icf6M1DvqSmcon9XICZCDgS29QJb2NmF12ZY2V5Ia+949hMKB3Wno+P/Y8W+sPP59PZeXSELg==}
 
   '@xterm/xterm@5.5.0':
     resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
@@ -781,6 +800,8 @@ snapshots:
       undici-types: 7.24.6
 
   '@types/vscode@1.125.0': {}
+
+  '@webcontainer/api@1.6.1': {}
 
   '@xterm/xterm@5.5.0':
     optional: true

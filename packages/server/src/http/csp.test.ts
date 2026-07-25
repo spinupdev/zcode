@@ -30,4 +30,11 @@ describe('CSP draft (M2)', () => {
     assert.equal(h['X-Content-Type-Options'], 'nosniff');
     assert.equal(cspHeaderName(true), 'Content-Security-Policy-Report-Only');
   });
+
+  it('adds COOP/COEP when crossOriginIsolation is requested', () => {
+    const h: Record<string, string | number | string[]> = {};
+    applySecurityHeaders(h, { crossOriginIsolation: true });
+    assert.equal(h['Cross-Origin-Opener-Policy'], 'same-origin');
+    assert.equal(h['Cross-Origin-Embedder-Policy'], 'credentialless');
+  });
 });

@@ -8,11 +8,19 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
-  "extensionKind": ["ui"],
-  "extensionDependencies": ["spinupdev.zcode-runtime-core"],
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "extensionDependencies": [
+    "spinupdev.zcode-runtime-core"
+  ],
   "browser": "./dist/web/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {},
   "scripts": {
     "build": "node ./scripts/build.mjs",
@@ -24,5 +32,8 @@
     "@types/vscode": "^1.95.0",
     "esbuild": "^0.25.5",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@webcontainer/api": "1.6.1"
   }
 }

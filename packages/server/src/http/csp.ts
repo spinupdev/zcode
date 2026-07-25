@@ -17,6 +17,11 @@ export interface CspOptions {
   browserWasm?: boolean;
   /** Report-only mode (header Content-Security-Policy-Report-Only). */
   reportOnly?: boolean;
+  /**
+   * Cross-origin isolation for WebContainers / SharedArrayBuffer.
+   * Enable with ZCODE_COI=1 — may break third-party assets without CORP.
+   */
+  crossOriginIsolation?: boolean;
 }
 
 /** Build a CSP header value for same-origin MVP co-serve. */
@@ -70,8 +75,17 @@ export function applySecurityHeaders(
   headers: Record<string, string | number | string[]>,
   opts: CspOptions = {},
 ): void {
+  const coi =
+    opts.crossOriginIsolation === true ||
+    process.env.ZCODE_COI === '1' ||
+    process.env.ZCODE_CROSS_ORIGIN_ISOLATION === '1';
   headers[cspHeaderName(opts.reportOnly)] = buildContentSecurityPolicy(opts);
   headers['X-Content-Type-Options'] = 'nosniff';
   headers['Referrer-Policy'] = 'no-referrer';
   headers['X-Frame-Options'] = 'SAMEORIGIN';
+  if (coi) {
+    // Enables SharedArrayBuffer for WebContainers (prefer with same-origin assets).
+    headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+    headers['Cross-Origin-Embedder-Policy'] = 'credentialless';
+  }
 }

@@ -287,12 +287,12 @@ Product north star: **IDE does not depend on a server**. Same-origin only. See A
 | RA0 | Spike: remote attach without reload | **done** | no-go mid-session authority; Tier1 reload + WASM; RA3 = execution-only later |
 | RA1 | `zcode-remote` extension (connect/disconnect) | **done** | `extensions/zcode-remote` Tier 1 reload attach |
 | RA2 | Tier 1 seamless attach (state-preserving reload) | **done** | save dirty + continuity + `?mode=remote`; full OPFS→server sync still WS1 |
-| RA3 | Execution-only remote (no reload) | **remaining** | after RA0 |
+| RA3 | Execution-only remote (no reload) | **done** | `POST /v1/exec` + `zcode-runtime-remote` |
 | RA4 | Status bar / diagnostics for backend + connection | **done** | runtime + remote status bars |
-| RA5 | E2E browser → connect remote | **remaining** | |
+| RA5 | E2E browser → connect remote | **done** | `connect-flow.spec.ts` + workspace-sync exec on e2e:reh |
 | WB0 | Runtime provider interface (shared) | **done** | `zcode-runtime-core` + `globalThis.zcodeRuntime` |
 | WB1 | `zcode-runtime-python` (Pyodide) | **done** | CDN Pyodide; Run File |
-| WB2 | `zcode-runtime-node` (+ tech spike) | **done** | browser worker JS (not full Node); WC later |
+| WB2 | `zcode-runtime-node` (+ WebContainers) | **done** | WebContainers (auto) + worker fallback |
 | WB3–WB6 | Run UX, FS bridge, CSP, e2e | **done** | Run UX + CSP; dual-mode e2e extensions; import API on e2e:reh |
 | WS1 | Workspace import API + connect upload (files-v1) | **done** | `POST /v1/workspace/import` · zcode-remote upload before reload |
 | WS2 | Pre-attach flush dirty editors | **done** | part of zcode-remote connect |
@@ -447,5 +447,6 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | **WB0–WB2 + RA1/RA2**: `zcode-runtime-core/python/node`, `zcode-remote` connect; plan at `docs/plan-server-agnostic-ide.md`; CSP allows Pyodide CDN |
 | 2026-07-18 | **WS1**: files-v1 import/export routes; connect uploads OPFS before remote reload; seed `hello.py`/`hello.js` |
 | 2026-07-18 | **WS3 + RA0**: disconnect pulls remote→OPFS; RA0 concluded no mid-session remoteAuthority; e2e workspace-sync on reh config |
+| 2026-07-18 | **RA3**: `/v1/exec` + zcode-runtime-remote. **RA5**: connect-flow e2e. **WB2+**: WebContainers node engine + worker fallback; optional `ZCODE_COI=1` |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.
