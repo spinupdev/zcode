@@ -245,6 +245,27 @@ package_web() {
   fi
   [[ "${entry}" != "unknown" ]] || die "staged tree missing workbench entry under ${OUT_DIR}/out/vs"
 
+  # Workbench loads system extension files from /vscode/extensions (not only packageJSON embeds).
+  local web_ext_src=""
+  for c in "${VSCODE}/.build/web/extensions" "${VSCODE}/.build/extensions"; do
+    if [[ -d "${c}/typescript-language-features" ]] || [[ -d "${c}/json-language-features" ]]; then
+      web_ext_src="${c}"
+      break
+    fi
+  done
+  if [[ -n "${web_ext_src}" ]]; then
+    log "Staging builtin web extensions from ${web_ext_src}"
+    rm -rf "${OUT_DIR}/extensions"
+    mkdir -p "${OUT_DIR}/extensions"
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a "${web_ext_src}/" "${OUT_DIR}/extensions/"
+    else
+      cp -R "${web_ext_src}/." "${OUT_DIR}/extensions/"
+    fi
+  else
+    log "WARN: missing ${VSCODE}/.build/web/extensions — language features will 404 at runtime"
+  fi
+
   cat > "${OUT_DIR}/.zcode-vscode-web.json" <<EOF
 {
   "source": "owned",
@@ -254,7 +275,8 @@ package_web() {
   "vscodeCommit": "$(cd "${VSCODE}" && git rev-parse HEAD)",
   "vscodeTag": "$(cd "${VSCODE}" && git describe --tags --always 2>/dev/null || echo unknown)",
   "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "node": "$(node -v)"
+  "node": "$(node -v)",
+  "webExtensions": "$( [[ -d "${OUT_DIR}/extensions/typescript-language-features" ]] && echo yes || echo no )"
 }
 EOF
   mkdir -p "${ROOT}/dist/web"

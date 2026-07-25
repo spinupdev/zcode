@@ -26,6 +26,27 @@ Dual mode (workbench):
 
 ### Dogfood (fast)
 
+### Owned web + system extensions
+
+Owned `dist/vscode-web` (esbuild) sets `_VSCODE_FILE_ROOT` to `/vscode/out/`. VS Code loads
+**system** extension files from `/vscode/extensions/*` (path `vs/../../extensions`).
+
+`scripts/fetch-vscode-web.sh` and `build-web.sh --package` stage
+`vendor/vscode/.build/web/extensions` → `dist/vscode-web/extensions`.
+
+Without that folder you get console errors like:
+
+- `ExtensionResourceLoaderService.readExtensionResource … Not Found`
+- `Activating extension 'vscode.typescript-language-features' failed: Not Found`
+- 404 on `/vscode/node_modules/...` (dogfood AMD only; owned ESM usually ignores these)
+
+**Harmless noise in pure browser mode:** `file:///.copilot`, `file:///.claude`, `file:///.agents`
+— VS Code agent/prompt discovery using the HTML File System API. No local disk handle is
+registered; safe to ignore.
+
+Product (ZCode) extensions stay at **`/extensions/zcode-*`** (separate from system
+`/vscode/extensions`).
+
 Third-party npm package packaging Microsoft’s web compile (not our pin; labeled dogfood):
 
 ```bash
@@ -91,7 +112,7 @@ Bootstrap injects `location.host` so extension URIs are absolute same-origin.
 | Load VS Code Web workbench | ✅ `/vscode` + `/` |
 | ZCode product.json | ✅ |
 | Dual-mode product payload | ✅ |
-| Built-in extensions served | ✅ `/extensions/*` |
+| Built-in extensions served | ✅ `/vscode/extensions/*` (owned web) + `/extensions/zcode-*` (product) |
 | `zcode-opfs` FileSystemProvider | ✅ seeded sample workspace |
 | Owned 1.129 web compile in CI | ⏳ scripts ready (`build-web.sh --package`); dogfood until staged |
 | Browser SCM (`zcode-git`) | ✅ status / commit / push over IDB |

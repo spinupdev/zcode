@@ -14,12 +14,51 @@ TARBALL_URL="${VSCODE_WEB_TARBALL_URL:-https://registry.npmjs.org/vscode-web/-/v
 log() { printf '==> %s\n' "$*"; }
 die() { echo "error: $*" >&2; exit 1; }
 
+# Owned esbuild/gulp workbench embeds builtin extension *metadata* in the bundle, but
+# loads language configs / extension files from /vscode/extensions/* (see
+# builtinExtensionsPath = vs/../../extensions relative to _VSCODE_FILE_ROOT=/vscode/out/).
+# Stage web-built extensions next to out/ so TS/JSON/language features activate.
+stage_owned_web_extensions() {
+  local dest="${OUT}/extensions"
+  local candidates=(
+    "${ROOT}/vendor/vscode/.build/web/extensions"
+    "${ROOT}/vendor/vscode/.build/extensions"
+  )
+  local src=""
+  for c in "${candidates[@]}"; do
+    if [[ -d "${c}/typescript-language-features" ]] || [[ -d "${c}/json-language-features" ]]; then
+      src="${c}"
+      break
+    fi
+  done
+  if [[ -z "${src}" ]]; then
+    log "WARN: no vendor/vscode/.build/web/extensions — TS/JSON language features will 404"
+    log "      rebuild with: cd vendor/vscode && npm run gulp compile-web-extensions-build"
+    return 0
+  fi
+  if [[ -d "${dest}/typescript-language-features" ]] && [[ -d "${dest}/json-language-features" ]]; then
+    log "Builtin web extensions already present at dist/vscode-web/extensions"
+    return 0
+  fi
+  log "Staging builtin web extensions from ${src}"
+  rm -rf "${dest}"
+  mkdir -p "${OUT}"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a "${src}/" "${dest}/"
+  else
+    mkdir -p "${dest}"
+    cp -R "${src}/." "${dest}/"
+  fi
+  log "Staged $(ls -1 "${dest}" 2>/dev/null | wc -l | tr -d ' ') builtin web extensions → dist/vscode-web/extensions"
+}
+
 # Keep already-staged owned tree (do not clobber with dogfood npm)
 if [[ -f "${OUT}/.zcode-vscode-web.json" ]] \
   && grep -q '"source": "owned"' "${OUT}/.zcode-vscode-web.json" 2>/dev/null \
   && { [[ -f "${OUT}/out/vs/workbench/workbench.web.main.internal.js" ]] \
     || [[ -f "${OUT}/out/vs/loader.js" ]]; }; then
   log "Keeping existing owned dist/vscode-web"
+  stage_owned_web_extensions
   exit 0
 fi
 
@@ -48,6 +87,7 @@ for c in "${OWNED_CANDIDATES[@]}"; do
   "stagedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
+    stage_owned_web_extensions
     log "Staged owned build → dist/vscode-web"
     exit 0
   fi
