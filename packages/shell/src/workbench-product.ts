@@ -74,6 +74,7 @@ const DEFAULT_BUILTIN_EXTENSIONS = [
   '/extensions/zcode-runtime-core',
   '/extensions/zcode-runtime-python',
   '/extensions/zcode-runtime-node',
+  '/extensions/zcode-runtime-remote',
   '/extensions/zcode-remote',
 ];
 

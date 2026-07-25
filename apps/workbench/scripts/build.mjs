@@ -56,6 +56,7 @@ const defaultProduct = {
     { path: '/extensions/zcode-runtime-core' },
     { path: '/extensions/zcode-runtime-python' },
     { path: '/extensions/zcode-runtime-node' },
+    { path: '/extensions/zcode-runtime-remote' },
     { path: '/extensions/zcode-remote' },
   ],
   homeIndicator: {
@@ -579,6 +580,7 @@ for (const name of [
   'zcode-runtime-core',
   'zcode-runtime-python',
   'zcode-runtime-node',
+  'zcode-runtime-remote',
   'zcode-remote',
 ]) {
   const src = join(extRoot, name);

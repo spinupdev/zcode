@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 import { startServer } from './start.js';
 
 describe('startServer login flow', () => {
   it('healthz and login set HttpOnly cookie without returning token', async () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'zcode-serve-ws-'));
     const srv = await startServer({
       host: '127.0.0.1',
       port: 0,
-      workspace: '/tmp',
+      workspace,
       password: 'test-pass',
       spawnReh: false,
     });
@@ -49,6 +53,7 @@ describe('startServer login flow', () => {
       const sessBody = (await sess.json()) as {
         authenticated: boolean;
         workspaceImport?: boolean;
+        executionOnly?: boolean;
         rehInfo?: { available?: boolean };
       };
       assert.equal(sessBody.authenticated, true);
@@ -85,8 +90,24 @@ describe('startServer login flow', () => {
       };
       assert.equal(expBody.format, 'files-v1');
       assert.ok(expBody.files['from-browser.py']);
+
+      // RA3 execution-only
+      assert.equal(sessBody.executionOnly, true);
+      const execRes = await fetch(new URL('v1/exec', srv.url), {
+        method: 'POST',
+        headers: { cookie, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          language: 'javascript',
+          code: 'console.log("exec-ok");',
+        }),
+      });
+      assert.equal(execRes.status, 200);
+      const execBody = (await execRes.json()) as { exitCode: number; stdout: string };
+      assert.equal(execBody.exitCode, 0);
+      assert.match(execBody.stdout, /exec-ok/);
     } finally {
       await srv.close();
+      fs.rmSync(workspace, { recursive: true, force: true });
     }
   });
 });

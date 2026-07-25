@@ -39,6 +39,7 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.ok(paths.includes('/extensions/zcode-runtime-core'));
     assert.ok(paths.includes('/extensions/zcode-runtime-python'));
     assert.ok(paths.includes('/extensions/zcode-runtime-node'));
+    assert.ok(paths.includes('/extensions/zcode-runtime-remote'));
     assert.ok(paths.includes('/extensions/zcode-remote'));
   });
 

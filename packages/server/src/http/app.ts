@@ -15,6 +15,7 @@ import {
   MAX_IMPORT_BYTES,
   parseFilesV1,
 } from '../workspace/files-import.js';
+import { ExecError, runExec } from '../workspace/exec.js';
 import { applySecurityHeaders } from './csp.js';
 import { tryServeStatic } from './static.js';
 
@@ -96,6 +97,8 @@ export function createRequestHandler(ctx: AppContext) {
           /** Absolute path REH opened — use as vscode-remote folderUri.path */
           workspacePath: authed ? ctx.workspacePath ?? null : null,
           workspaceImport: Boolean(authed && ctx.workspacePath),
+          /** RA3: run code on server without full remoteAuthority attach */
+          executionOnly: Boolean(authed && ctx.workspacePath),
         });
         return;
       }
@@ -107,6 +110,12 @@ export function createRequestHandler(ctx: AppContext) {
       }
       if (req.method === 'GET' && url.pathname === '/v1/workspace/export') {
         await handleWorkspaceExport(req, res, ctx);
+        return;
+      }
+
+      // RA3 — execution-only remote (node/python on server workspace)
+      if (req.method === 'POST' && url.pathname === '/v1/exec') {
+        await handleExec(req, res, ctx);
         return;
       }
 
@@ -317,6 +326,66 @@ async function handleWorkspaceExport(
     }
     throw err;
   }
+}
+
+async function handleExec(
+  req: IncomingMessage,
+  res: ServerResponse,
+  ctx: AppContext,
+): Promise<void> {
+  if (!ctx.bridge.isAuthenticated(req.headers.cookie)) {
+    json(res, 401, { error: 'unauthorized', login: '/login' });
+    return;
+  }
+  if (!ctx.workspacePath) {
+    json(res, 503, { error: 'workspace_unavailable' });
+    return;
+  }
+  try {
+    const rawText = await readBodyLimited(req, MAX_IMPORT_BYTES);
+    const body = JSON.parse(rawText || '{}') as {
+      language?: string;
+      code?: string;
+      relativePath?: string;
+      args?: string[];
+      timeoutMs?: number;
+    };
+    if (!body.language) {
+      json(res, 400, { error: 'language required' });
+      return;
+    }
+    const result = await runExec(ctx.workspacePath, {
+      language: body.language,
+      code: body.code,
+      relativePath: body.relativePath,
+      args: body.args,
+      timeoutMs: body.timeoutMs,
+    });
+    json(res, 200, {
+      ok: result.exitCode === 0,
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      timedOut: result.timedOut ?? false,
+      // runner cmd only — no secrets
+      runner: result.runner.map((p, i) => (i === 0 ? p : pathBasename(p))),
+    });
+  } catch (err) {
+    if (err instanceof ExecError) {
+      json(res, err.status, { error: err.message });
+      return;
+    }
+    if (err instanceof SyntaxError) {
+      json(res, 400, { error: 'invalid_json' });
+      return;
+    }
+    throw err;
+  }
+}
+
+function pathBasename(p: string): string {
+  const i = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'));
+  return i >= 0 ? p.slice(i + 1) : p;
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

@@ -1,0 +1,49 @@
+{
+  "name": "zcode-runtime-remote",
+  "displayName": "ZCode Runtime Remote (execution-only)",
+  "description": "Run code on same-origin server workspace without full remoteAuthority attach (RA3)",
+  "version": "0.1.0",
+  "publisher": "spinupdev",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "extensionKind": ["ui"],
+  "extensionDependencies": ["spinupdev.zcode-runtime-core"],
+  "browser": "./dist/web/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "zcode.runtime.remote.refresh",
+        "title": "ZCode: Refresh Remote Execution Backend"
+      },
+      {
+        "command": "zcode.runtime.remote.use",
+        "title": "ZCode: Use Remote Execution (no reload)"
+      }
+    ],
+    "configuration": {
+      "title": "ZCode Remote Execution",
+      "properties": {
+        "zcode.execution.preferRemote": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true and session is authenticated, prefer remote-reh for Run File"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"process.exit(0)\"",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3"
+  }
+}
