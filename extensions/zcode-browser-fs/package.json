@@ -15,6 +15,7 @@
     "onStartupFinished",
     "onFileSystem:zcode-opfs",
     "onCommand:zcode.fs.openWorkspace",
+    "onCommand:zcode.fs.revealWorkspace",
     "onCommand:zcode.fs.seedSample",
     "onCommand:zcode.fs.openSpa"
   ],
@@ -23,6 +24,10 @@
       {
         "command": "zcode.fs.openWorkspace",
         "title": "ZCode: Open Virtual Workspace"
+      },
+      {
+        "command": "zcode.fs.revealWorkspace",
+        "title": "ZCode: Reveal Virtual Workspace"
       },
       {
         "command": "zcode.fs.seedSample",

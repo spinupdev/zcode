@@ -4,9 +4,7 @@
  */
 import { Buffer } from 'buffer';
 import {
-  createBrowserAgent,
   createBrowserAgentAsync,
-  IdbFs,
   type GitChange,
   type ZCodeBrowserAgent,
 } from '@zcode/browser-agent';
@@ -125,16 +123,24 @@ function isAuthError(err: unknown): boolean {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Start on IDB so SCM is live immediately; upgrade to OPFS (B2b) when ready.
-  let agent = createBrowserAgent({
-    fs: new IdbFs(),
+  /**
+   * Always use the shared default FS (OPFS→IDB) via createBrowserAgentAsync.
+   * Do NOT clone onto a throwaway IdbFs while OPFS upgrades — Explorer (zcode-browser-fs)
+   * reads the shared FS and would show an empty tree after clone.
+   */
+  let agent: ZCodeBrowserAgent | null = null;
+  const agentReady: Promise<ZCodeBrowserAgent> = createBrowserAgentAsync({
     hydrateFromFs: true,
-  }) as ZCodeBrowserAgent;
-
-  void createBrowserAgentAsync({ hydrateFromFs: true }).then((upgraded) => {
+  }).then((upgraded) => {
     agent = upgraded as ZCodeBrowserAgent;
     void refresh();
+    return agent;
   });
+
+  const getAgent = async (): Promise<ZCodeBrowserAgent> => {
+    if (agent) return agent;
+    return agentReady;
+  };
 
   const scm = vscode.scm.createSourceControl('zcode-git', 'ZCode Git');
   scm.inputBox.placeholder = 'Message (⌘Enter / Ctrl+Enter to commit)';
@@ -154,10 +160,11 @@ export function activate(context: vscode.ExtensionContext): void {
   let refreshBusy = false;
 
   const ensureWorkspace = async (id: string): Promise<void> => {
-    const existing = await agent.listWorkspaces();
+    const a = await getAgent();
+    const existing = await a.listWorkspaces();
     if (existing.some((w) => w.id === id)) return;
-    if (!agent.store.get(id)) {
-      agent.store.create(id, id);
+    if (!a.store.get(id)) {
+      a.store.create(id, id);
     }
   };
 
@@ -165,6 +172,8 @@ export function activate(context: vscode.ExtensionContext): void {
     if (refreshBusy) return;
     refreshBusy = true;
     try {
+      const a = await getAgent().catch(() => null);
+      if (!a) return;
       const id = activeWorkspaceId();
       if (!id) {
         scm.count = 0;
@@ -182,8 +191,8 @@ export function activate(context: vscode.ExtensionContext): void {
       await ensureWorkspace(id);
 
       const [status, changes] = await Promise.all([
-        agent.status(id),
-        agent.listChanges(id),
+        a.status(id),
+        a.listChanges(id),
       ]);
 
       scm.count = changes.length;
@@ -266,6 +275,7 @@ export function activate(context: vscode.ExtensionContext): void {
     let auth = tokenAuth();
 
     const runClone = async (authForClone?: { username: string; password: string }) => {
+      const a = await getAgent();
       const workspaceId = newWorkspaceId();
       const shortName =
         url.replace(/\/$/, '').split('/').pop()?.replace(/\.git$/, '') ?? workspaceId.slice(0, 8);
@@ -277,8 +287,15 @@ export function activate(context: vscode.ExtensionContext): void {
           cancellable: false,
         },
         async (progress) => {
+          progress.report({ message: 'preparing shared browser FS…' });
+          // Ensure browser-fs has finished OPFS/IDB upgrade (same createDefaultFsInfo cache)
+          try {
+            await vscode.commands.executeCommand('zcode.fs.storageInfo');
+          } catch {
+            /* optional */
+          }
           progress.report({ message: 'connecting via /git-proxy…' });
-          await agent.clone({
+          await a.clone({
             workspaceId,
             url,
             corsProxyUrl: proxyUrl(),
@@ -288,22 +305,34 @@ export function activate(context: vscode.ExtensionContext): void {
               progress.report({ message: formatCloneProgress(p) });
             },
           });
-          progress.report({ message: 'opening workspace…' });
+          progress.report({ message: 'opening workspace in Explorer…' });
         },
       );
 
-      const folderUri = vscode.Uri.from({
-        scheme: SCHEME,
-        path: `/workspace/${workspaceId}`,
-      });
-
       void vscode.window.showInformationMessage(
-        `Cloned ${shortName} into browser workspace`,
+        `Cloned ${shortName} — opening in file tree…`,
       );
 
-      await vscode.commands.executeCommand('vscode.openFolder', folderUri, {
-        forceReuseWindow: true,
-      });
+      // Reveal on the shared FS provider (updateWorkspaceFolders + change events).
+      // Do not rely only on vscode.openFolder (often no-ops for custom schemes on web).
+      try {
+        await vscode.commands.executeCommand(
+          'zcode.fs.revealWorkspace',
+          workspaceId,
+          shortName,
+        );
+      } catch (err) {
+        console.warn('[zcode-git] revealWorkspace failed, falling back to openFolder', err);
+        const folderUri = vscode.Uri.from({
+          scheme: SCHEME,
+          path: `/workspace/${workspaceId}`,
+        });
+        await vscode.commands.executeCommand('vscode.openFolder', folderUri, {
+          forceReuseWindow: true,
+        });
+      }
+
+      void refresh();
     };
 
     try {
@@ -362,7 +391,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       try {
-        const { oid } = await agent.commit({
+        const a = await getAgent();
+        const { oid } = await a.commit({
           workspaceId: id,
           message,
           author: {
@@ -388,7 +418,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       try {
-        await agent.push({
+        const a = await getAgent();
+        await a.push({
           workspaceId: id,
           corsProxyUrl: proxyUrl(),
           auth: tokenAuth(),

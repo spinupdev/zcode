@@ -7,11 +7,11 @@ import { IdbFs } from '@zcode/browser-agent';
 import * as vscode from 'vscode';
 
 export class IdbFileSystemProvider implements vscode.FileSystemProvider {
-  private readonly fs: AgentFs;
+  private fs: AgentFs;
   private readonly emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   readonly onDidChangeFile = this.emitter.event;
   /** Storage backend label for diagnostics / seed text */
-  readonly storageLabel: string;
+  storageLabel: string;
 
   constructor(fs: AgentFs = new IdbFs(), storageLabel = 'IndexedDB zcode-fs-v1') {
     this.fs = fs;
@@ -30,6 +30,17 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
     return new vscode.Disposable(() => {
       /* no-op */
     });
+  }
+
+  /** Force Explorer refresh after external clone/write (same FS backend). */
+  notifyChanged(uri: vscode.Uri, type: vscode.FileChangeType = vscode.FileChangeType.Changed): void {
+    this.emitter.fire([{ type, uri }]);
+  }
+
+  /** Swap backing store (e.g. IDB → OPFS) without re-registering the provider. */
+  setFs(fs: AgentFs, storageLabel?: string): void {
+    this.fs = fs;
+    if (storageLabel) this.storageLabel = storageLabel;
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
