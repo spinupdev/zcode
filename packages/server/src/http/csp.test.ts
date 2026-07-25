@@ -14,6 +14,8 @@ describe('CSP draft (M2)', () => {
     assert.match(csp, /connect-src[^;]*'self'/);
     assert.match(csp, /object-src 'none'/);
     assert.match(csp, /open-vsx\.org/);
+    // Browser WASM runtimes (Pyodide)
+    assert.match(csp, /cdn\.jsdelivr\.net/);
   });
 
   it('can omit Open VSX extension-src', () => {

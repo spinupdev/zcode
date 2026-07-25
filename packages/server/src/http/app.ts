@@ -8,6 +8,13 @@ import { buildWorkbenchCreateOptions } from '@zcode/shell';
 import { CookieTokenBridge, SESSION_COOKIE } from '../auth/cookie-bridge.js';
 import { type PasswordVerifier, LoginRateLimiter } from '../auth/password.js';
 import { tryProxyHttp } from '../reh/proxy.js';
+import {
+  exportFilesV1,
+  importFilesV1,
+  ImportError,
+  MAX_IMPORT_BYTES,
+  parseFilesV1,
+} from '../workspace/files-import.js';
 import { applySecurityHeaders } from './csp.js';
 import { tryServeStatic } from './static.js';
 
@@ -73,17 +80,33 @@ export function createRequestHandler(ctx: AppContext) {
 
       if (req.method === 'GET' && url.pathname === '/v1/session') {
         const authed = ctx.bridge.isAuthenticated(req.headers.cookie);
+        const rehMode = ctx.rehMode ?? 'none';
+        const rehAvailable = Boolean(ctx.rehEndpoint);
         json(res, 200, {
           authenticated: authed,
           /** Same-origin authority for remoteAuthority (REH is proxied; no token in body) */
           authority: authed ? ctx.authority : null,
           ready: authed,
-          reh: ctx.rehMode ?? 'none',
-          rehProxy: Boolean(ctx.rehEndpoint),
+          /** string mode kept for older clients / e2e */
+          reh: rehMode,
+          /** structured for zcode-remote status bar */
+          rehInfo: { mode: rehMode, available: rehAvailable },
+          rehProxy: rehAvailable,
           workbench: Boolean(ctx.workbenchDir || ctx.staticDir),
           /** Absolute path REH opened — use as vscode-remote folderUri.path */
           workspacePath: authed ? ctx.workspacePath ?? null : null,
+          workspaceImport: Boolean(authed && ctx.workspacePath),
         });
+        return;
+      }
+
+      // WS1 — browser OPFS → remote workspace (ADR 0002 files-v1)
+      if (req.method === 'POST' && url.pathname === '/v1/workspace/import') {
+        await handleWorkspaceImport(req, res, ctx);
+        return;
+      }
+      if (req.method === 'GET' && url.pathname === '/v1/workspace/export') {
+        await handleWorkspaceExport(req, res, ctx);
         return;
       }
 
@@ -227,6 +250,75 @@ async function handleLogin(
   });
 }
 
+async function handleWorkspaceImport(
+  req: IncomingMessage,
+  res: ServerResponse,
+  ctx: AppContext,
+): Promise<void> {
+  if (!ctx.bridge.isAuthenticated(req.headers.cookie)) {
+    json(res, 401, { error: 'unauthorized', login: '/login' });
+    return;
+  }
+  if (!ctx.workspacePath) {
+    json(res, 503, { error: 'workspace_unavailable' });
+    return;
+  }
+
+  const cl = Number(req.headers['content-length'] ?? 0);
+  if (cl > MAX_IMPORT_BYTES) {
+    json(res, 413, { error: 'payload_too_large', maxBytes: MAX_IMPORT_BYTES });
+    return;
+  }
+
+  try {
+    const rawText = await readBodyLimited(req, MAX_IMPORT_BYTES);
+    const raw = JSON.parse(rawText || '{}') as unknown;
+    const payload = parseFilesV1(raw);
+    const result = importFilesV1(ctx.workspacePath, payload);
+    json(res, 200, {
+      ok: true,
+      fileCount: result.fileCount,
+      bytesWritten: result.bytesWritten,
+      workspacePath: ctx.workspacePath,
+    });
+  } catch (err) {
+    if (err instanceof ImportError) {
+      json(res, err.status, { error: err.message });
+      return;
+    }
+    if (err instanceof SyntaxError) {
+      json(res, 400, { error: 'invalid_json' });
+      return;
+    }
+    throw err;
+  }
+}
+
+async function handleWorkspaceExport(
+  req: IncomingMessage,
+  res: ServerResponse,
+  ctx: AppContext,
+): Promise<void> {
+  if (!ctx.bridge.isAuthenticated(req.headers.cookie)) {
+    json(res, 401, { error: 'unauthorized', login: '/login' });
+    return;
+  }
+  if (!ctx.workspacePath) {
+    json(res, 503, { error: 'workspace_unavailable' });
+    return;
+  }
+  try {
+    const payload = exportFilesV1(ctx.workspacePath);
+    json(res, 200, payload);
+  } catch (err) {
+    if (err instanceof ImportError) {
+      json(res, err.status, { error: err.message });
+      return;
+    }
+    throw err;
+  }
+}
+
 function json(res: ServerResponse, status: number, body: unknown): void {
   const data = JSON.stringify(body);
   const headers: Record<string, string | number | string[]> = {
@@ -248,9 +340,23 @@ function html(res: ServerResponse, status: number, body: string): void {
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
+  return readBodyLimited(req, MAX_IMPORT_BYTES);
+}
+
+function readBodyLimited(req: IncomingMessage, maxBytes: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+    let total = 0;
+    req.on('data', (c) => {
+      const buf = Buffer.isBuffer(c) ? c : Buffer.from(c);
+      total += buf.byteLength;
+      if (total > maxBytes) {
+        reject(new ImportError(`body exceeds ${maxBytes} bytes`, 413));
+        req.destroy();
+        return;
+      }
+      chunks.push(buf);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });

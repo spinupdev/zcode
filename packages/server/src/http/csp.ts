@@ -8,6 +8,13 @@ export interface CspOptions {
   openVsx?: boolean;
   /** Extra connect-src hosts (e.g. custom gallery). */
   extraConnectSrc?: string[];
+  /**
+   * Extra script-src hosts (e.g. Pyodide CDN for browser WASM runtimes).
+   * Default includes jsDelivr for Pyodide (WB1).
+   */
+  extraScriptSrc?: string[];
+  /** When false, do not add default Pyodide CDN script hosts. */
+  browserWasm?: boolean;
   /** Report-only mode (header Content-Security-Policy-Report-Only). */
   reportOnly?: boolean;
 }
@@ -15,16 +22,29 @@ export interface CspOptions {
 /** Build a CSP header value for same-origin MVP co-serve. */
 export function buildContentSecurityPolicy(opts: CspOptions = {}): string {
   const openVsx = opts.openVsx !== false;
+  const browserWasm = opts.browserWasm !== false;
   const connect = ["'self'", 'https:', 'wss:', 'ws:', ...(opts.extraConnectSrc ?? [])];
   // Browser mode talks to same-origin /git-proxy; remote uses same-origin WS to REH proxy.
   const extensionSrc = openVsx
     ? ["'self'", 'https://open-vsx.org', 'https://*.open-vsx.org']
     : ["'self'"];
 
+  const scriptSrc = [
+    "'self'",
+    "'wasm-unsafe-eval'",
+    "'unsafe-eval'",
+    "'unsafe-inline'",
+    // Pyodide / browser WASM runtimes (zcode-runtime-python)
+    ...(browserWasm
+      ? ['https://cdn.jsdelivr.net', 'https://cdn.jsdelivr.net/pyodide/']
+      : []),
+    ...(opts.extraScriptSrc ?? []),
+  ];
+
   const directives: string[] = [
     "default-src 'self'",
     // Monaco / VS Code web historically need unsafe-eval; wasm-unsafe-eval for modern WASM.
-    "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' 'unsafe-inline'",
+    `script-src ${scriptSrc.join(' ')}`,
     "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
