@@ -10,7 +10,7 @@ import {
   type GitChange,
   type ZCodeBrowserAgent,
 } from '@zcode/browser-agent';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 
 /** Mirrors @zcode/protocol CloneProgress — kept local to avoid extra dep. */
 type CloneProgress = {
@@ -19,8 +19,6 @@ type CloneProgress = {
   totalObjects?: number;
   message?: string;
 };
-
-declare const vscode: typeof import('vscode');
 
 const g = globalThis as typeof globalThis & { Buffer?: typeof Buffer };
 if (typeof g.Buffer === 'undefined') g.Buffer = Buffer;

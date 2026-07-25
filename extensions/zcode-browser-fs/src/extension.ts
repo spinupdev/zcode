@@ -4,10 +4,8 @@
  * Clone in debug SPA (/debug/) → open /?workspace=<id>.
  */
 import { createDefaultFsInfo, IdbFs, type AgentFs } from '@zcode/browser-agent';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { IdbFileSystemProvider } from './idb-provider.js';
-
-declare const vscode: typeof import('vscode');
 
 const SCHEME = 'zcode-opfs';
 
@@ -83,19 +81,40 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('zcode.fs.openWorkspace', async () => {
-      const id = await vscode.window.showInputBox({
+  const openVirtualWorkspace = async (workspaceId?: string) => {
+    const id =
+      workspaceId ??
+      (await vscode.window.showInputBox({
         title: 'Open ZCode virtual workspace',
         prompt: 'Workspace id (from SPA clone), or leave default',
         value: 'default',
-      });
-      if (id == null) return;
-      const uri = vscode.Uri.from({ scheme: SCHEME, path: `/workspace/${id || 'default'}` });
-      await holder.provider.seedIfEmpty(id || 'default');
-      await vscode.commands.executeCommand('vscode.openFolder', uri, { forceReuseWindow: true });
-    }),
+      }));
+    if (id == null) return;
+    const ws = id || 'default';
+    const uri = vscode.Uri.from({ scheme: SCHEME, path: `/workspace/${ws}` });
+    await holder.provider.seedIfEmpty(ws);
+    await vscode.commands.executeCommand('vscode.openFolder', uri, { forceReuseWindow: true });
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('zcode.fs.openWorkspace', () => openVirtualWorkspace()),
   );
+
+  // If workbench failed to open folderUri (common race), open default once provider is ready.
+  void (async () => {
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      const hasOpfs = folders.some((f) => f.uri.scheme === SCHEME);
+      if (!hasOpfs) {
+        const params = new URLSearchParams(globalThis.location?.search ?? '');
+        const ws = params.get('workspace') || 'default';
+        await openVirtualWorkspace(ws);
+      }
+    } catch (err) {
+      console.warn('[zcode-browser-fs] auto-open workspace failed', err);
+    }
+  })();
 
   context.subscriptions.push(
     vscode.commands.registerCommand('zcode.fs.seedSample', async () => {

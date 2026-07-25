@@ -4,9 +4,7 @@
  */
 import type { AgentFs } from '@zcode/browser-agent';
 import { IdbFs } from '@zcode/browser-agent';
-import type * as vscode from 'vscode';
-
-declare const vscode: typeof import('vscode');
+import * as vscode from 'vscode';
 
 export class IdbFileSystemProvider implements vscode.FileSystemProvider {
   private readonly fs: AgentFs;
