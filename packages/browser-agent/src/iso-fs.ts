@@ -90,16 +90,13 @@ export function createIsoFs(fs: AgentFs, rootPrefix: string) {
       },
       async stat(path: string): Promise<IsoStat> {
         const p = map(path);
-        if (!(await fs.exists(p))) {
+        try {
+          const st = await fs.stat(p);
+          return makeStat(st.kind === 'file', st.size);
+        } catch {
           const err = new Error(`ENOENT: ${path}`) as NodeJS.ErrnoException;
           err.code = 'ENOENT';
           throw err;
-        }
-        try {
-          const data = await fs.readFile(p);
-          return makeStat(true, data.byteLength);
-        } catch {
-          return makeStat(false, 0);
         }
       },
       async lstat(path: string) {

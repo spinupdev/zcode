@@ -113,19 +113,16 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
       }
       throw vscode.FileSystemError.FileNotFound(uri);
     }
-    if (!(await this.fs.exists(k))) {
-      throw vscode.FileSystemError.FileNotFound(uri);
-    }
     try {
-      const data = await this.fs.readFile(k);
+      const st = await this.fs.stat(k);
       return {
-        type: vscode.FileType.File,
+        type: st.kind === 'dir' ? vscode.FileType.Directory : vscode.FileType.File,
         ctime: now,
         mtime: now,
-        size: data.byteLength,
+        size: st.size,
       };
     } catch {
-      return { type: vscode.FileType.Directory, ctime: now, mtime: now, size: 0 };
+      throw vscode.FileSystemError.FileNotFound(uri);
     }
   }
 
@@ -154,18 +151,29 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
       if (name === '.git') continue;
       const childKey = k ? `${k}/${name}` : name;
       try {
-        await this.fs.readFile(childKey);
-        out.push([name, vscode.FileType.File]);
+        const st = await this.fs.stat(childKey);
+        out.push([
+          name,
+          st.kind === 'dir' ? vscode.FileType.Directory : vscode.FileType.File,
+        ]);
       } catch {
-        out.push([name, vscode.FileType.Directory]);
+        // Child vanished between readdir and stat — skip
       }
     }
     return out;
   }
 
   async readFile(uri: vscode.Uri): Promise<Uint8Array> {
+    const k = this.key(uri);
     try {
-      return await this.fs.readFile(this.key(uri));
+      const st = await this.fs.stat(k);
+      if (st.kind === 'dir') throw vscode.FileSystemError.FileIsADirectory(uri);
+    } catch (e) {
+      if (e instanceof vscode.FileSystemError) throw e;
+      throw vscode.FileSystemError.FileNotFound(uri);
+    }
+    try {
+      return await this.fs.readFile(k);
     } catch {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
@@ -177,15 +185,16 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
     options: { create: boolean; overwrite: boolean },
   ): Promise<void> {
     const k = this.key(uri);
-    const exists = await this.fs.exists(k);
+    let exists = false;
     let isFile = false;
-    if (exists) {
-      try {
-        await this.fs.readFile(k);
-        isFile = true;
-      } catch {
-        throw vscode.FileSystemError.FileIsADirectory(uri);
-      }
+    try {
+      const st = await this.fs.stat(k);
+      exists = true;
+      if (st.kind === 'dir') throw vscode.FileSystemError.FileIsADirectory(uri);
+      isFile = true;
+    } catch (e) {
+      if (e instanceof vscode.FileSystemError) throw e;
+      exists = false;
     }
     if (!exists && !options.create) throw vscode.FileSystemError.FileNotFound(uri);
     if (isFile && !options.overwrite) throw vscode.FileSystemError.FileExists(uri);
@@ -200,15 +209,14 @@ export class IdbFileSystemProvider implements vscode.FileSystemProvider {
 
   async createDirectory(uri: vscode.Uri): Promise<void> {
     const k = this.key(uri);
-    if (await this.fs.exists(k)) {
-      try {
-        await this.fs.readFile(k);
-        throw vscode.FileSystemError.FileNotADirectory(uri);
-      } catch (e) {
-        if (e instanceof vscode.FileSystemError) throw e;
-        // already a dir
-        return;
-      }
+    try {
+      const st = await this.fs.stat(k);
+      if (st.kind === 'file') throw vscode.FileSystemError.FileNotADirectory(uri);
+      // already a dir
+      return;
+    } catch (e) {
+      if (e instanceof vscode.FileSystemError) throw e;
+      // missing — create
     }
     await this.fs.mkdir(k);
     this.emitter.fire([{ type: vscode.FileChangeType.Created, uri }]);

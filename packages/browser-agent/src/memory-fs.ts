@@ -4,6 +4,14 @@
  * Primary browser store: ZenFS+OPFS (B2b); interim: IndexedDB (B7).
  */
 
+/** File vs directory metadata — required for Explorer type discrimination. */
+export type AgentFsKind = 'file' | 'dir';
+
+export interface AgentFsStat {
+  kind: AgentFsKind;
+  size: number;
+}
+
 export interface AgentFs {
   mkdir(path: string): Promise<void>;
   writeFile(path: string, data: Uint8Array | string): Promise<void>;
@@ -11,6 +19,11 @@ export interface AgentFs {
   readdir(path: string): Promise<string[]>;
   rm(path: string, opts?: { recursive?: boolean }): Promise<void>;
   exists(path: string): Promise<boolean>;
+  /**
+   * Distinguish file vs directory. Callers must not use readFile success as a
+   * file probe — ZenFS readFile can return bytes for directories.
+   */
+  stat(path: string): Promise<AgentFsStat>;
   estimate(): Promise<{ usage: number; quota: number }>;
   /** List all file paths under prefix (for search / tree) */
   listFiles?(prefix?: string): Promise<string[]>;
@@ -45,9 +58,27 @@ export class MemoryFs implements AgentFs {
 
   async readFile(path: string): Promise<Uint8Array> {
     const n = norm(path);
+    if (this.dirs.has(n) && !this.files.has(n)) {
+      throw Object.assign(new Error(`EISDIR: ${path}`), { code: 'EISDIR' });
+    }
     const f = this.files.get(n);
     if (!f) throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND' });
     return f;
+  }
+
+  async stat(path: string): Promise<AgentFsStat> {
+    const n = norm(path);
+    const file = this.files.get(n);
+    if (file) return { kind: 'file', size: file.byteLength };
+    if (this.dirs.has(n)) return { kind: 'dir', size: 0 };
+    // Implied directory via children
+    for (const f of this.files.keys()) {
+      if (f.startsWith(n + '/')) return { kind: 'dir', size: 0 };
+    }
+    for (const d of this.dirs) {
+      if (d.startsWith(n + '/')) return { kind: 'dir', size: 0 };
+    }
+    throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND' });
   }
 
   async readdir(path: string): Promise<string[]> {

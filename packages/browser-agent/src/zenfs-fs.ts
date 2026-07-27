@@ -5,7 +5,7 @@
  * Tests: InMemory backend via createZenFsMemory().
  */
 import { configureSingle, fs as zenFs, InMemory } from '@zenfs/core';
-import type { AgentFs } from './memory-fs.js';
+import type { AgentFs, AgentFsStat } from './memory-fs.js';
 
 function norm(p: string): string {
   return p.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '') || '';
@@ -53,10 +53,33 @@ export class ZenFsAgentFs implements AgentFs {
 
   async readFile(path: string): Promise<Uint8Array> {
     const api = await this.api();
+    const p = abs(path);
     try {
-      const data = await api.readFile(abs(path));
+      // ZenFS InMemory/IndexFS can return garbage bytes for directories; always
+      // stat first so Explorer never mistakes dirs for empty files.
+      const st = await api.stat(p);
+      if (st.isDirectory()) {
+        throw Object.assign(new Error(`EISDIR: ${path}`), { code: 'EISDIR' });
+      }
+      const data = await api.readFile(p);
       if (typeof data === 'string') return new TextEncoder().encode(data);
       return data instanceof Uint8Array ? data : new Uint8Array(data);
+    } catch (e) {
+      if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'EISDIR') {
+        throw e;
+      }
+      throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND', cause: e });
+    }
+  }
+
+  async stat(path: string): Promise<AgentFsStat> {
+    const api = await this.api();
+    try {
+      const st = await api.stat(abs(path));
+      if (st.isDirectory()) return { kind: 'dir', size: 0 };
+      if (st.isFile()) return { kind: 'file', size: Number(st.size) || 0 };
+      // Treat other types (symlinks, etc.) as files for Explorer
+      return { kind: 'file', size: Number(st.size) || 0 };
     } catch (e) {
       throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND', cause: e });
     }

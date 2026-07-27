@@ -4,6 +4,21 @@ import { createBrowserAgent } from './agent.js';
 import { WorkspaceLock } from './lock.js';
 import { MemoryFs } from './memory-fs.js';
 
+describe('MemoryFs stat', () => {
+  it('classifies files and directories for Explorer', async () => {
+    const fs = new MemoryFs();
+    await fs.writeFile('workspace/x/src/a.ts', 'export {}\n');
+    await fs.writeFile('workspace/x/README.md', '# x\n');
+
+    assert.equal((await fs.stat('workspace/x/src')).kind, 'dir');
+    assert.equal((await fs.stat('workspace/x/README.md')).kind, 'file');
+    await assert.rejects(() => fs.readFile('workspace/x/src'), (e: NodeJS.ErrnoException) => {
+      assert.equal(e.code, 'EISDIR');
+      return true;
+    });
+  });
+});
+
 describe('ZCodeBrowserAgent', () => {
   it('creates, lists, and deletes workspaces', async () => {
     const agent = createBrowserAgent({ hydrateFromFs: false });

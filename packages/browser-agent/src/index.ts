@@ -5,7 +5,7 @@ export { WorkspaceLock } from './lock.js';
 export { WorkspaceStore } from './workspace-store.js';
 export type { WorkspaceRecord } from './workspace-store.js';
 export { MemoryFs } from './memory-fs.js';
-export type { AgentFs } from './memory-fs.js';
+export type { AgentFs, AgentFsKind, AgentFsStat } from './memory-fs.js';
 export { IdbFs, isIdbAvailable } from './idb-fs.js';
 export {
   createDefaultFs,

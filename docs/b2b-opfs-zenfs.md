@@ -68,6 +68,7 @@ pnpm --filter @zcode/browser-agent test
 - SPA git clone still runs in a MemoryFs worker, then imports into main-thread AgentFs (OPFS/IDB).
 - Full git-worker dual-open OPFS is deferred (design: single FS coordinator worker).
 - **Extension bundles:** `zcode-browser-fs` and `zcode-git` each esbuild `@zcode/browser-agent`. They share one OPFS/ZenFS root via `globalThis.__zcodeDefaultFsInfo__` / `__zcodeZenFsOpfs__` so clone writes are visible to Explorer. Do not remove that realm-global bridge without a real FS coordinator worker.
+- **Directory typing:** ZenFS `readFile` on a directory can return garbage bytes (not throw). Always use `AgentFs.stat()` for file-vs-dir. The FileSystemProvider must not probe with `readFile` success — that made every cloned folder look like a non-expandable empty file.
 
 ## Related
 

@@ -2,7 +2,7 @@
  * Durable AgentFs backed by IndexedDB (browser).
  * Survives reloads; used for browser-mode workspaces.
  */
-import type { AgentFs } from './memory-fs.js';
+import type { AgentFs, AgentFsStat } from './memory-fs.js';
 
 const DB_NAME = 'zcode-fs-v1';
 const STORE = 'entries';
@@ -126,10 +126,27 @@ export class IdbFs implements AgentFs {
   async readFile(path: string): Promise<Uint8Array> {
     const n = norm(path);
     const e = await this.get(n);
+    if (e?.kind === 'dir') {
+      throw Object.assign(new Error(`EISDIR: ${path}`), { code: 'EISDIR' });
+    }
     if (!e || e.kind !== 'file' || e.dataB64 == null) {
       throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND' });
     }
     return b64decode(e.dataB64);
+  }
+
+  async stat(path: string): Promise<AgentFsStat> {
+    const n = norm(path);
+    const e = await this.get(n);
+    if (e?.kind === 'file') {
+      const size = e.dataB64 ? Math.floor((e.dataB64.length * 3) / 4) : 0;
+      return { kind: 'file', size };
+    }
+    if (e?.kind === 'dir') return { kind: 'dir', size: 0 };
+    // Implied directory via children (lazy parents)
+    const keys = await this.allKeys();
+    if (keys.some((k) => k.startsWith(n + '/'))) return { kind: 'dir', size: 0 };
+    throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'NOT_FOUND' });
   }
 
   async readdir(path: string): Promise<string[]> {
