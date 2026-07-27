@@ -34,6 +34,12 @@ export interface ExecutionBackend {
   readonly info: ExecutionBackendInfo;
   startSession?(): Promise<void>;
   run(opts: RunFileOpts): Promise<RunResult>;
+  /**
+   * Optional interactive terminal (Pseudoterminal).
+   * WebContainer shell / Pyodide REPL implement this via extension commands;
+   * optional hook for a shared “Open Shell” entry point.
+   */
+  openTerminal?(): void;
   dispose(): void;
 }
 

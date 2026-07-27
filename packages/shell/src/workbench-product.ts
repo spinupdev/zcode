@@ -97,9 +97,12 @@ const ZCODE_PRODUCT_EXTENSIONS = [
   '/extensions/zcode-runtime-node',
   '/extensions/zcode-runtime-remote',
   '/extensions/zcode-remote',
-  // Marketplace defaults (scripts/fetch-theme-extensions.sh) — optional
+  // Marketplace defaults (scripts/fetch-theme-extensions.sh)
   '/extensions/vscode-icons',
   '/extensions/github-vscode-theme',
+  // Extra language TextMate packs (Open VSX; browser-safe grammars only)
+  '/extensions/terraform',
+  '/extensions/nix',
 ];
 
 /**
@@ -113,24 +116,24 @@ export const DEFAULT_BUILTIN_EXTENSIONS: string[] = [
 
 /**
  * Color / icon theme defaults.
- * Prefer built-in "Default Dark Modern" so syntax colors work without marketplace
- * theme fetch; GitHub Theme / vscode-icons still apply when those extensions load.
+ * GitHub Theme + vscode-icons are product builtins (fetch-theme-extensions.sh).
+ * Fallbacks (Default Dark Modern / vs-seti) live in bootstrap if those fail to load.
  */
 export const ZCODE_THEME_DEFAULTS = {
-  iconTheme: 'vs-seti',
-  colorThemeDark: 'Default Dark Modern',
-  colorThemeLight: 'Default Light Modern',
-  colorThemeHcDark: 'Default High Contrast',
-  colorThemeHcLight: 'Default High Contrast Light',
-  /** Optional upgrades when github-vscode-theme / vscode-icons are present */
-  preferredGithubDark: 'GitHub Dark Default',
-  preferredGithubLight: 'GitHub Light Default',
-  preferredIcons: 'vscode-icons',
+  iconTheme: 'vscode-icons',
+  colorThemeDark: 'GitHub Dark Default',
+  colorThemeLight: 'GitHub Light Default',
+  colorThemeHcDark: 'GitHub Dark High Contrast',
+  colorThemeHcLight: 'GitHub Light High Contrast',
+  /** Built-in fallbacks if marketplace themes missing */
+  fallbackIconTheme: 'vs-seti',
+  fallbackColorThemeDark: 'Default Dark Modern',
+  fallbackColorThemeLight: 'Default Light Modern',
 } as const;
 
 /**
  * Configuration defaults by mode (capability chrome).
- * Browser: terminal is not a product surface (no REH PTY).
+ * Browser: extension Pseudoterminals (WebContainer / Pyodide); no REH node-pty.
  * Remote: enable remote-friendly defaults.
  */
 export function configurationDefaultsForMode(
@@ -155,8 +158,16 @@ export function configurationDefaultsForMode(
     'vsicons.dontShowConfigManuallyChangedMessage': true,
   };
 
-  if (!caps.terminal || mode === 'browser') {
-    // Soft-hide: do not open panel on startup; no multi-line paste noise.
+  if (mode === 'browser') {
+    // Soft-hide panel on startup; WASM shells are on-demand via Terminal profiles / commands.
+    base['workbench.panel.opensMaximized'] = 'never';
+    base['terminal.integrated.enablePersistentSessions'] = false;
+    base['terminal.integrated.enableMultiLinePasteWarning'] = 'never';
+    // Prefer extension profiles over a non-existent local shell in pure web.
+    base['terminal.integrated.defaultProfile.linux'] = 'WebContainer Shell';
+    base['terminal.integrated.defaultProfile.osx'] = 'WebContainer Shell';
+    base['terminal.integrated.defaultProfile.windows'] = 'WebContainer Shell';
+  } else if (!caps.terminal) {
     base['workbench.panel.opensMaximized'] = 'never';
     base['terminal.integrated.enablePersistentSessions'] = false;
     base['terminal.integrated.enableMultiLinePasteWarning'] = 'never';
@@ -234,7 +245,7 @@ export function buildWorkbenchCreateOptions(
       tooltip:
         boot.mode === 'remote'
           ? `Remote ${load.remoteAuthority ?? ''} · terminal ${caps.terminal ? 'on' : 'off'}`
-          : 'Browser mode — virtual FS (zcode-opfs), no PTY terminal',
+          : 'Browser mode — virtual FS (zcode-opfs), WASM shell (WebContainer / Pyodide)',
     },
     zcodeCapabilities: caps,
     zcodeMode: boot.mode,

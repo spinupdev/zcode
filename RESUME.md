@@ -94,8 +94,10 @@ pnpm --filter zcode-browser-fs build
 pnpm --filter zcode-git build
 
 # DEV: product IDE + /git-proxy + /debug SPA
-NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
-# or: pnpm dev:ide
+pnpm dev
+# full setup: install + fetch vscode-web/themes + build + serve (COI on)
+# pnpm dev:fast     # restart only
+# pnpm dev:refresh  # re-fetch assets then serve
 ```
 
 | URL | Expect |

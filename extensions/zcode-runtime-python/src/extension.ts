@@ -1,12 +1,22 @@
 /**
- * Browser Python via Pyodide (WB1). Loads WASM from configured CDN indexURL.
+ * Browser Python via Pyodide (WB1 + Pseudoterminal REPL).
+ * Loads WASM from configured CDN indexURL.
  */
 import * as vscode from 'vscode';
+import {
+  createPyodideReplPty,
+  openPyodideReplTerminal,
+  type PyodideReplEngine,
+} from './repl-pty.js';
 
 interface PyodideInterface {
   runPythonAsync(code: string): Promise<unknown>;
+  runPython(code: string): unknown;
   setStdout(opts: { batched: (s: string) => void }): void;
   setStderr(opts: { batched: (s: string) => void }): void;
+  pyimport(name: string): {
+    compile_command: (source: string, filename?: string, symbol?: string) => unknown;
+  };
 }
 
 interface ExecutionBackend {
@@ -25,6 +35,7 @@ interface ExecutionBackend {
     onStderr?: (c: string) => void;
     signal?: AbortSignal;
   }): Promise<{ exitCode: number; streamed?: boolean }>;
+  openTerminal?(): void;
   dispose(): void;
 }
 
@@ -48,28 +59,83 @@ async function loadPyodideScript(indexURL: string): Promise<void> {
   });
 }
 
-function createPythonBackend(): ExecutionBackend {
-  let pyodide: PyodideInterface | null = null;
-  let loading: Promise<void> | null = null;
+/** Shared Pyodide session used by Run File and the interactive REPL. */
+class PyodideSession {
+  private pyodide: PyodideInterface | null = null;
+  private loading: Promise<PyodideInterface> | null = null;
+  private codeopReady = false;
 
-  async function ensure(): Promise<PyodideInterface> {
-    if (pyodide) return pyodide;
-    if (!loading) {
-      loading = (async () => {
+  async ensure(): Promise<PyodideInterface> {
+    if (this.pyodide) return this.pyodide;
+    if (!this.loading) {
+      this.loading = (async () => {
         const indexURL = vscode.workspace
           .getConfiguration('zcode.execution')
           .get<string>('pyodideIndexUrl', 'https://cdn.jsdelivr.net/pyodide/v0.27.5/full/');
         await loadPyodideScript(indexURL);
-        const load = (globalThis as { loadPyodide: (o: { indexURL: string }) => Promise<PyodideInterface> })
-          .loadPyodide;
-        pyodide = await load({ indexURL: indexURL.endsWith('/') ? indexURL : `${indexURL}/` });
+        const load = (globalThis as unknown as {
+          loadPyodide: (o: { indexURL: string }) => Promise<PyodideInterface>;
+        }).loadPyodide;
+        const py = await load({ indexURL: indexURL.endsWith('/') ? indexURL : `${indexURL}/` });
+        this.pyodide = py;
+        return py;
       })();
     }
-    await loading;
-    if (!pyodide) throw new Error('Pyodide failed to initialize');
-    return pyodide;
+    return this.loading;
   }
 
+  private async ensureCodeop(py: PyodideInterface): Promise<void> {
+    if (this.codeopReady) return;
+    await py.runPythonAsync('import codeop');
+    this.codeopReady = true;
+  }
+
+  asReplEngine(): PyodideReplEngine {
+    return {
+      checkComplete: async (source: string) => {
+        const py = await this.ensure();
+        await this.ensureCodeop(py);
+        // Use Python to call codeop.compile_command; None => incomplete
+        const escaped = JSON.stringify(source);
+        const result = await py.runPythonAsync(
+          `codeop.compile_command(${escaped}, "<stdin>", "single")`,
+        );
+        if (result === undefined || result === null) return 'incomplete';
+        return 'complete';
+      },
+      run: async (code, io) => {
+        const py = await this.ensure();
+        py.setStdout({
+          batched: (s) => io.stdout(s),
+        });
+        py.setStderr({
+          batched: (s) => io.stderr(s),
+        });
+        try {
+          const out = await py.runPythonAsync(code);
+          // Expressions return a value; statements typically return undefined
+          if (out !== undefined && out !== null) {
+            io.stdout(`${String(out)}\n`);
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          io.stderr(`${msg}\n`);
+        }
+      },
+    };
+  }
+
+  dispose(): void {
+    this.pyodide = null;
+    this.loading = null;
+    this.codeopReady = false;
+  }
+}
+
+function createPythonBackend(
+  session: PyodideSession,
+  openRepl: () => void,
+): ExecutionBackend {
   return {
     id: 'browser-python',
     info: {
@@ -79,22 +145,19 @@ function createPythonBackend(): ExecutionBackend {
       requiresNetwork: true,
       requiresRemote: false,
     },
+    openTerminal: openRepl,
     async startSession() {
-      await ensure();
+      await session.ensure();
     },
     async run(opts) {
-      const py = await ensure();
-      let stdout = '';
-      let stderr = '';
+      const py = await session.ensure();
       py.setStdout({
         batched: (s) => {
-          stdout += s;
           opts.onStdout?.(s.endsWith('\n') ? s : `${s}\n`);
         },
       });
       py.setStderr({
         batched: (s) => {
-          stderr += s;
           opts.onStderr?.(s.endsWith('\n') ? s : `${s}\n`);
         },
       });
@@ -108,14 +171,10 @@ function createPythonBackend(): ExecutionBackend {
         const msg = err instanceof Error ? err.message : String(err);
         opts.onStderr?.(`${msg}\n`);
         return { exitCode: 1, streamed: true };
-      } finally {
-        void stdout;
-        void stderr;
       }
     },
     dispose() {
-      pyodide = null;
-      loading = null;
+      /* session disposed by extension */
     },
   };
 }
@@ -131,7 +190,22 @@ async function waitForRuntime(maxMs = 15000): Promise<ZcodeRuntimeApi> {
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const backend = createPythonBackend();
+  const session = new PyodideSession();
+
+  const openRepl = () => {
+    try {
+      openPyodideReplTerminal(
+        { ensure: async () => session.asReplEngine() },
+        'Python (Pyodide)',
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      void vscode.window.showErrorMessage(`Pyodide REPL: ${msg}`);
+    }
+  };
+
+  const backend = createPythonBackend(session, openRepl);
+
   try {
     const api = await waitForRuntime();
     api.register(backend);
@@ -143,22 +217,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('zcode.runtime.python.repl', async () => {
-      try {
-        await backend.startSession?.();
-        void vscode.window.showInformationMessage(
-          'Pyodide ready. Use “ZCode: Run File” on a .py file, or Run Selection.',
-        );
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        void vscode.window.showErrorMessage(`Pyodide: ${msg}`);
-      }
+    vscode.commands.registerCommand('zcode.runtime.python.repl', openRepl),
+    vscode.window.registerTerminalProfileProvider('zcode.pyodide', {
+      provideTerminalProfile: () => {
+        const { pty } = createPyodideReplPty({
+          ensure: async () => session.asReplEngine(),
+        });
+        return {
+          options: {
+            name: 'Python (Pyodide)',
+            pty,
+            iconPath: new vscode.ThemeIcon('python'),
+          },
+        };
+      },
     }),
     {
       dispose: () => {
         const api = (globalThis as { zcodeRuntime?: ZcodeRuntimeApi }).zcodeRuntime;
         api?.unregister(backend.id);
-        backend.dispose();
+        session.dispose();
       },
     },
   );

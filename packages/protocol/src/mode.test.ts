@@ -58,8 +58,8 @@ describe('createWorkbenchLoadConfig', () => {
 });
 
 describe('capabilitiesForMode', () => {
-  it('disables terminal in browser mode', () => {
-    assert.equal(capabilitiesForMode('browser').terminal, false);
+  it('enables terminal in browser mode (WASM Pseudoterminal)', () => {
+    assert.equal(capabilitiesForMode('browser').terminal, true);
     assert.equal(capabilitiesForMode('browser').search, 'web-best-effort');
   });
 

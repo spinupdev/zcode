@@ -15,7 +15,7 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.equal(o.folderUri?.path, '/workspace/abc');
     assert.equal(o.productConfiguration.nameShort, 'ZCode');
     assert.equal(o.zcodeMode, 'browser');
-    assert.equal(o.zcodeCapabilities?.terminal, false);
+    assert.equal(o.zcodeCapabilities?.terminal, true);
   });
 
   it('sets same-origin webviewEndpoint (not vscode-cdn)', () => {
@@ -59,6 +59,8 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.ok(paths.includes('/extensions/zcode-remote'));
     assert.ok(paths.includes('/extensions/vscode-icons'));
     assert.ok(paths.includes('/extensions/github-vscode-theme'));
+    assert.ok(paths.includes('/extensions/terraform'));
+    assert.ok(paths.includes('/extensions/nix'));
     // TextMate language packs (syntax highlighting)
     assert.ok(paths.includes('/vscode/extensions/javascript'));
     assert.ok(paths.includes('/vscode/extensions/typescript-basics'));
@@ -78,19 +80,20 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.equal(o.additionalBuiltinExtensions?.[0]?.authority, '127.0.0.1:5000');
   });
 
-  it('browser defaults soft-hide terminal; remote enables it', () => {
+  it('browser soft-hides panel but prefers WebContainer profile; remote enables PTY', () => {
     const browser = configurationDefaultsForMode('browser', browserCapabilities());
     assert.equal(browser['terminal.integrated.enablePersistentSessions'], false);
-    assert.equal(browser['workbench.colorTheme'], 'Default Dark Modern');
-    assert.equal(browser['workbench.preferredLightColorTheme'], 'Default Light Modern');
-    assert.equal(browser['workbench.preferredDarkColorTheme'], 'Default Dark Modern');
-    assert.equal(browser['workbench.iconTheme'], 'vs-seti');
+    assert.equal(browser['terminal.integrated.defaultProfile.linux'], 'WebContainer Shell');
+    assert.equal(browser['workbench.colorTheme'], 'GitHub Dark Default');
+    assert.equal(browser['workbench.preferredLightColorTheme'], 'GitHub Light Default');
+    assert.equal(browser['workbench.preferredDarkColorTheme'], 'GitHub Dark Default');
+    assert.equal(browser['workbench.iconTheme'], 'vscode-icons');
     assert.equal(browser['window.autoDetectColorScheme'], true);
     const remote = configurationDefaultsForMode('remote', remoteCapabilities());
     assert.equal(remote['terminal.integrated.enablePersistentSessions'], true);
     assert.equal(remote['remote.autoForwardPorts'], true);
-    assert.equal(remote['workbench.colorTheme'], 'Default Dark Modern');
-    assert.equal(remote['workbench.iconTheme'], 'vs-seti');
+    assert.equal(remote['workbench.colorTheme'], 'GitHub Dark Default');
+    assert.equal(remote['workbench.iconTheme'], 'vscode-icons');
     assert.equal(remote['window.autoDetectColorScheme'], true);
   });
 

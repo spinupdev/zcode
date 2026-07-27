@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
  * M1 — dual-mode product payload (browser vs remoteAuthority).
  */
 test.describe('dual-mode product (M1)', () => {
-  test('browser product has zcode-opfs and no terminal capability', async ({ request }) => {
+  test('browser product has zcode-opfs and WASM terminal capability', async ({ request }) => {
     const res = await request.get('/product.json?workspace=m1-ws');
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
@@ -14,7 +14,8 @@ test.describe('dual-mode product (M1)', () => {
       path: '/workspace/m1-ws',
     });
     expect(body.zcodeMode).toBe('browser');
-    expect(body.zcodeCapabilities?.terminal).toBe(false);
+    // Extension Pseudoterminals (WebContainer / Pyodide), not REH node-pty
+    expect(body.zcodeCapabilities?.terminal).toBe(true);
     expect(body.zcodeCapabilities?.browserGit).toBe(true);
     const paths = (body.additionalBuiltinExtensions ?? []).map(
       (e: { path: string }) => e.path,

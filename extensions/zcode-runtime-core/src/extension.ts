@@ -34,6 +34,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('zcode.runtime.runSelection', () => runActive(true)),
     vscode.commands.registerCommand('zcode.runtime.selectBackend', () => selectBackend()),
     vscode.commands.registerCommand('zcode.runtime.showStatus', () => showStatus()),
+    vscode.commands.registerCommand('zcode.runtime.openShell', () => openShell()),
     {
       dispose: () => {
         registry?.disposeAll();
@@ -100,6 +101,57 @@ async function showStatus(): Promise<void> {
     language: 'markdown',
   });
   await vscode.window.showTextDocument(doc, { preview: true });
+}
+
+/**
+ * Open an interactive browser shell for the active backend / language.
+ * Prefer backend.openTerminal; fall back to known extension commands.
+ */
+async function openShell(): Promise<void> {
+  if (!registry) {
+    void vscode.window.showErrorMessage('ZCode runtime not initialized');
+    return;
+  }
+  const ed = vscode.window.activeTextEditor;
+  const lang = ed?.document.languageId ?? '';
+  const backendId = registry.getActiveId(lang);
+  const backend = registry.get(backendId);
+
+  if (backend?.openTerminal) {
+    backend.openTerminal();
+    return;
+  }
+
+  // Language-aware fallbacks (extensions register commands)
+  if (lang === 'python' || backendId === 'browser-python') {
+    await vscode.commands.executeCommand('zcode.runtime.python.repl');
+    return;
+  }
+  if (
+    lang === 'javascript' ||
+    lang === 'typescript' ||
+    lang === 'javascriptreact' ||
+    lang === 'typescriptreact' ||
+    backendId === 'browser-node'
+  ) {
+    await vscode.commands.executeCommand('zcode.runtime.node.openShell');
+    return;
+  }
+
+  // Quick pick when language is ambiguous
+  const pick = await vscode.window.showQuickPick(
+    [
+      { label: 'WebContainer Shell', id: 'node' as const, description: 'jsh via WebContainers' },
+      { label: 'Python (Pyodide) REPL', id: 'python' as const, description: 'Browser CPython' },
+    ],
+    { title: 'ZCode browser shell', placeHolder: 'Choose interactive terminal' },
+  );
+  if (!pick) return;
+  if (pick.id === 'python') {
+    await vscode.commands.executeCommand('zcode.runtime.python.repl');
+  } else {
+    await vscode.commands.executeCommand('zcode.runtime.node.openShell');
+  }
 }
 
 async function runActive(selectionOnly: boolean): Promise<void> {

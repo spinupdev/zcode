@@ -11,32 +11,28 @@
 
 > **Not [coder/code-server](https://github.com/coder/code-server).** CLI: **`zcode`**. Source: [github.com/spinupdev/zcode](https://github.com/spinupdev/zcode).
 
-## Quick start (one process)
+## Quick start (one command)
 
 ```bash
-pnpm install
-pnpm build
-./scripts/fetch-vscode-web.sh          # stage VS Code Web static assets
-pnpm --filter @zcode/workbench build
-
-# product IDE at / + /git-proxy; SPA debug at /debug/ in DEV
-NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
-# or: pnpm dev:ide
+pnpm dev
 ```
+
+That is the full local setup: install deps (if needed), stage VS Code Web + themes, build packages/extensions, and serve with **WebContainer COI** enabled.
 
 | URL | Role |
 | --- | --- |
-| **http://127.0.0.1:5000/** | **VS Code Web workbench (the product IDE)** |
-| http://127.0.0.1:5000/debug/ | Debug SPA (git dogfood) — **DEV only**; off when `NODE_ENV=production` |
-| http://127.0.0.1:5000/git-proxy | Stateless CORS bridge for GitHub/GitLab |
+| **http://127.0.0.1:5000/** | Product IDE (VS Code Web) |
+| http://127.0.0.1:5000/debug/ | Debug SPA (DEV only) |
+| http://127.0.0.1:5000/git-proxy | Stateless git CORS proxy |
+
+Optional: `PORT=5001 pnpm dev` · `pnpm dev:fast` (restart without rebuild) · `pnpm dev:refresh` (re-fetch vscode-web/themes).
 
 ### Clone a Git repo (browser debug SPA)
 
 Git clone is **client-side** (isomorphic-git). The browser needs same-origin **`/git-proxy`** for GitHub/GitLab CORS. The SPA at `/debug/` is **debug dogfood** and is **not served in production**.
 
 ```bash
-# one terminal — product IDE + /git-proxy + optional /debug
-NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
+pnpm dev   # then open /debug/
 ```
 
 1. Open **http://127.0.0.1:5000/debug/** (debug SPA; product IDE is **`/`**)

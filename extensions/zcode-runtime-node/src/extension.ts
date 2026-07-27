@@ -11,6 +11,11 @@ import {
   workspaceFolderFor,
   type FileSystemTree,
 } from './fs-tree.js';
+import {
+  createWebContainerShellPty,
+  openWebContainerTerminal,
+  type WcProcess,
+} from './wc-shell-pty.js';
 
 type WcTree = FileSystemTree;
 
@@ -33,6 +38,7 @@ interface ExecutionBackend {
     onStderr?: (c: string) => void;
     signal?: AbortSignal;
   }): Promise<{ exitCode: number; streamed?: boolean }>;
+  openTerminal?(): void;
   dispose(): void;
 }
 
@@ -43,17 +49,17 @@ interface ZcodeRuntimeApi {
 
 type NodeEngine = 'auto' | 'webcontainer' | 'worker';
 
+interface SpawnOptions {
+  cwd?: string;
+  output?: boolean;
+  terminal?: { cols: number; rows: number };
+  env?: Record<string, string | number | boolean>;
+}
+
 interface WebContainerInstance {
   mount(tree: WcTree): Promise<void>;
-  spawn(
-    command: string,
-    args?: string[],
-    options?: { cwd?: string; output?: boolean },
-  ): Promise<{
-    output: ReadableStream<string>;
-    exit: Promise<number>;
-    kill(): void;
-  }>;
+  spawn(command: string, args: string[], options?: SpawnOptions): Promise<WcProcess>;
+  spawn(command: string, options?: SpawnOptions): Promise<WcProcess>;
   fs?: {
     writeFile(path: string, data: string): Promise<void>;
   };
@@ -333,6 +339,33 @@ class WebContainerSession {
     return spawnAndCollect(container, 'npm', ['run', script], opts);
   }
 
+  /**
+   * Mount active workspace (best-effort) and spawn interactive `jsh` for Pseudoterminal.
+   */
+  async spawnInteractiveShell(opts: {
+    cols: number;
+    rows: number;
+    onLog: (chunk: string) => void;
+  }): Promise<WcProcess> {
+    const container = await this.ensureContainer();
+    const folder = workspaceFolderFor(vscode.window.activeTextEditor?.document.uri)
+      ?? vscode.workspace.workspaceFolders?.[0];
+    if (folder) {
+      try {
+        await this.mountWorkspace(folder, undefined, undefined, opts.onLog);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        opts.onLog(`[zcode] workspace mount skipped: ${msg}\n`);
+      }
+    } else {
+      opts.onLog('[zcode] no workspace folder — empty container FS\n');
+    }
+    opts.onLog('[zcode] spawning jsh…\n');
+    return container.spawn('jsh', {
+      terminal: { cols: opts.cols, rows: opts.rows },
+    });
+  }
+
   resetMountCache(): void {
     this.lastFolderKey = null;
     this.npmInstalledFor = null;
@@ -369,7 +402,10 @@ function setTreeFile(tree: WcTree, relPath: string, contents: string): void {
   cur[parts[parts.length - 1]!] = { file: { contents } };
 }
 
-function createNodeBackend(session: WebContainerSession): ExecutionBackend {
+function createNodeBackend(
+  session: WebContainerSession,
+  openShell: () => void,
+): ExecutionBackend {
   return {
     id: 'browser-node',
     info: {
@@ -379,6 +415,7 @@ function createNodeBackend(session: WebContainerSession): ExecutionBackend {
       requiresNetwork: true,
       requiresRemote: false,
     },
+    openTerminal: openShell,
     async startSession() {
       const engine = preferredEngine();
       if (engine === 'worker') {
@@ -488,7 +525,17 @@ function outputChannel(): vscode.OutputChannel {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const session = new WebContainerSession();
-  const backend = createNodeBackend(session);
+
+  const openShell = () => {
+    try {
+      openWebContainerTerminal(session, 'WebContainer');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(`WebContainer shell: ${msg}`);
+    }
+  };
+
+  const backend = createNodeBackend(session, openShell);
 
   try {
     const api = await waitForRuntime();
@@ -531,6 +578,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         session.dispose();
       },
     },
+    vscode.commands.registerCommand('zcode.runtime.node.openShell', openShell),
+    vscode.window.registerTerminalProfileProvider('zcode.webcontainer', {
+      provideTerminalProfile: () => {
+        const { pty } = createWebContainerShellPty(session);
+        return {
+          options: {
+            name: 'WebContainer',
+            pty,
+            iconPath: new vscode.ThemeIcon('terminal-bash'),
+          },
+        };
+      },
+    }),
     vscode.commands.registerCommand('zcode.runtime.node.npmInstall', async () => {
       const folder = workspaceFolderFor(vscode.window.activeTextEditor?.document.uri);
       if (!folder) {

@@ -106,6 +106,10 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
       vscodeWebDir,
       'extensions/javascript/syntaxes/JavaScript.tmLanguage.json',
     );
+    const onigWasm = path.join(
+      vscodeWebDir,
+      'node_modules/vscode-oniguruma/release/onig.wasm',
+    );
     const hasOut =
       fs.existsSync(path.join(vscodeWebDir, 'out/vs/workbench/workbench.web.main.internal.js')) ||
       fs.existsSync(path.join(vscodeWebDir, 'out/vs/loader.js'));
@@ -113,8 +117,11 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
       `[zcode] vscode-web → ${vscodeWebDir}` +
         (hasOut ? '' : ' (WARN: missing workbench out/)') +
         (fs.existsSync(sampleGrammar)
-          ? ' · language grammars OK'
-          : ' (WARN: missing extensions/javascript grammar — run ./scripts/fetch-vscode-web.sh)'),
+          ? ' · grammars OK'
+          : ' (WARN: missing extensions/javascript grammar — run ./scripts/fetch-vscode-web.sh)') +
+        (fs.existsSync(onigWasm)
+          ? ' · oniguruma WASM OK'
+          : ' (WARN: missing node_modules/vscode-oniguruma — run scripts/stage-vscode-web-node-modules.sh; syntax stays monochrome)'),
     );
   } else {
     console.warn(

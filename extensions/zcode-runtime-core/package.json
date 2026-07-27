@@ -16,7 +16,8 @@
     "onCommand:zcode.runtime.runFile",
     "onCommand:zcode.runtime.runSelection",
     "onCommand:zcode.runtime.selectBackend",
-    "onCommand:zcode.runtime.showStatus"
+    "onCommand:zcode.runtime.showStatus",
+    "onCommand:zcode.runtime.openShell"
   ],
   "contributes": {
     "commands": [
@@ -36,6 +37,11 @@
       {
         "command": "zcode.runtime.showStatus",
         "title": "ZCode: Show Runtime Status"
+      },
+      {
+        "command": "zcode.runtime.openShell",
+        "title": "ZCode: Open Browser Shell",
+        "icon": "$(terminal)"
       }
     ],
     "menus": {
@@ -50,7 +56,8 @@
         { "command": "zcode.runtime.runFile" },
         { "command": "zcode.runtime.runSelection" },
         { "command": "zcode.runtime.selectBackend" },
-        { "command": "zcode.runtime.showStatus" }
+        { "command": "zcode.runtime.showStatus" },
+        { "command": "zcode.runtime.openShell" }
       ]
     },
     "configuration": {

@@ -22,10 +22,17 @@
     "onStartupFinished",
     "onCommand:zcode.runtime.node.npmInstall",
     "onCommand:zcode.runtime.node.npmRun",
-    "onCommand:zcode.runtime.node.mountStatus"
+    "onCommand:zcode.runtime.node.mountStatus",
+    "onCommand:zcode.runtime.node.openShell",
+    "onTerminalProfile:zcode.webcontainer"
   ],
   "contributes": {
     "commands": [
+      {
+        "command": "zcode.runtime.node.openShell",
+        "title": "ZCode: Open WebContainer Shell",
+        "icon": "$(terminal-bash)"
+      },
       {
         "command": "zcode.runtime.node.npmInstall",
         "title": "ZCode: npm install (WebContainer)"
@@ -38,7 +45,16 @@
         "command": "zcode.runtime.node.mountStatus",
         "title": "ZCode: WebContainer Mount Preview"
       }
-    ]
+    ],
+    "terminal": {
+      "profiles": [
+        {
+          "id": "zcode.webcontainer",
+          "title": "WebContainer Shell",
+          "icon": "terminal-bash"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node ./scripts/build.mjs",

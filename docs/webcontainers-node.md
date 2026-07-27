@@ -40,11 +40,28 @@ ZCODE_CROSS_ORIGIN_ISOLATION=1 zcode serve …
 
 Without COI, the extension still tries `boot({ coep: 'none' })` and falls back to the Worker.
 
+## Interactive shell (Pseudoterminal)
+
+Browser mode uses VS Code **extension terminals**, not REH `node-pty`:
+
+1. Mount workspace tree into the shared WebContainer session  
+2. Spawn **`jsh`** with `terminal: { cols, rows }`  
+3. Bridge `process.input` / `process.output` ↔ `vscode.Pseudoterminal`  
+
+| Entry | Action |
+| --- | --- |
+| **ZCode: Open WebContainer Shell** | Open integrated terminal on `jsh` |
+| **ZCode: Open Browser Shell** | Core router (Node → WC, Python → Pyodide) |
+| Profile **WebContainer Shell** | Terminal `+` menu / default profile in browser product |
+
+Requires WebContainers (not worker fallback). Prefer `ZCODE_COI=1` for SharedArrayBuffer.
+
 ## Commands
 
 | Command | Action |
 | --- | --- |
 | **ZCode: Run File** | Mount workspace → npm install (if needed) → `node <relpath>` |
+| **ZCode: Open WebContainer Shell** | Interactive `jsh` Pseudoterminal |
 | **ZCode: npm install (WebContainer)** | Mount + forced `npm install` |
 | **ZCode: npm run… (WebContainer)** | Mount + install + `npm run <script>` |
 | **ZCode: WebContainer Mount Preview** | Count files that would be mounted |

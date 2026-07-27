@@ -19,15 +19,15 @@ You are working on **ZCode**, a dual-mode VS Code OSS browser IDE (repo may stil
 ## Quick start
 
 ```bash
-pnpm install && pnpm build
-./scripts/fetch-vscode-web.sh
-pnpm --filter @zcode/workbench build
-pnpm --filter zcode-browser-fs build
-NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
+pnpm dev
 ```
+
+Full bootstrap in one shot: `pnpm install` (if needed) → fetch vscode-web/themes → turbo build → serve (`ZCODE_COI=1`).
 
 - Product IDE: http://127.0.0.1:5000/  
 - Debug SPA: http://127.0.0.1:5000/debug/  (DEV only)  
+- Shells: Command Palette → **ZCode: Open Browser Shell** / WebContainer / Pyodide REPL  
+- Fast restart: `pnpm dev:fast` · force re-fetch assets: `pnpm dev:refresh`
 
 ## Highest-priority remaining work
 

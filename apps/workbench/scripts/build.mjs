@@ -22,14 +22,17 @@ if (existsSync(brandIconSrc)) {
   cpSync(brandIconSrc, join(dist, 'icon.svg'));
 }
 
-/** Built-in theme-defaults (always present under /vscode/extensions). */
+/**
+ * Product defaults: GitHub Theme + vscode-icons (scripts/fetch-theme-extensions.sh).
+ * Bootstrap keeps built-in fallbacks if those extensions fail to load.
+ */
 const themeConfigurationDefaults = {
-  'workbench.iconTheme': 'vs-seti',
-  'workbench.colorTheme': 'Default Dark Modern',
-  'workbench.preferredDarkColorTheme': 'Default Dark Modern',
-  'workbench.preferredLightColorTheme': 'Default Light Modern',
-  'workbench.preferredHighContrastColorTheme': 'Default High Contrast',
-  'workbench.preferredHighContrastLightColorTheme': 'Default High Contrast Light',
+  'workbench.iconTheme': 'vscode-icons',
+  'workbench.colorTheme': 'GitHub Dark Default',
+  'workbench.preferredDarkColorTheme': 'GitHub Dark Default',
+  'workbench.preferredLightColorTheme': 'GitHub Light Default',
+  'workbench.preferredHighContrastColorTheme': 'GitHub Dark High Contrast',
+  'workbench.preferredHighContrastLightColorTheme': 'GitHub Light High Contrast',
   'window.autoDetectColorScheme': true,
   'vsicons.dontShowNewVersionMessage': true,
   'vsicons.dontShowConfigManuallyChangedMessage': true,
@@ -57,6 +60,8 @@ const zcodeProductExtensions = [
   { path: '/extensions/zcode-remote' },
   { path: '/extensions/vscode-icons' },
   { path: '/extensions/github-vscode-theme' },
+  { path: '/extensions/terraform' },
+  { path: '/extensions/nix' },
 ];
 
 const languageBuiltinExtensions = languageExtensionIds.map((id) => ({
@@ -85,7 +90,8 @@ const defaultProduct = {
   },
   zcodeMode: 'browser',
   zcodeCapabilities: {
-    terminal: false,
+    // Extension Pseudoterminals (WebContainer / Pyodide), not REH node-pty
+    terminal: true,
     browserGit: true,
     search: 'web-best-effort',
     executionBackends: ['browser-python', 'browser-node'],
@@ -496,8 +502,21 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     splash.classList.toggle('vs', themeType === 'light');
     splash.classList.toggle('vs-dark', themeType === 'dark');
   }
-  // Ensure theme defaults survive if product.json is a partial overlay
-  const themeDefaults = {
+  // Product builtins include GitHub Theme + vscode-icons. Use those as defaults so
+  // reload does not drop branding to bare Default Dark Modern / vs-seti.
+  // Built-in fallbacks only apply when product.json omits configurationDefaults.
+  const themeFallbacks = {
+    'workbench.iconTheme': 'vs-seti',
+    'workbench.colorTheme': themeType === 'light' ? 'Default Light Modern' : 'Default Dark Modern',
+    'workbench.preferredDarkColorTheme': 'Default Dark Modern',
+    'workbench.preferredLightColorTheme': 'Default Light Modern',
+    'workbench.preferredHighContrastColorTheme': 'Default High Contrast',
+    'workbench.preferredHighContrastLightColorTheme': 'Default High Contrast Light',
+    'window.autoDetectColorScheme': true,
+    'vsicons.dontShowNewVersionMessage': true,
+    'vsicons.dontShowConfigManuallyChangedMessage': true,
+  };
+  const themeProductDefaults = {
     'workbench.iconTheme': 'vscode-icons',
     'workbench.colorTheme': themeType === 'light' ? 'GitHub Light Default' : 'GitHub Dark Default',
     'workbench.preferredDarkColorTheme': 'GitHub Dark Default',
@@ -508,14 +527,21 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
     'vsicons.dontShowNewVersionMessage': true,
     'vsicons.dontShowConfigManuallyChangedMessage': true,
   };
+  // Merge order: fallbacks → product brand defaults → server product.json (wins)
+  const nested = window.product.productConfiguration?.configurationDefaults || {};
+  const top = window.product.configurationDefaults || {};
   window.product.configurationDefaults = {
-    ...themeDefaults,
-    ...(window.product.configurationDefaults || {}),
+    ...themeFallbacks,
+    ...themeProductDefaults,
+    ...top,
+    ...nested,
   };
   if (window.product.productConfiguration) {
     window.product.productConfiguration.configurationDefaults = {
-      ...themeDefaults,
-      ...(window.product.productConfiguration.configurationDefaults || {}),
+      ...themeFallbacks,
+      ...themeProductDefaults,
+      ...nested,
+      ...top,
     };
   }
 

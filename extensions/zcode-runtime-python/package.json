@@ -12,14 +12,28 @@
   "extensionKind": ["ui"],
   "extensionDependencies": ["spinupdev.zcode-runtime-core"],
   "browser": "./dist/web/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:zcode.runtime.python.repl",
+    "onTerminalProfile:zcode.pyodide"
+  ],
   "contributes": {
     "commands": [
       {
         "command": "zcode.runtime.python.repl",
-        "title": "ZCode: Python REPL (browser)"
+        "title": "ZCode: Open Python REPL (Pyodide)",
+        "icon": "$(python)"
       }
-    ]
+    ],
+    "terminal": {
+      "profiles": [
+        {
+          "id": "zcode.pyodide",
+          "title": "Python (Pyodide)",
+          "icon": "python"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node ./scripts/build.mjs",

@@ -149,8 +149,30 @@ Language/theme packs (TextMate grammars for 40+ languages) are listed in
 [`product/language-extensions.json`](../product/language-extensions.json) and served from
 `/vscode/extensions/*`. Bootstrap injects `location.host` so extension URIs are absolute same-origin.
 
-Default theme: **Default Dark Modern** + **vs-seti** icons (built-in `theme-defaults` /
-`theme-seti`). Optional marketplace: `scripts/fetch-theme-extensions.sh`.
+Default theme: **GitHub Dark Default** + **vscode-icons** (from Open VSX via
+`scripts/fetch-theme-extensions.sh`). Bootstrap falls back to Default Dark Modern /
+vs-seti only if those extensions fail to load.
+
+Extra language packs (same script): **Terraform** (`4ops.terraform`) and **Nix**
+(`bbenoist.Nix`) under `/extensions/terraform` and `/extensions/nix`.
+
+### Syntax highlighting (TextMate)
+
+Owned web loads the tokenizer from:
+
+```text
+/vscode/node_modules/vscode-oniguruma/release/onig.wasm
+/vscode/node_modules/vscode-textmate/release/main.js
+```
+
+Stage with:
+
+```bash
+./scripts/stage-vscode-web-node-modules.sh   # or: ./scripts/fetch-vscode-web.sh
+```
+
+If `onig.wasm` 404s, languages/icons may still work but the editor stays **monochrome**.
+Server logs `oniguruma WASM OK` when the file is present.
 
 ## Status
 

@@ -78,7 +78,8 @@ export interface SessionController {
 
 export function browserCapabilities(): ProductCapabilities {
   return {
-    terminal: false,
+    // Extension Pseudoterminals (WebContainer jsh / Pyodide REPL) — not REH node-pty
+    terminal: true,
     remoteExtensions: false,
     webExtensions: true,
     nativeGit: false,

@@ -126,7 +126,7 @@ sequenceDiagram
 | Workspace URI | `zcode-opfs:/workspace/<id>` | `vscode-remote://<authority>/home/workspace` |
 | Extension host | Web Worker EH | Web EH + Remote EH |
 | Git | isomorphic-git + `/git-proxy` | system `git` on server |
-| Terminal | Hidden / false | PTY via REH |
+| Terminal | WASM Pseudoterminal (WebContainer `jsh` / Pyodide REPL) | PTY via REH |
 | Auth to REH | n/a | HttpOnly cookie → connection-token (no `?tkn=` in URL) |
 
 ### 2.6 Monorepo layout
@@ -294,9 +294,10 @@ Product north star: **IDE does not depend on a server**. Same-origin only. See A
 | RA4 | Status bar / diagnostics for backend + connection | **done** | runtime + remote status bars |
 | RA5 | E2E browser → connect remote | **done** | `connect-flow.spec.ts` + workspace-sync exec on e2e:reh |
 | WB0 | Runtime provider interface (shared) | **done** | `zcode-runtime-core` + `globalThis.zcodeRuntime` |
-| WB1 | `zcode-runtime-python` (Pyodide) | **done** | CDN Pyodide; Run File |
-| WB2 | `zcode-runtime-node` (+ WebContainers) | **done** | WebContainers (auto) + worker fallback |
+| WB1 | `zcode-runtime-python` (Pyodide) | **done** | CDN Pyodide; Run File; **Pseudoterminal REPL** |
+| WB2 | `zcode-runtime-node` (+ WebContainers) | **done** | WebContainers (auto) + worker fallback; **`jsh` Pseudoterminal** |
 | WB3–WB6 | Run UX, FS bridge, CSP, e2e | **done** | Run UX + CSP; dual-mode e2e extensions; import API on e2e:reh |
+| WB7 | Browser integrated terminal (Pseudoterminal) | **done** | WC shell + Pyodide REPL; terminal profiles; browser `terminal: true` |
 | WS1 | Workspace import API + connect upload (files-v1) | **done** | `POST /v1/workspace/import` · zcode-remote upload before reload |
 | WS2 | Pre-attach flush dirty editors | **done** | part of zcode-remote connect |
 | WS3 | Detach remote→browser OPFS pull | **done** | zcode-remote disconnect: export → applyFilesV1 → reload browser |
@@ -324,9 +325,9 @@ Do **not** expand the custom SPA as the product IDE. Prefer VS Code Web + shared
 
 Server-agnostic core (SA/RA/WB/WS through RA5 + WebContainers multi-file) is **shipped**. Prefer polish:
 
-1. Dogfood WebContainer mount + npm on real small projects; tune limits / status UX.  
+1. Dogfood **WebContainer Shell** + **Pyodide REPL** Pseudoterminals; tune COI / mount limits.  
 2. Optional: interactive REH PTY without full attach (beyond `/v1/exec`).  
-3. Optional: UI Playwright for **Run File** (API/connect e2e already on `e2e:reh`).
+3. Optional: UI Playwright for **Run File** / open shell (API/connect e2e already on `e2e:reh`).
 
 ### P1 — Ops / parallel
 
@@ -340,20 +341,8 @@ Server-agnostic core (SA/RA/WB/WS through RA5 + WebContainers multi-file) is **s
 ## 6. How to run (agent quickstart)
 
 ```bash
-# deps
-pnpm install
-
-# build monorepo packages + SPA + workbench host
-pnpm build
-pnpm --filter @zcode/workbench build
-pnpm --filter zcode-browser-fs build
-pnpm --filter zcode-git build
-
-# stage VS Code Web static assets (dogfood npm or owned .build)
-./scripts/fetch-vscode-web.sh
-
-# one process: product IDE at / + /git-proxy + /vscode (+ /debug SPA in DEV)
-NODE_ENV=development node apps/cli/dist/cli.js web --dir apps/web/dist --port 5000 --spa-debug
+# one command: install (if needed) + fetch vscode-web/themes + turbo build + serve
+pnpm dev
 ```
 
 | URL | Expect |
@@ -458,7 +447,10 @@ pnpm smoke            # lighter checks
 | 2026-07-25 | **B8b fix**: clone “gone” / hung after URL — OPFS init timeout→IDB; progress before agent; unstick openRepoBusy; literal globalThis FS keys (esbuild-safe) |
 | 2026-07-25 | Empty default workspace (no hello.* seed); TextMate language packs via `product/language-extensions.json` + additionalBuiltinExtensions; Default Dark Modern theme |
 | 2026-07-27 | Syntax highlight root cause: stale `zcode web` without `dist/vscode-web` → `/vscode/extensions/*` 404; server logs grammar path; tryStatic path-resolve harden; product serves 85 builtins |
+| 2026-07-27 | **Monochrome editor**: owned web missing `node_modules/vscode-oniguruma` (TextMate WASM). Added `scripts/stage-vscode-web-node-modules.sh`; bootstrap uses Default Dark Modern |
+| 2026-07-27 | Terraform + Nix TextMate packs (`extensions/terraform`, `extensions/nix`); restore GitHub Theme + vscode-icons as product defaults on reload |
 | 2026-07-27 | **M0f**: default file icons `vscode-icons`; color theme GitHub Light/Dark Default via `window.autoDetectColorScheme`; `pnpm fetch:themes` stages Open VSX VSIX into `extensions/` |
 | 2026-07-27 | **B8c**: multi-project browser repos — first-run clone dialog, Browser Projects view, manage/switch/delete, unique workspace id per clone, last project restore via localStorage + OPFS/IDB, `navigator.storage.persist()` |
+| 2026-07-27 | **WB7**: browser integrated terminal via Pseudoterminal — WebContainer `jsh` + Pyodide REPL; terminal profiles; browser `terminal: true`; Open Browser Shell command |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

@@ -266,6 +266,12 @@ package_web() {
     log "WARN: missing ${VSCODE}/.build/web/extensions — language features will 404 at runtime"
   fi
 
+  # TextMate tokenizer + other AMD node_modules (syntax highlighting)
+  if [[ -x "${ROOT}/scripts/stage-vscode-web-node-modules.sh" ]]; then
+    bash "${ROOT}/scripts/stage-vscode-web-node-modules.sh" "${OUT_DIR}" || \
+      warn "stage-vscode-web-node-modules failed — syntax highlighting may be monochrome"
+  fi
+
   cat > "${OUT_DIR}/.zcode-vscode-web.json" <<EOF
 {
   "source": "owned",
@@ -276,7 +282,8 @@ package_web() {
   "vscodeTag": "$(cd "${VSCODE}" && git describe --tags --always 2>/dev/null || echo unknown)",
   "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "node": "$(node -v)",
-  "webExtensions": "$( [[ -d "${OUT_DIR}/extensions/typescript-language-features" ]] && echo yes || echo no )"
+  "webExtensions": "$( [[ -d "${OUT_DIR}/extensions/typescript-language-features" ]] && echo yes || echo no )",
+  "oniguruma": "$( [[ -f "${OUT_DIR}/node_modules/vscode-oniguruma/release/onig.wasm" ]] && echo yes || echo no )"
 }
 EOF
   mkdir -p "${ROOT}/dist/web"

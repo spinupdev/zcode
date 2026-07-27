@@ -13,7 +13,7 @@ describe('bootstrapFromUrl', () => {
     const r = bootstrapFromUrl('https://ide.example/?workspace=zcode-opfs://workspace/1/');
     assert.equal(r.mode, 'browser');
     assert.equal(r.workbench.remoteAuthority, undefined);
-    assert.equal(r.chrome.showTerminal, false);
+    assert.equal(r.chrome.showTerminal, true);
     assert.equal(r.capabilities.search, 'web-best-effort');
   });
 

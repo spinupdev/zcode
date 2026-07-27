@@ -6,7 +6,7 @@ describe('createSessionController', () => {
   it('creates a browser session', () => {
     const session = createSessionController({});
     assert.equal(session.mode, 'browser');
-    assert.equal(session.capabilities().terminal, false);
+    assert.equal(session.capabilities().terminal, true);
     assert.equal(session.createWorkbenchLoadConfig().remoteAuthority, undefined);
   });
 

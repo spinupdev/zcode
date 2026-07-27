@@ -65,6 +65,10 @@ if [[ -f "${OUT}/.zcode-vscode-web.json" ]] \
     || [[ -f "${OUT}/out/vs/loader.js" ]]; }; then
   log "Keeping existing owned dist/vscode-web"
   stage_owned_web_extensions
+  # Always (re)stage TextMate WASM — missing oniguruma = monochrome editor
+  if [[ -x "${ROOT}/scripts/stage-vscode-web-node-modules.sh" ]]; then
+    bash "${ROOT}/scripts/stage-vscode-web-node-modules.sh" "${OUT}" || true
+  fi
   brand_walkthrough_nls
   exit 0
 fi
