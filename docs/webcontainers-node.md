@@ -56,6 +56,21 @@ Browser mode uses VS Code **extension terminals**, not REH `node-pty`:
 
 Requires WebContainers (not worker fallback). Prefer `ZCODE_COI=1` for SharedArrayBuffer.
 
+### Startup feedback
+
+After the workbench loads (browser mode only):
+
+1. **Status bar** — `Shell: downloading…` → `starting…` → `mounting…` → `ready` (or `offline`)  
+2. **Progress** — With auto-open (default): feedback lives in the Terminal panel + status bar. With auto-open off + prefetch on: Notification on first cold boot, then Window progress  
+3. **Auto-open shell** (default) — Terminal panel opens immediately with download logs so it is never empty  
+4. **Output** channel **ZCode Shell** — phase log for debugging  
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `zcode.execution.prefetchWebContainer` | `true` | Boot WebContainer in the background after load |
+| `zcode.execution.autoOpenShell` | `true` | Open WebContainer terminal on startup |
+| `zcode.execution.prefetchPyodide` | `true` | Warm Pyodide WASM (status bar only; no auto REPL) |
+
 ## Commands
 
 | Command | Action |

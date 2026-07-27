@@ -107,7 +107,7 @@ export function createPyodideReplPty(host: PyodideReplHost): {
     open(): void {
       void (async () => {
         try {
-          write('\x1b[2m[zcode] Loading Pyodide…\x1b[0m\r\n');
+          write('\x1b[2m[zcode] Preparing Pyodide (downloads WASM on first run)…\x1b[0m\r\n');
           engine = await host.ensure();
           write('Python (Pyodide) — browser REPL\r\n');
           write('Exit: Ctrl+D · Clear: Ctrl+L · Multi-line: continue until complete\r\n\r\n');
@@ -115,6 +115,7 @@ export function createPyodideReplPty(host: PyodideReplHost): {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           write(`\x1b[31m[zcode] Pyodide failed: ${msg}\x1b[0m\r\n`);
+          write('\x1b[2mCheck network access to the Pyodide CDN (zcode.execution.pyodideIndexUrl).\x1b[0m\r\n');
           closed = true;
           closeEmitter.fire(1);
         }

@@ -15,6 +15,14 @@ Run **JavaScript / TypeScript** in the browser (no REH required).
 | **ZCode: Open Browser Shell** (core) | Language-aware: WebContainer or Pyodide |
 | Terminal profile **WebContainer Shell** | `+` dropdown / default profile in browser mode |
 
+On browser startup (defaults on):
+
+- Prefetches WebContainer CDN + boot in the background  
+- Status bar: `Shell: downloading…` / `starting…` / `ready`  
+- Auto-opens the WebContainer terminal so download progress is visible in-panel  
+
+Settings: `zcode.execution.prefetchWebContainer`, `zcode.execution.autoOpenShell`.
+
 The shell mounts the open workspace (same limits as Run File) then spawns `jsh` with xterm I/O via `vscode.Pseudoterminal`.
 
 ## Commands

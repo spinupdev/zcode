@@ -93,6 +93,21 @@
           "type": "boolean",
           "default": true,
           "description": "When mounting a workspace with package.json, run npm install once per session before node"
+        },
+        "zcode.execution.prefetchWebContainer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Download and boot WebContainer in the background after the workbench loads (status bar + progress)"
+        },
+        "zcode.execution.autoOpenShell": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open the WebContainer shell terminal on browser startup so download progress is visible"
+        },
+        "zcode.execution.prefetchPyodide": {
+          "type": "boolean",
+          "default": true,
+          "description": "Download Pyodide WASM in the background after the workbench loads (status bar + window progress)"
         }
       }
     }

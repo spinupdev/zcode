@@ -298,6 +298,7 @@ Product north star: **IDE does not depend on a server**. Same-origin only. See A
 | WB2 | `zcode-runtime-node` (+ WebContainers) | **done** | WebContainers (auto) + worker fallback; **`jsh` Pseudoterminal** |
 | WB3–WB6 | Run UX, FS bridge, CSP, e2e | **done** | Run UX + CSP; dual-mode e2e extensions; import API on e2e:reh |
 | WB7 | Browser integrated terminal (Pseudoterminal) | **done** | WC shell + Pyodide REPL; terminal profiles; browser `terminal: true` |
+| WB8 | Shell startup feedback (prefetch + status) | **done** | Status bar, progress, auto-open WC shell; Pyodide warm |
 | WS1 | Workspace import API + connect upload (files-v1) | **done** | `POST /v1/workspace/import` · zcode-remote upload before reload |
 | WS2 | Pre-attach flush dirty editors | **done** | part of zcode-remote connect |
 | WS3 | Detach remote→browser OPFS pull | **done** | zcode-remote disconnect: export → applyFilesV1 → reload browser |
@@ -453,5 +454,6 @@ pnpm smoke            # lighter checks
 | 2026-07-27 | **M0f**: default file icons `vscode-icons`; color theme GitHub Light/Dark Default via `window.autoDetectColorScheme`; `pnpm fetch:themes` stages Open VSX VSIX into `extensions/` |
 | 2026-07-27 | **B8c**: multi-project browser repos — first-run clone dialog, Browser Projects view, manage/switch/delete, unique workspace id per clone, last project restore via localStorage + OPFS/IDB, `navigator.storage.persist()` |
 | 2026-07-27 | **WB7**: browser integrated terminal via Pseudoterminal — WebContainer `jsh` + Pyodide REPL; terminal profiles; browser `terminal: true`; Open Browser Shell command |
+| 2026-07-27 | **WB8**: shell startup UX — WC prefetch + status bar + progress + auto-open terminal; Pyodide warm status |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

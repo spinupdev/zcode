@@ -18,6 +18,8 @@ export interface WcShellHost {
     rows: number;
     onLog: (chunk: string) => void;
   }): Promise<WcProcess>;
+  /** True if container already booted (skip long download messages). */
+  isReady?(): boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function createWebContainerShellPty(host: WcShellHost): {
   let outputPump: Promise<void> | undefined;
 
   const toCrlf = (s: string) => s.replace(/\r?\n/g, '\r\n');
+  const info = (s: string) => writeEmitter.fire(`\x1b[2m[zcode] ${s}\x1b[0m\r\n`);
 
   const pty: vscode.Pseudoterminal = {
     onDidWrite: writeEmitter.event,
@@ -47,7 +50,12 @@ export function createWebContainerShellPty(host: WcShellHost): {
 
       void (async () => {
         try {
-          writeEmitter.fire('\x1b[2m[zcode] Booting WebContainer shell…\x1b[0m\r\n');
+          if (host.isReady?.()) {
+            info('WebContainer ready · opening shell…');
+          } else {
+            info('Preparing browser shell (first run downloads runtime artifacts)…');
+            info('This can take 10–30s on a cold start.');
+          }
           proc = await host.spawnInteractiveShell({
             cols,
             rows,
@@ -90,7 +98,7 @@ export function createWebContainerShellPty(host: WcShellHost): {
           const msg = err instanceof Error ? err.message : String(err);
           writeEmitter.fire(`\r\n\x1b[31m[zcode] WebContainer shell failed: ${msg}\x1b[0m\r\n`);
           writeEmitter.fire(
-            '\x1b[2mTip: set ZCODE_COI=1 for SharedArrayBuffer, or check nodeEngine / CDN.\x1b[0m\r\n',
+            '\x1b[2mTip: run with ZCODE_COI=1 (pnpm dev) for SharedArrayBuffer, or check network / CDN.\x1b[0m\r\n',
           );
           closed = true;
           closeEmitter.fire(1);

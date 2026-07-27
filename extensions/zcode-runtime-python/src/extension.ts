@@ -1,6 +1,6 @@
 /**
  * Browser Python via Pyodide (WB1 + Pseudoterminal REPL).
- * Loads WASM from configured CDN indexURL.
+ * Loads WASM from configured CDN indexURL with status-bar feedback.
  */
 import * as vscode from 'vscode';
 import {
@@ -44,6 +44,64 @@ interface ZcodeRuntimeApi {
   unregister(id: string): void;
 }
 
+type PyPhase = 'idle' | 'downloading' | 'booting' | 'ready' | 'error';
+
+class PyodideStatusBar {
+  private readonly item: vscode.StatusBarItem;
+  private phase: PyPhase = 'idle';
+
+  constructor(command = 'zcode.runtime.python.repl') {
+    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 48);
+    this.item.command = command;
+    this.item.tooltip = 'ZCode Python (Pyodide)';
+    this.render();
+    this.item.show();
+  }
+
+  get disposable(): vscode.Disposable {
+    return this.item;
+  }
+
+  setPhase(phase: PyPhase, detail?: string): void {
+    this.phase = phase;
+    this.render(detail);
+  }
+
+  private render(detail?: string): void {
+    switch (this.phase) {
+      case 'idle':
+        this.item.text = '$(cloud-download) Python: not loaded';
+        this.item.backgroundColor = undefined;
+        break;
+      case 'downloading':
+        this.item.text = '$(sync~spin) Python: downloading…';
+        this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+        break;
+      case 'booting':
+        this.item.text = '$(sync~spin) Python: starting…';
+        this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+        break;
+      case 'ready':
+        this.item.text = '$(python) Python: ready';
+        this.item.backgroundColor = undefined;
+        break;
+      case 'error':
+        this.item.text = '$(warning) Python: offline';
+        this.item.tooltip = detail ? `Pyodide: ${detail}` : 'Pyodide failed to load';
+        this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+        break;
+    }
+    if (this.phase !== 'error') {
+      this.item.tooltip =
+        this.phase === 'ready'
+          ? 'Pyodide ready — click to open REPL'
+          : detail
+            ? `Pyodide: ${detail}`
+            : 'ZCode Python (Pyodide)';
+    }
+  }
+}
+
 async function loadPyodideScript(indexURL: string): Promise<void> {
   const g = globalThis as { loadPyodide?: (opts: { indexURL: string }) => Promise<PyodideInterface> };
   if (typeof g.loadPyodide === 'function') return;
@@ -64,21 +122,55 @@ class PyodideSession {
   private pyodide: PyodideInterface | null = null;
   private loading: Promise<PyodideInterface> | null = null;
   private codeopReady = false;
+  private listeners = new Set<(phase: PyPhase, detail?: string) => void>();
+
+  onPhase(listener: (phase: PyPhase, detail?: string) => void): { dispose(): void } {
+    this.listeners.add(listener);
+    return {
+      dispose: () => {
+        this.listeners.delete(listener);
+      },
+    };
+  }
+
+  private emit(phase: PyPhase, detail?: string): void {
+    for (const l of this.listeners) {
+      try {
+        l(phase, detail);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  isReady(): boolean {
+    return this.pyodide != null;
+  }
 
   async ensure(): Promise<PyodideInterface> {
     if (this.pyodide) return this.pyodide;
     if (!this.loading) {
       this.loading = (async () => {
-        const indexURL = vscode.workspace
-          .getConfiguration('zcode.execution')
-          .get<string>('pyodideIndexUrl', 'https://cdn.jsdelivr.net/pyodide/v0.27.5/full/');
-        await loadPyodideScript(indexURL);
-        const load = (globalThis as unknown as {
-          loadPyodide: (o: { indexURL: string }) => Promise<PyodideInterface>;
-        }).loadPyodide;
-        const py = await load({ indexURL: indexURL.endsWith('/') ? indexURL : `${indexURL}/` });
-        this.pyodide = py;
-        return py;
+        try {
+          const indexURL = vscode.workspace
+            .getConfiguration('zcode.execution')
+            .get<string>('pyodideIndexUrl', 'https://cdn.jsdelivr.net/pyodide/v0.27.5/full/');
+          this.emit('downloading', 'Downloading Pyodide runtime…');
+          await loadPyodideScript(indexURL);
+          this.emit('booting', 'Initializing Python WASM…');
+          const load = (globalThis as unknown as {
+            loadPyodide: (o: { indexURL: string }) => Promise<PyodideInterface>;
+          }).loadPyodide;
+          const py = await load({ indexURL: indexURL.endsWith('/') ? indexURL : `${indexURL}/` });
+          this.pyodide = py;
+          this.emit('ready', 'Pyodide ready');
+          return py;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.loading = null;
+          this.emit('error', msg);
+          throw err;
+        }
       })();
     }
     return this.loading;
@@ -95,7 +187,6 @@ class PyodideSession {
       checkComplete: async (source: string) => {
         const py = await this.ensure();
         await this.ensureCodeop(py);
-        // Use Python to call codeop.compile_command; None => incomplete
         const escaped = JSON.stringify(source);
         const result = await py.runPythonAsync(
           `codeop.compile_command(${escaped}, "<stdin>", "single")`,
@@ -113,7 +204,6 @@ class PyodideSession {
         });
         try {
           const out = await py.runPythonAsync(code);
-          // Expressions return a value; statements typically return undefined
           if (out !== undefined && out !== null) {
             io.stdout(`${String(out)}\n`);
           }
@@ -129,6 +219,7 @@ class PyodideSession {
     this.pyodide = null;
     this.loading = null;
     this.codeopReady = false;
+    this.listeners.clear();
   }
 }
 
@@ -189,8 +280,25 @@ async function waitForRuntime(maxMs = 15000): Promise<ZcodeRuntimeApi> {
   throw new Error('zcode-runtime-core not available (globalThis.zcodeRuntime)');
 }
 
+function prefetchPyodideEnabled(): boolean {
+  return vscode.workspace
+    .getConfiguration('zcode.execution')
+    .get<boolean>('prefetchPyodide', true);
+}
+
+function isBrowserWorkbench(): boolean {
+  return !vscode.env.remoteName;
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const session = new PyodideSession();
+  const status = new PyodideStatusBar();
+
+  context.subscriptions.push(
+    session.onPhase((phase, detail) => {
+      status.setPhase(phase, detail);
+    }),
+  );
 
   const openRepl = () => {
     try {
@@ -216,7 +324,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     );
   }
 
+  // Background warm — do not auto-open REPL (WebContainer is the default terminal)
+  const warmTimer = setTimeout(() => {
+    if (!isBrowserWorkbench() || !prefetchPyodideEnabled()) return;
+    void (async () => {
+      try {
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Window,
+            title: 'ZCode: Pyodide',
+            cancellable: false,
+          },
+          async (progress) => {
+            progress.report({ message: 'Downloading Python runtime…' });
+            await session.ensure();
+            progress.report({ message: 'Ready' });
+          },
+        );
+      } catch (err) {
+        console.warn('[zcode-runtime-python] prefetch failed', err);
+      }
+    })();
+  }, 1200);
+
   context.subscriptions.push(
+    status.disposable,
     vscode.commands.registerCommand('zcode.runtime.python.repl', openRepl),
     vscode.window.registerTerminalProfileProvider('zcode.pyodide', {
       provideTerminalProfile: () => {
@@ -234,6 +366,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     {
       dispose: () => {
+        clearTimeout(warmTimer);
         const api = (globalThis as { zcodeRuntime?: ZcodeRuntimeApi }).zcodeRuntime;
         api?.unregister(backend.id);
         session.dispose();
