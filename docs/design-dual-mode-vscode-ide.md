@@ -247,7 +247,7 @@ CI job `vscode-patches`: fresh submodule checkout + `quilt push -a` must succeed
 | JSON/HTML/CSS language features (web builds) | ✅ **required** for claimed web LS | ✅ |
 | TypeScript/JavaScript (web where available) | Best-effort if web entry exists | ✅ full |
 | `zcode-browser-fs`, `zcode-git`, `zcode-diagnostics` | ✅ | Optional (no-op or hidden) |
-| `zcode-remote-upgrade` | ✅ (command; post-MVP enable) | n/a |
+| `zcode-remote` | ✅ Connect / Disconnect REH | n/a (host-side) |
 | Native git extension (Node) | **Disabled / excluded** | ✅ system git |
 | Terminal / debug core | N/A (no backend) | ✅ |
 
@@ -838,7 +838,7 @@ zcode/                                # preferred repo name (current clone may s
 │   ├── zcode-browser-fs/            # FileSystemProvider (uses browser-agent lib)
 │   ├── zcode-git/                   # SCM provider + clone commands
 │   ├── zcode-diagnostics/           # copyReport command
-│   └── zcode-remote-upgrade/        # post-MVP
+│   └── zcode-remote/                # Connect / Disconnect remote REH
 ├── apps/
 │   ├── web/                          # staged static workbench
 │   └── cli/                          # zcode CLI
@@ -867,7 +867,7 @@ zcode/                                # preferred repo name (current clone may s
 | User-facing brand | **ZCode** |
 | CLI binary | **`zcode`** |
 | Preferred GitHub repo | **`github.com/spinupdev/zcode`** (rename from `code-server` when ready; org stays `spinupdev`) |
-| Built-in extensions | `zcode-browser-fs`, `zcode-git`, `zcode-diagnostics`, `zcode-remote-upgrade` |
+| Built-in extensions | `zcode-browser-fs`, `zcode-git`, `zcode-diagnostics`, `zcode-remote`, `zcode-runtime-*` |
 | Container images | `ghcr.io/spinupdev/zcode-server`, `ghcr.io/spinupdev/zcode-node`, etc. |
 | VS Code product.json | `nameShort`/`nameLong`: ZCode; `applicationName`: `zcode`; `dataFolderName`: `.zcode` |
 

@@ -155,7 +155,8 @@ zcode/  (repo may still be named code-server)
 │   ├── zcode-browser-fs/            ← zcode-opfs FileSystemProvider
 │   ├── zcode-git/                   ← SCM + Open Repository (HTTPS clone in-IDE) |
 │   ├── zcode-diagnostics/
-│   └── zcode-remote-upgrade/        ← post-MVP stub
+│   ├── zcode-remote/                ← Connect / Disconnect remote REH
+│   └── zcode-runtime-*/             ← browser WASM shells (core / python / node / remote)
 ├── deploy/
 │   ├── cloudflare/git-proxy/        ← Worker for static hosting
 │   └── docker/                      ← single-service image

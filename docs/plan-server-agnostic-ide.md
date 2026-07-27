@@ -164,7 +164,7 @@ Update **PLAN.md** tracker: supersede cross-origin XO* queue with SA* / WB* / RT
 **Reuse:**
 
 - `CookieTokenBridge`, REH proxy, `/v1/session` — no new auth model  
-- `extensions/zcode-remote-upgrade` → rename/expand to **`zcode-remote`** (connect + optional upgrade)  
+- `extensions/zcode-remote` — Connect / Disconnect REH (upgrade command is an alias of Connect)
 - Same-origin only: `authority = location.host` when co-served  
 
 **Out of scope for P1:** cross-origin cookies, OIDC, multi-tenant session API.

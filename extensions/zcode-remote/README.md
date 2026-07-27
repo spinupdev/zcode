@@ -9,4 +9,4 @@ Same-origin **Connect / Disconnect** for ZCode remote REH (RA1 / RA2 Tier 1).
 | **ZCode: Remote Connection Status** | Writes session + mode diagnostics to **Output → ZCode Remote** (status-bar click) |
 | **ZCode: Upgrade Workspace to Remote** | Alias of Connect (workspace export later / ADR 0002) |
 
-Replaces the empty `zcode-remote-upgrade` stub for product use. See [docs/plan-server-agnostic-ide.md](../../docs/plan-server-agnostic-ide.md).
+See [docs/plan-server-agnostic-ide.md](../../docs/plan-server-agnostic-ide.md).
