@@ -99,6 +99,39 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<{
         workbenchDir ? path.join(workbenchDir, 'extensions') : '',
       ].filter(Boolean));
 
+  // Surface missing assets early — silent 404s break syntax highlighting (TextMate)
+  // and leave the IDE on a "Workbench not built" shell.
+  if (vscodeWebDir) {
+    const sampleGrammar = path.join(
+      vscodeWebDir,
+      'extensions/javascript/syntaxes/JavaScript.tmLanguage.json',
+    );
+    const hasOut =
+      fs.existsSync(path.join(vscodeWebDir, 'out/vs/workbench/workbench.web.main.internal.js')) ||
+      fs.existsSync(path.join(vscodeWebDir, 'out/vs/loader.js'));
+    console.log(
+      `[zcode] vscode-web → ${vscodeWebDir}` +
+        (hasOut ? '' : ' (WARN: missing workbench out/)') +
+        (fs.existsSync(sampleGrammar)
+          ? ' · language grammars OK'
+          : ' (WARN: missing extensions/javascript grammar — run ./scripts/fetch-vscode-web.sh)'),
+    );
+  } else {
+    console.warn(
+      '[zcode] WARN: dist/vscode-web not found — /vscode/* will 404 (no syntax highlighting). Run ./scripts/fetch-vscode-web.sh',
+    );
+  }
+  if (workbenchDir) {
+    console.log(`[zcode] workbench → ${workbenchDir}`);
+  } else {
+    console.warn(
+      '[zcode] WARN: apps/workbench/dist not found — run pnpm --filter @zcode/workbench build',
+    );
+  }
+  if (extensionsDir) {
+    console.log(`[zcode] product extensions → ${extensionsDir}`);
+  }
+
   const gitProxyEnabled = opts.gitProxy !== false;
   const prefix = opts.gitProxyPrefix ?? DEFAULT_GIT_PROXY_PREFIX;
   const gitProxyHandler = gitProxyEnabled
@@ -241,8 +274,11 @@ function findMonorepoRoot(from: string): string | undefined {
 }
 
 function tryStatic(res: http.ServerResponse, root: string, rel: string): boolean {
-  const file = path.join(root, rel);
-  if (!file.startsWith(path.resolve(root))) return false;
+  // Resolve both sides so macOS / symlink roots cannot fail a startsWith check
+  // (would 404 every /vscode/extensions/* grammar and kill syntax highlighting).
+  const rootAbs = path.resolve(root);
+  const file = path.resolve(rootAbs, rel);
+  if (file !== rootAbs && !file.startsWith(rootAbs + path.sep)) return false;
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     const index = path.join(file, 'index.html');
     if (fs.existsSync(index)) return serveFile(res, index);

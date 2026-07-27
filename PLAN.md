@@ -457,6 +457,7 @@ pnpm smoke            # lighter checks
 | 2026-07-25 | **B8b fix**: SCM showed clone, Explorer empty — gate FileSystemProvider on FS ready; `notifyTree` + refresh after clone; clone into *open* workspace folder; never seed over `.git` |
 | 2026-07-25 | **B8b fix**: clone “gone” / hung after URL — OPFS init timeout→IDB; progress before agent; unstick openRepoBusy; literal globalThis FS keys (esbuild-safe) |
 | 2026-07-25 | Empty default workspace (no hello.* seed); TextMate language packs via `product/language-extensions.json` + additionalBuiltinExtensions; Default Dark Modern theme |
+| 2026-07-27 | Syntax highlight root cause: stale `zcode web` without `dist/vscode-web` → `/vscode/extensions/*` 404; server logs grammar path; tryStatic path-resolve harden; product serves 85 builtins |
 | 2026-07-27 | **M0f**: default file icons `vscode-icons`; color theme GitHub Light/Dark Default via `window.autoDetectColorScheme`; `pnpm fetch:themes` stages Open VSX VSIX into `extensions/` |
 | 2026-07-27 | **B8c**: multi-project browser repos — first-run clone dialog, Browser Projects view, manage/switch/delete, unique workspace id per clone, last project restore via localStorage + OPFS/IDB, `navigator.storage.persist()` |
 
