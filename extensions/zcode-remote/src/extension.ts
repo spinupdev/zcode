@@ -193,6 +193,14 @@ async function uploadWorkspace(): Promise<{ fileCount: number } | null> {
 }
 
 let statusItem: vscode.StatusBarItem | undefined;
+let statusChannel: vscode.OutputChannel | undefined;
+
+function getStatusChannel(): vscode.OutputChannel {
+  if (!statusChannel) {
+    statusChannel = vscode.window.createOutputChannel('ZCode Remote');
+  }
+  return statusChannel;
+}
 
 function updateStatusBar(mode: 'browser' | 'remote', session: SessionResponse | null): void {
   if (!statusItem) return;
@@ -215,6 +223,7 @@ export function activate(context: vscode.ExtensionContext): void {
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 49);
   statusItem.command = 'zcode.remote.status';
   statusItem.show();
+  statusChannel = vscode.window.createOutputChannel('ZCode Remote');
 
   const refresh = async () => {
     const mode = productMode();
@@ -226,6 +235,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     statusItem,
+    statusChannel,
     vscode.commands.registerCommand('zcode.remote.connect', () => connect(context)),
     vscode.commands.registerCommand('zcode.remote.upgrade', () => connect(context)),
     vscode.commands.registerCommand('zcode.remote.disconnect', () => disconnect(context)),
@@ -417,28 +427,28 @@ async function showStatus(): Promise<void> {
   const mode = productMode();
   const session = await fetchSession();
   const lines = [
-    `# ZCode remote status`,
+    `ZCode remote status`,
     ``,
-    `- workbench mode: **${mode}**`,
-    `- host: \`${location.host}\``,
-    `- session API: ${session === null ? 'unavailable' : 'ok'}`,
-    `- authenticated: ${session?.authenticated ?? false}`,
-    `- ready: ${session?.ready ?? false}`,
-    `- authority: ${session?.authority ?? '—'}`,
-    `- reh: ${JSON.stringify(session?.reh ?? null)}`,
-    `- rehInfo: ${JSON.stringify(session?.rehInfo ?? null)}`,
-    `- rehProxy: ${session?.rehProxy ?? false}`,
-    `- workspaceImport: ${session?.workspaceImport ?? false}`,
-    `- workspacePath: ${session?.workspacePath ?? '—'}`,
+    `workbench mode: ${mode}`,
+    `host: ${location.host}`,
+    `session API: ${session === null ? 'unavailable' : 'ok'}`,
+    `authenticated: ${session?.authenticated ?? false}`,
+    `ready: ${session?.ready ?? false}`,
+    `authority: ${session?.authority ?? '—'}`,
+    `reh: ${JSON.stringify(session?.reh ?? null)}`,
+    `rehInfo: ${JSON.stringify(session?.rehInfo ?? null)}`,
+    `rehProxy: ${session?.rehProxy ?? false}`,
+    `workspaceImport: ${session?.workspaceImport ?? false}`,
+    `workspacePath: ${session?.workspacePath ?? '—'}`,
     ``,
-    `Commands: **Connect to Remote** · **Disconnect Remote**`,
+    `Commands: ZCode: Connect to Remote · ZCode: Disconnect Remote`,
     ``,
     `Topology: same-origin only (ADR 0001). Workspace sync: files-v1 (ADR 0002).`,
   ];
-  const doc = await vscode.workspace.openTextDocument({
-    content: lines.join('\n'),
-    language: 'markdown',
-  });
-  await vscode.window.showTextDocument(doc, { preview: true });
+  const channel = getStatusChannel();
+  channel.clear();
+  channel.appendLine(lines.join('\n'));
+  // Open Output panel focused on this channel (not an editor tab).
+  channel.show(true);
   updateStatusBar(mode, session);
 }
