@@ -56,7 +56,9 @@ release/
 .cache/
 extensions/vscode-icons/
 extensions/github-vscode-theme/
+extensions/terraform/
 extensions/hcl/
+extensions/nix/
 extensions/kotlin/
 extensions/scala/
 extensions/elixir/

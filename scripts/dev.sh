@@ -74,6 +74,20 @@ themes_ok() {
   [[ -d extensions/vscode-icons ]] && [[ -d extensions/github-vscode-theme ]]
 }
 
+# True when every pack in product/extra-language-extensions.json is staged locally.
+language_packs_ok() {
+  local manifest="${ROOT}/product/extra-language-extensions.json"
+  [[ -f "${manifest}" ]] || return 0
+  while IFS= read -r dest; do
+    [[ -n "${dest}" ]] || continue
+    [[ -f "${ROOT}/extensions/${dest}/package.json" ]] || return 1
+  done < <(node -e '
+const m = require(process.argv[1]);
+for (const p of m.packs || []) console.log(p.dest);
+' "${manifest}")
+  return 0
+}
+
 if [[ "${ZCODE_DEV_SKIP_FETCH:-0}" != "1" ]]; then
   if [[ "${ZCODE_DEV_FETCH:-0}" == "1" ]] || ! vscode_ok; then
     log "fetch / stage vscode-web"
@@ -88,11 +102,11 @@ if [[ "${ZCODE_DEV_SKIP_FETCH:-0}" != "1" ]]; then
     bash scripts/stage-vscode-web-node-modules.sh dist/vscode-web || true
   fi
 
-  if [[ "${ZCODE_DEV_FETCH:-0}" == "1" ]] || ! themes_ok; then
-    log "fetch theme / icon extensions"
+  if [[ "${ZCODE_DEV_FETCH:-0}" == "1" ]] || ! themes_ok || ! language_packs_ok; then
+    log "fetch theme / icon / language extensions"
     bash scripts/fetch-theme-extensions.sh || log "WARN: theme fetch failed (IDE still runs with fallbacks)"
   else
-    log "themes already staged"
+    log "themes + language packs already staged"
   fi
 else
   log "skip fetch (ZCODE_DEV_SKIP_FETCH=1)"
