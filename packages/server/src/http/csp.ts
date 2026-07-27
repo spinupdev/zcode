@@ -57,7 +57,10 @@ export function buildContentSecurityPolicy(opts: CspOptions = {}): string {
     `connect-src ${connect.join(' ')}`,
     // Built-in extensions are same-origin; marketplace optional
     `extension-src ${extensionSrc.join(' ')}`,
-    "frame-src 'self' blob:",
+    // Walkthrough / markdown webviews: same-origin pre/ iframe (see webviewEndpoint).
+    // Keep blob: for some internal frames; avoid Microsoft vscode-cdn.net (blocked off-origin).
+    "frame-src 'self' blob: data:",
+    "child-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

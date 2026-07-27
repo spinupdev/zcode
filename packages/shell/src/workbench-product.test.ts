@@ -18,6 +18,22 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.equal(o.zcodeCapabilities?.terminal, false);
   });
 
+  it('sets same-origin webviewEndpoint (not vscode-cdn)', () => {
+    const o = buildWorkbenchCreateOptions({
+      mode: 'browser',
+      origin: 'http://127.0.0.1:5000',
+    });
+    assert.equal(
+      o.webviewEndpoint,
+      'http://127.0.0.1:5000/vscode/out/vs/workbench/contrib/webview/browser/pre',
+    );
+    assert.match(
+      String(o.productConfiguration.webviewContentExternalBaseUrlTemplate),
+      /127\.0\.0\.1:5000\/vscode\/out\/vs\/workbench\/contrib\/webview\/browser\/pre\//,
+    );
+    assert.doesNotMatch(String(o.webviewEndpoint), /vscode-cdn\.net/);
+  });
+
   it('remote mode sets remoteAuthority and vscode-remote folder', () => {
     const o = buildWorkbenchCreateOptions({
       mode: 'remote',

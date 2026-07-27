@@ -283,6 +283,10 @@ EOF
   cp "${OUT_DIR}/.zcode-vscode-web.json" "${ROOT}/dist/web/.zcode-build.json"
   log "Owned vscode-web staged at dist/vscode-web (entry=${entry})"
 
+  if [[ -x "${ROOT}/scripts/brand-vscode-nls.sh" ]]; then
+    bash "${ROOT}/scripts/brand-vscode-nls.sh" "${OUT_DIR}"
+  fi
+
   if [[ -d "${ROOT}/vscode-web" ]]; then
     log "Removing intermediate ${ROOT}/vscode-web (staged to dist/vscode-web)"
     rm -rf "${ROOT}/vscode-web"

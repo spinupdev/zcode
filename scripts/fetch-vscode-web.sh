@@ -52,6 +52,12 @@ stage_owned_web_extensions() {
   log "Staged $(ls -1 "${dest}" 2>/dev/null | wc -l | tr -d ' ') builtin web extensions → dist/vscode-web/extensions"
 }
 
+brand_walkthrough_nls() {
+  if [[ -x "${ROOT}/scripts/brand-vscode-nls.sh" ]]; then
+    bash "${ROOT}/scripts/brand-vscode-nls.sh" "${OUT}"
+  fi
+}
+
 # Keep already-staged owned tree (do not clobber with dogfood npm)
 if [[ -f "${OUT}/.zcode-vscode-web.json" ]] \
   && grep -q '"source": "owned"' "${OUT}/.zcode-vscode-web.json" 2>/dev/null \
@@ -59,6 +65,7 @@ if [[ -f "${OUT}/.zcode-vscode-web.json" ]] \
     || [[ -f "${OUT}/out/vs/loader.js" ]]; }; then
   log "Keeping existing owned dist/vscode-web"
   stage_owned_web_extensions
+  brand_walkthrough_nls
   exit 0
 fi
 
@@ -88,6 +95,7 @@ for c in "${OWNED_CANDIDATES[@]}"; do
 }
 EOF
     stage_owned_web_extensions
+    brand_walkthrough_nls
     log "Staged owned build → dist/vscode-web"
     exit 0
   fi
@@ -124,5 +132,6 @@ cat > "${OUT}/.zcode-vscode-web.json" <<EOF
 }
 EOF
 
+brand_walkthrough_nls
 log "Staged dogfood vscode-web@${VERSION} → dist/vscode-web"
 log "Serve via: zcode web  (routes / + /vscode/*)"

@@ -6,7 +6,7 @@
 | **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
 | **Local path** | may still be checked out as `code-server` — product is **ZCode** |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-27 (B8c: multi-project browser workspaces + first-run clone) |
+| **Last updated** | 2026-07-27 (walkthrough webviewEndpoint + ZCode branding) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -225,8 +225,8 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | --- | --- | --- | --- |
 | B1 | Shell bootstrap matrix / mode resolution | **done** | `@zcode/shell` |
 | B2 | Browser agent workspace + locks | **done** | Memory + **IndexedDB** |
-| B2b | ZenFS + OPFS backend (design primary) | **done** | OPFS primary via ZenFS WebAccess; IDB fallback + migrate; see `docs/b2b-opfs-zenfs.md` |
-| B3 | `zcode-browser-fs` FileSystemProvider | **done** | Empty default; restore `localStorage` last workspace; no auto-seed |
+| B2b | ZenFS + OPFS backend (design primary) | **done** | OPFS primary via ZenFS WebAccess; IDB fallback + migrate; see `docs/b2b-opfs-zenfs.md`; **AgentFs.stat** (ZenFS raw `readFile` can return bytes for dirs) |
+| B3 | `zcode-browser-fs` FileSystemProvider | **done** | Explorer type via `fs.stat` (not readFile probe); empty default; restore last workspace; no auto-seed |
 | B4 | isomorphic-git + git-proxy + SPA SCM UX | **done** | Clone/commit/push + PAT |
 | B4b | Same-origin `/git-proxy` mount | **done** | CLI web/serve + CF Worker |
 | B4c | Private HTTPS (PAT) + push | **done** | sessionStorage token |
@@ -236,6 +236,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | B8 | Full SCM inside workbench (not only SPA) | **done** | `zcode-git` status/commit/push via IDB + isomorphic-git |
 | B8b | Welcome Open Repository → in-IDE HTTPS clone | **done** | `zcode.git.openRepository` + `remoteHub.openRepository` alias; notification progress; any public HTTPS host via `/git-proxy` `*`; Zeish favicon |
 | B8c | Multi-project browser workspaces + first-run clone | **done** | Unique workspace per clone; Browser Projects tree + manage QuickPick; last workspace restore (`localStorage` + `?workspace=`); `storage.persist`; startup clone prompt when empty |
+| B8d | Walkthrough media + ZCode branding | **done** | Same-origin `webviewEndpoint` (fix “content is blocked” from vscode-cdn); NLS brand script + `patches/0003-brand-walkthrough-zcode.patch`; docs in `docs/vscode-web.md` |
 | B9 | SSH remotes / LFS / submodules | **deferred** | non-goals MVP |
 | B10 | Offline PWA | **deferred** | OQ7 |
 

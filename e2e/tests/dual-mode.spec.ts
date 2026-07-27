@@ -46,6 +46,14 @@ test.describe('dual-mode product (M1)', () => {
     expect(body.productConfiguration?.configurationDefaults?.[
       'window.autoDetectColorScheme'
     ]).toBe(true);
+    // Walkthrough iframes must be same-origin (not Microsoft vscode-cdn.net)
+    expect(body.webviewEndpoint).toMatch(
+      /\/vscode\/out\/vs\/workbench\/contrib\/webview\/browser\/pre$/,
+    );
+    expect(String(body.webviewEndpoint)).not.toMatch(/vscode-cdn\.net/);
+    expect(
+      String(body.productConfiguration?.webviewContentExternalBaseUrlTemplate ?? ''),
+    ).not.toMatch(/vscode-cdn\.net/);
   });
 
   test('remote product sets remoteAuthority and enables terminal', async ({ request }) => {

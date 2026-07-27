@@ -15,6 +15,27 @@ The lightweight SPA at `/debug/` is a DEV-only dogfood surface for browser git/O
 /product.json      → dual-mode create() options (browser | remote)
 ```
 
+## Walkthroughs / webviews
+
+VS Code walkthrough media (theme picker, SVG steps) loads in an **iframe**. By default
+upstream product templates point that iframe at **Microsoft’s `vscode-cdn.net`**, which
+refuses to frame on non-Microsoft origins and shows **“This content is blocked.”**
+
+ZCode always sets same-origin:
+
+| Create option | Value |
+| --- | --- |
+| `webviewEndpoint` | `{origin}/vscode/out/vs/workbench/contrib/webview/browser/pre` |
+| `productConfiguration.webviewContentExternalBaseUrlTemplate` | same path + trailing `/` |
+
+Assets live under `dist/vscode-web/out/vs/workbench/contrib/webview/browser/pre/`
+(`index.html`, service-worker). Bootstrap rewrites absolute URLs from `location.origin`.
+
+### ZCode branding in walkthrough copy
+
+- NLS post-process: `scripts/brand-vscode-nls.sh` (runs from `fetch-vscode-web.sh` / `build-web.sh --package`)
+- Source patch: `patches/0003-brand-walkthrough-zcode.patch` (Getting Started titles → **ZCode**)
+
 ## Default theme & icons
 
 Workbench product defaults (see `@zcode/shell` `configurationDefaultsForMode`):

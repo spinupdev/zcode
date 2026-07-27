@@ -23,6 +23,20 @@ export interface ProductOverlay {
   [key: string]: unknown;
 }
 
+/** Same-origin path for walkthrough / markdown / SVG webview iframes. */
+export const WEBVIEW_ENDPOINT_PATH =
+  '/vscode/out/vs/workbench/contrib/webview/browser/pre';
+
+/**
+ * Absolute webview iframe base URL for create() options.
+ * Must not point at Microsoft’s vscode-cdn.net — that CDN frames only from
+ * Microsoft origins and surfaces “This content is blocked” in the walkthrough.
+ */
+export function webviewEndpointForOrigin(origin?: string): string {
+  const base = origin?.replace(/\/$/, '') ?? '';
+  return `${base}${WEBVIEW_ENDPOINT_PATH}`;
+}
+
 export interface WorkbenchCreateOptions {
   /** Nested product branding (nameShort, extensionsGallery, …) */
   productConfiguration: ProductOverlay;
@@ -32,6 +46,11 @@ export interface WorkbenchCreateOptions {
   folderUri?: { scheme: string; path: string; authority?: string };
   /** Additional web extension locations as URI components */
   additionalBuiltinExtensions?: Array<{ scheme: string; path: string; authority?: string }>;
+  /**
+   * Same-origin iframe host for walkthrough media / markdown webviews.
+   * Required so content is not loaded from vscode-cdn.net (blocked off-origin).
+   */
+  webviewEndpoint?: string;
   /** Home indicator / flags */
   homeIndicator?: { href: string; icon: string; title: string };
   windowIndicator?: { label: string; tooltip: string };
@@ -190,6 +209,9 @@ export function buildWorkbenchCreateOptions(
       ...defaults,
       ...(input.productOverlay?.configurationDefaults as object | undefined),
     },
+    // Prefer same-origin webviews; do not fall back to Microsoft CDN templates.
+    // Applied after productOverlay so branding JSON cannot reintroduce vscode-cdn.net.
+    webviewContentExternalBaseUrlTemplate: webviewEndpointForOrigin(input.origin) + '/',
     // Product-owned metadata (diagnostics / chrome)
     zcodeMode: boot.mode,
     zcodeCapabilities: caps,
@@ -197,6 +219,8 @@ export function buildWorkbenchCreateOptions(
 
   const opts: WorkbenchCreateOptions = {
     productConfiguration,
+    // Top-level create() option wins over product.webviewContentExternalBaseUrlTemplate
+    webviewEndpoint: webviewEndpointForOrigin(input.origin),
     homeIndicator: {
       href: '/',
       icon: 'code',

@@ -44,6 +44,8 @@ export {
   configurationDefaultsForMode,
   DEFAULT_BUILTIN_EXTENSIONS,
   ZCODE_THEME_DEFAULTS,
+  WEBVIEW_ENDPOINT_PATH,
+  webviewEndpointForOrigin,
 } from './workbench-product.js';
 export type {
   ProductOverlay,

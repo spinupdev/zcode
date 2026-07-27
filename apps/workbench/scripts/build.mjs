@@ -63,9 +63,14 @@ const languageBuiltinExtensions = languageExtensionIds.map((id) => ({
   path: `/vscode/extensions/${id}`,
 }));
 
+/** Same-origin webview iframe host (walkthroughs / markdown media). Never Microsoft CDN. */
+const WEBVIEW_ENDPOINT_PATH =
+  '/vscode/out/vs/workbench/contrib/webview/browser/pre';
+
 const defaultProduct = {
   productConfiguration: {
     ...productOverlay,
+    webviewContentExternalBaseUrlTemplate: `${WEBVIEW_ENDPOINT_PATH}/`,
     configurationDefaults: {
       'security.workspace.trust.enabled': false,
       'security.workspace.trust.startupPrompt': 'never',
@@ -93,6 +98,8 @@ const defaultProduct = {
   },
   // Paths only — bootstrap.js injects scheme + authority from location
   additionalBuiltinExtensions: [...zcodeProductExtensions, ...languageBuiltinExtensions],
+  // Absolute URL filled in bootstrap.js from location.origin
+  webviewEndpoint: WEBVIEW_ENDPOINT_PATH,
   homeIndicator: {
     href: '/',
     icon: 'code',
@@ -467,6 +474,16 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
   } catch (_) { /* ignore */ }
 
   window.product = withHostAuthority(window.product || {});
+  // Walkthrough / markdown webviews must load same-origin (not vscode-cdn.net).
+  // Microsoft’s CDN blocks framing from non-Microsoft origins → “content is blocked”.
+  const webviewEndpointPath =
+    '/vscode/out/vs/workbench/contrib/webview/browser/pre';
+  window.product.webviewEndpoint =
+    location.origin + webviewEndpointPath;
+  if (window.product.productConfiguration) {
+    window.product.productConfiguration.webviewContentExternalBaseUrlTemplate =
+      location.origin + webviewEndpointPath + '/';
+  }
   // Match OS/browser light·dark before create() (GitHub Theme prefers + autoDetect).
   const prefersDark =
     typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;

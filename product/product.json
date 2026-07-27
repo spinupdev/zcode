@@ -34,5 +34,6 @@
     "https://open-vsx.org",
     "https://github.com",
     "https://gitlab.com"
-  ]
+  ],
+  "webviewContentExternalBaseUrlTemplate": "/vscode/out/vs/workbench/contrib/webview/browser/pre/"
 }

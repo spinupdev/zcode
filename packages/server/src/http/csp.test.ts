@@ -16,6 +16,9 @@ describe('CSP draft (M2)', () => {
     assert.match(csp, /open-vsx\.org/);
     // Browser WASM runtimes (Pyodide)
     assert.match(csp, /cdn\.jsdelivr\.net/);
+    // Walkthrough webviews use same-origin iframe (not vscode-cdn)
+    assert.match(csp, /frame-src[^;]*'self'/);
+    assert.doesNotMatch(csp, /vscode-cdn\.net/);
   });
 
   it('can omit Open VSX extension-src', () => {
