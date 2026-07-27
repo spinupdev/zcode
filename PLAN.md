@@ -456,5 +456,6 @@ pnpm smoke            # lighter checks
 | 2026-07-27 | **B8c**: multi-project browser repos — first-run clone dialog, Browser Projects view, manage/switch/delete, unique workspace id per clone, last project restore via localStorage + OPFS/IDB, `navigator.storage.persist()` |
 | 2026-07-27 | **WB7**: browser integrated terminal via Pseudoterminal — WebContainer `jsh` + Pyodide REPL; terminal profiles; browser `terminal: true`; Open Browser Shell command |
 | 2026-07-27 | **WB8**: shell startup UX — WC prefetch + status bar + progress + auto-open terminal; Pyodide warm status |
+| 2026-07-27 | **WB8 fix**: main-thread `wc-bridge.js` + BroadcastChannel (web EH has no DOM); notification + bridge-based shell |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

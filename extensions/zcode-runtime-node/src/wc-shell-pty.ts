@@ -1,44 +1,34 @@
 /**
- * VS Code Pseudoterminal backed by WebContainers `jsh` (interactive shell).
+ * VS Code Pseudoterminal backed by main-thread WebContainer bridge (jsh).
  */
 import * as vscode from 'vscode';
-
-export interface WcProcess {
-  exit: Promise<number>;
-  input: WritableStream<string>;
-  output: ReadableStream<string>;
-  kill(): void;
-  resize(dimensions: { cols: number; rows: number }): void;
-}
-
-export interface WcShellHost {
-  /** Boot container if needed, mount workspace when possible, spawn jsh with PTY. */
-  spawnInteractiveShell(opts: {
-    cols: number;
-    rows: number;
-    onLog: (chunk: string) => void;
-  }): Promise<WcProcess>;
-  /** True if container already booted (skip long download messages). */
-  isReady?(): boolean;
-}
+import { getWcBridge, type WcBridgeClient } from './wc-bridge-client.js';
+import {
+  buildFileSystemTree,
+  workspaceFolderFor,
+} from './fs-tree.js';
 
 /**
- * Create a Pseudoterminal that bridges xterm ↔ WebContainer process I/O.
+ * Create a Pseudoterminal that bridges xterm ↔ WebContainer process I/O via BroadcastChannel.
  */
-export function createWebContainerShellPty(host: WcShellHost): {
+export function createWebContainerShellPty(bridge?: WcBridgeClient): {
   pty: vscode.Pseudoterminal;
   onDidClose: vscode.Event<number | void>;
 } {
+  const client = bridge ?? getWcBridge();
   const writeEmitter = new vscode.EventEmitter<string>();
   const closeEmitter = new vscode.EventEmitter<number | void>();
 
-  let proc: WcProcess | undefined;
-  let inputWriter: WritableStreamDefaultWriter<string> | undefined;
+  let session: {
+    write: (data: string) => void;
+    resize: (c: number, r: number) => void;
+    kill: () => void;
+  } | null = null;
   let closed = false;
-  let outputPump: Promise<void> | undefined;
 
   const toCrlf = (s: string) => s.replace(/\r?\n/g, '\r\n');
   const info = (s: string) => writeEmitter.fire(`\x1b[2m[zcode] ${s}\x1b[0m\r\n`);
+  const errLine = (s: string) => writeEmitter.fire(`\x1b[31m[zcode] ${s}\x1b[0m\r\n`);
 
   const pty: vscode.Pseudoterminal = {
     onDidWrite: writeEmitter.event,
@@ -50,56 +40,77 @@ export function createWebContainerShellPty(host: WcShellHost): {
 
       void (async () => {
         try {
-          if (host.isReady?.()) {
-            info('WebContainer ready · opening shell…');
-          } else {
-            info('Preparing browser shell (first run downloads runtime artifacts)…');
-            info('This can take 10–30s on a cold start.');
-          }
-          proc = await host.spawnInteractiveShell({
-            cols,
-            rows,
-            onLog: (chunk) => writeEmitter.fire(toCrlf(chunk)),
-          });
-          inputWriter = proc.input.getWriter();
+          info('Connecting to WebContainer bridge (main thread)…');
+          client.connect();
 
-          outputPump = (async () => {
-            const reader = proc!.output.getReader();
+          const unsub = client.onStatus((s) => {
+            if (s.message) info(`${s.phase}: ${s.message}`);
+          });
+
+          try {
+            // Ping with short timeout for clear error
             try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                if (value) writeEmitter.fire(value);
-              }
-            } catch {
-              /* stream closed */
-            } finally {
-              try {
-                reader.releaseLock();
-              } catch {
-                /* ignore */
-              }
-            }
-            if (!closed) {
-              let code = 0;
-              try {
-                code = await proc!.exit;
-              } catch {
-                code = 1;
-              }
-              writeEmitter.fire(
-                `\r\n\x1b[2m[zcode] shell exited (${code})\x1b[0m\r\n`,
+              const pong = await client.ping(4000);
+              info(
+                pong.ready
+                  ? 'Bridge OK — runtime already booted'
+                  : `Bridge OK — isolated=${pong.isolated} · booting runtime…`,
               );
-              closed = true;
-              closeEmitter.fire(code);
+            } catch {
+              errLine(
+                'No response from wc-bridge.js. Rebuild workbench (`pnpm --filter @zcode/workbench build`) and hard-refresh.',
+              );
+              throw new Error('WebContainer bridge not loaded on the workbench page');
             }
-          })();
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          writeEmitter.fire(`\r\n\x1b[31m[zcode] WebContainer shell failed: ${msg}\x1b[0m\r\n`);
-          writeEmitter.fire(
-            '\x1b[2mTip: run with ZCODE_COI=1 (pnpm dev) for SharedArrayBuffer, or check network / CDN.\x1b[0m\r\n',
-          );
+
+            info('Downloading / booting WebContainer (first run can take 10–30s)…');
+            await client.boot();
+
+            // Best-effort workspace mount from extension FS (works in worker)
+            const folder =
+              workspaceFolderFor(vscode.window.activeTextEditor?.document.uri) ??
+              vscode.workspace.workspaceFolders?.[0];
+            if (folder) {
+              try {
+                info('Reading workspace for mount…');
+                const built = await buildFileSystemTree(folder.uri);
+                info(
+                  `Mounting ${built.fileCount} file(s) (${Math.round(built.bytes / 1024)} KiB)…`,
+                );
+                await client.mount(built.tree as unknown as Record<string, unknown>);
+              } catch (mountErr) {
+                const m = mountErr instanceof Error ? mountErr.message : String(mountErr);
+                info(`Workspace mount skipped: ${m}`);
+              }
+            } else {
+              info('No workspace folder — empty container FS');
+            }
+
+            info('Spawning jsh…');
+            session = await client.spawnShell({
+              cols,
+              rows,
+              onOutput: (data) => {
+                if (!closed) writeEmitter.fire(data);
+              },
+              onExit: (code) => {
+                if (!closed) {
+                  writeEmitter.fire(
+                    `\r\n\x1b[2m[zcode] shell exited (${code})\x1b[0m\r\n`,
+                  );
+                  closed = true;
+                  closeEmitter.fire(code);
+                }
+              },
+            });
+            info('Shell ready.');
+          } finally {
+            unsub.dispose();
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          errLine(`WebContainer shell failed: ${msg}`);
+          info('Tips: pnpm dev (ZCODE_COI=1) · hard-refresh · check Output “ZCode Shell”');
           closed = true;
           closeEmitter.fire(1);
         }
@@ -109,35 +120,25 @@ export function createWebContainerShellPty(host: WcShellHost): {
     close(): void {
       closed = true;
       try {
-        proc?.kill();
+        session?.kill();
       } catch {
         /* ignore */
       }
-      try {
-        void inputWriter?.close();
-      } catch {
-        /* ignore */
-      }
-      try {
-        inputWriter?.releaseLock();
-      } catch {
-        /* ignore */
-      }
-      inputWriter = undefined;
-      proc = undefined;
-      void outputPump;
+      session = null;
     },
 
     handleInput(data: string): void {
-      if (!inputWriter || closed) return;
-      void inputWriter.write(data).catch(() => {
-        /* ignore broken pipe */
-      });
+      if (!session || closed) return;
+      try {
+        session.write(data);
+      } catch {
+        /* ignore */
+      }
     },
 
     setDimensions(dimensions: vscode.TerminalDimensions): void {
       try {
-        proc?.resize({ cols: dimensions.columns, rows: dimensions.rows });
+        session?.resize(dimensions.columns, dimensions.rows);
       } catch {
         /* ignore */
       }
@@ -148,10 +149,10 @@ export function createWebContainerShellPty(host: WcShellHost): {
 }
 
 export function openWebContainerTerminal(
-  host: WcShellHost,
   name = 'WebContainer',
+  bridge?: WcBridgeClient,
 ): vscode.Terminal {
-  const { pty } = createWebContainerShellPty(host);
+  const { pty } = createWebContainerShellPty(bridge);
   const term = vscode.window.createTerminal({
     name,
     pty,

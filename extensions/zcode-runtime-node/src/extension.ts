@@ -11,11 +11,8 @@ import {
   workspaceFolderFor,
   type FileSystemTree,
 } from './fs-tree.js';
-import {
-  createWebContainerShellPty,
-  openWebContainerTerminal,
-  type WcProcess,
-} from './wc-shell-pty.js';
+import { createWebContainerShellPty, openWebContainerTerminal } from './wc-shell-pty.js';
+import { getWcBridge } from './wc-bridge-client.js';
 import {
   ShellStatusBar,
   withShellBootProgress,
@@ -59,6 +56,14 @@ interface SpawnOptions {
   output?: boolean;
   terminal?: { cols: number; rows: number };
   env?: Record<string, string | number | boolean>;
+}
+
+interface WcProcess {
+  exit: Promise<number>;
+  input: WritableStream<string>;
+  output: ReadableStream<string>;
+  kill(): void;
+  resize?(dimensions: { cols: number; rows: number }): void;
 }
 
 interface WebContainerInstance {
@@ -428,42 +433,6 @@ class WebContainerSession {
     return spawnAndCollect(container, 'npm', ['run', script], opts);
   }
 
-  /**
-   * Mount active workspace (best-effort) and spawn interactive `jsh` for Pseudoterminal.
-   */
-  async spawnInteractiveShell(opts: {
-    cols: number;
-    rows: number;
-    onLog: (chunk: string) => void;
-  }): Promise<WcProcess> {
-    const log = (s: string) => opts.onLog(s.endsWith('\n') ? s : `${s}\n`);
-    const container = await this.ensureContainer((p) => {
-      if (p.phase === 'downloading') log(`[zcode] ${p.message}`);
-      else if (p.phase === 'booting') log(`[zcode] ${p.message}`);
-      else if (p.phase === 'ready') log(`[zcode] ${p.message}`);
-      else if (p.phase === 'error') log(`[zcode] error: ${p.message}`);
-    });
-    const folder = workspaceFolderFor(vscode.window.activeTextEditor?.document.uri)
-      ?? vscode.workspace.workspaceFolders?.[0];
-    if (folder) {
-      try {
-        this.emit({ phase: 'mounting', message: 'Mounting workspace into WebContainer…' });
-        log('[zcode] Mounting workspace into WebContainer…');
-        await this.mountWorkspace(folder, undefined, undefined, opts.onLog);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        log(`[zcode] workspace mount skipped: ${msg}`);
-      }
-    } else {
-      log('[zcode] no workspace folder — empty container FS');
-    }
-    log('[zcode] spawning jsh…');
-    this.emit({ phase: 'ready', message: 'WebContainer shell ready' });
-    return container.spawn('jsh', {
-      terminal: { cols: opts.cols, rows: opts.rows },
-    });
-  }
-
   resetMountCache(): void {
     this.lastFolderKey = null;
     this.npmInstalledFor = null;
@@ -623,29 +592,39 @@ function outputChannel(): vscode.OutputChannel {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const session = new WebContainerSession();
+  const bridge = getWcBridge();
   const shellStatus = new ShellStatusBar('zcode.runtime.node.openShell');
-  const logCh = vscode.window.createOutputChannel('ZCode Shell', { log: true });
-  /** Session flag: first cold boot shows Notification; later uses Window progress only. */
-  let coldBootNotified = false;
+  let logCh: vscode.OutputChannel;
+  try {
+    logCh = vscode.window.createOutputChannel('ZCode Shell', { log: true });
+  } catch {
+    logCh = vscode.window.createOutputChannel('ZCode Shell');
+  }
   let autoOpened = false;
 
-  const applyProgress = (p: BootProgress) => {
-    shellStatus.setPhase(p.phase, p.message);
-    logCh.appendLine(`[${p.phase}] ${p.message}`);
+  const applyBridgeStatus = (phase: ShellPhase, message?: string) => {
+    shellStatus.setPhase(phase, message);
+    logCh.appendLine(`[${phase}] ${message ?? ''}`);
   };
-  context.subscriptions.push(session.onProgress(applyProgress));
+
+  // Mirror main-thread bridge status → status bar (always visible feedback)
+  context.subscriptions.push(
+    bridge.onStatus((s) => {
+      applyBridgeStatus(s.phase as ShellPhase, s.message);
+    }),
+    session.onProgress((p) => {
+      // Direct (in-worker) WC path for Run File — secondary
+      applyBridgeStatus(p.phase, p.message);
+    }),
+  );
 
   const openShell = () => {
     try {
-      openWebContainerTerminal(
-        {
-          spawnInteractiveShell: (opts) => session.spawnInteractiveShell(opts),
-          isReady: () => session.isReady(),
-        },
-        'WebContainer',
-      );
+      logCh.appendLine('openShell: creating Pseudoterminal via main-thread bridge');
+      openWebContainerTerminal('WebContainer', bridge);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      logCh.appendLine(`openShell error: ${msg}`);
       void vscode.window.showErrorMessage(`WebContainer shell: ${msg}`);
     }
   };
@@ -660,12 +639,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   /**
-   * Background prefetch + user-visible progress.
-   * Prefer auto-open terminal (download logs in-panel); otherwise Window/Notification progress.
+   * After workbench paints:
+   * 1. Show unmistakable Notification progress (CDN download / boot)
+   * 2. Prefetch via main-thread bridge
+   * 3. Auto-open terminal so the panel is never empty
    */
   const startShellBootstrap = async () => {
     if (!isBrowserWorkbench()) {
-      shellStatus.setPhase('idle');
+      shellStatus.setPhase('idle', 'remote mode — use REH PTY');
       return;
     }
     if (preferredEngine() === 'worker') {
@@ -677,39 +658,56 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
 
-    // Path A: open shell immediately — terminal + status bar show download/boot.
-    // Shell open drives ensureContainer; no separate notification needed.
-    if (autoOpenShellEnabled() && !autoOpened) {
-      autoOpened = true;
-      shellStatus.setPhase('downloading', 'Opening shell…');
-      openShell();
-      return;
-    }
+    shellStatus.setPhase('downloading', 'Starting…');
+    void vscode.window.setStatusBarMessage('$(sync~spin) ZCode: preparing browser shell…', 15_000);
 
-    // Path B: prefetch only (auto-open off) — progress UI + status bar.
-    if (!prefetchEnabled()) return;
+    const cdnUrl = vscode.workspace
+      .getConfiguration('zcode.execution')
+      .get<string>('webcontainerCdnUrl');
 
-    const useNotification = !coldBootNotified;
-    coldBootNotified = true;
     try {
-      await withShellBootProgress('ZCode: browser shell', useNotification, async (report) => {
-        await session.ensureContainer((p) => {
-          report(p.message);
-          applyProgress(p);
+      if (prefetchEnabled()) {
+        await withShellBootProgress('ZCode: browser shell', true, async (report) => {
+          report('Contacting WebContainer bridge…');
+          try {
+            bridge.connect();
+            await bridge.ping(5000);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            throw new Error(
+              `Bridge not available (${msg}). Rebuild workbench and hard-refresh the page.`,
+            );
+          }
+          report('Downloading WebContainer runtime…');
+          await bridge.prefetch(cdnUrl);
+          report('Ready');
         });
-      });
+      }
+
+      if (autoOpenShellEnabled() && !autoOpened) {
+        autoOpened = true;
+        openShell();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      applyProgress({ phase: 'error', message: msg });
-      logCh.appendLine(`prefetch failed: ${msg}`);
-      // Non-fatal — Run File can fall back to worker; shell open will surface error
+      applyBridgeStatus('error', msg);
+      logCh.appendLine(`bootstrap failed: ${msg}`);
+      logCh.show(true);
+      void vscode.window.showWarningMessage(
+        `ZCode browser shell: ${msg}`,
+        'Open Shell anyway',
+        'Show log',
+      ).then((choice) => {
+        if (choice === 'Open Shell anyway') openShell();
+        if (choice === 'Show log') logCh.show(true);
+      });
     }
   };
 
-  // Defer slightly so workbench chrome paints first
+  // Wait for workbench UI; bridge script loads with the page
   const bootstrapTimer = setTimeout(() => {
     void startShellBootstrap();
-  }, 400);
+  }, 1200);
 
   const runWithProgress = async (
     title: string,
@@ -746,15 +744,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const api = (globalThis as { zcodeRuntime?: ZcodeRuntimeApi }).zcodeRuntime;
         api?.unregister(backend.id);
         session.dispose();
+        bridge.dispose();
       },
     },
     vscode.commands.registerCommand('zcode.runtime.node.openShell', openShell),
     vscode.window.registerTerminalProfileProvider('zcode.webcontainer', {
       provideTerminalProfile: () => {
-        const { pty } = createWebContainerShellPty({
-          spawnInteractiveShell: (opts) => session.spawnInteractiveShell(opts),
-          isReady: () => session.isReady(),
-        });
+        const { pty } = createWebContainerShellPty(bridge);
         return {
           options: {
             name: 'WebContainer',

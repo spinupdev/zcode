@@ -326,12 +326,22 @@ const indexHtml = `<!DOCTYPE html>
   <script>
     window.product = ${JSON.stringify(defaultProduct)};
   </script>
+  <!-- Main-thread WebContainer bridge (extensions run in a Worker — no DOM) -->
+  <script src="./wc-bridge.js"></script>
   <script src="./bootstrap.js"></script>
 </body>
 </html>
 `;
 
 writeFileSync(join(dist, 'index.html'), indexHtml);
+
+// Copy main-thread WebContainer bridge (BroadcastChannel ↔ extensions)
+const wcBridgeSrc = join(root, 'scripts/wc-bridge.js');
+if (existsSync(wcBridgeSrc)) {
+  cpSync(wcBridgeSrc, join(dist, 'wc-bridge.js'));
+} else {
+  console.warn('apps/workbench: missing scripts/wc-bridge.js');
+}
 
 const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject extension URIs */
 (async function () {

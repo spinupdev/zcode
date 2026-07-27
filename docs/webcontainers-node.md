@@ -56,20 +56,35 @@ Browser mode uses VS Code **extension terminals**, not REH `node-pty`:
 
 Requires WebContainers (not worker fallback). Prefer `ZCODE_COI=1` for SharedArrayBuffer.
 
+### Main-thread bridge (required)
+
+VS Code web extensions run in a **Worker** (no DOM). WebContainers need the real window, so the workbench page loads `wc-bridge.js` and talks to the extension over **`BroadcastChannel('zcode-webcontainer-v1')`**.
+
+- Script: `apps/workbench/dist/wc-bridge.js` (built from `apps/workbench/scripts/wc-bridge.js`)
+- Loaded from workbench `index.html` before `bootstrap.js`
+- Auto-prefetches ~800ms after page load; extension also prefetches + auto-opens shell
+
 ### Startup feedback
 
 After the workbench loads (browser mode only):
 
-1. **Status bar** — `Shell: downloading…` → `starting…` → `mounting…` → `ready` (or `offline`)  
-2. **Progress** — With auto-open (default): feedback lives in the Terminal panel + status bar. With auto-open off + prefetch on: Notification on first cold boot, then Window progress  
-3. **Auto-open shell** (default) — Terminal panel opens immediately with download logs so it is never empty  
-4. **Output** channel **ZCode Shell** — phase log for debugging  
+1. **Notification** — “ZCode: browser shell” while CDN download / boot runs  
+2. **Status bar** — `Shell: downloading…` → `starting…` → `ready` (or `offline`)  
+3. **Auto-open shell** (default) — Terminal shows bridge + download logs, then `jsh`  
+4. **Output** channel **ZCode Shell** — phase log  
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `zcode.execution.prefetchWebContainer` | `true` | Boot WebContainer in the background after load |
+| `zcode.execution.prefetchWebContainer` | `true` | Boot WebContainer after load (via bridge) |
 | `zcode.execution.autoOpenShell` | `true` | Open WebContainer terminal on startup |
 | `zcode.execution.prefetchPyodide` | `true` | Warm Pyodide WASM (status bar only; no auto REPL) |
+
+If the shell says “bridge not loaded”, rebuild workbench and hard-refresh:
+
+```bash
+pnpm --filter @zcode/workbench build
+# then hard-refresh the IDE tab
+```
 
 ## Commands
 
