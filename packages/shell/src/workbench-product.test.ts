@@ -60,7 +60,11 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.ok(paths.includes('/extensions/vscode-icons'));
     assert.ok(paths.includes('/extensions/github-vscode-theme'));
     assert.ok(paths.includes('/extensions/terraform'));
+    assert.ok(paths.includes('/extensions/hcl'));
     assert.ok(paths.includes('/extensions/nix'));
+    assert.ok(paths.includes('/extensions/kotlin'));
+    assert.ok(paths.includes('/extensions/solidity'));
+    assert.ok(paths.includes('/extensions/zig'));
     // TextMate language packs (syntax highlighting)
     assert.ok(paths.includes('/vscode/extensions/javascript'));
     assert.ok(paths.includes('/vscode/extensions/typescript-basics'));

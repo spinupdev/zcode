@@ -1,0 +1,44 @@
+{
+  "$schema": "https://zcode.dev/schemas/extra-language-extensions.json",
+  "description": "Open VSX TextMate / language packs under /extensions/* (browser-safe). Fetched by scripts/fetch-theme-extensions.sh. Built-in VS Code packs live in product/language-extensions.json (/vscode/extensions).",
+  "packs": [
+    { "dest": "terraform", "publisher": "4ops", "name": "terraform", "version": "0.2.1", "note": "HCL Terraform .tf/.tfvars" },
+    { "dest": "hcl", "publisher": "hashicorp", "name": "hcl", "version": "0.5.0", "note": "HCL .hcl" },
+    { "dest": "nix", "publisher": "bbenoist", "name": "Nix", "version": "1.0.1" },
+    { "dest": "kotlin", "publisher": "mathiasfrohlich", "name": "Kotlin", "version": "1.7.1" },
+    { "dest": "scala", "publisher": "scala-lang", "name": "scala", "version": "0.5.10" },
+    { "dest": "elixir", "publisher": "vuluu2k", "name": "vscode-elixir", "version": "1.1.0" },
+    { "dest": "haskell", "publisher": "justusadam", "name": "language-haskell", "version": "3.6.0" },
+    { "dest": "solidity", "publisher": "juanblanco", "name": "solidity", "version": "0.0.187" },
+    { "dest": "zig", "publisher": "ziglang", "name": "vscode-zig", "version": "0.6.19" },
+    { "dest": "fortran", "publisher": "fortran-lang", "name": "linter-gfortran", "version": "4.0.2026012202" },
+    { "dest": "cobol", "publisher": "bitlang", "name": "cobol", "version": "26.7.21" },
+    { "dest": "pascal", "publisher": "alefragnani", "name": "pascal", "version": "10.0.0", "note": "Delphi / Object Pascal" },
+    { "dest": "abap", "publisher": "larshp", "name": "vscode-abap", "version": "0.5.4" },
+    { "dest": "verilog", "publisher": "mshr-h", "name": "veriloghdl", "version": "1.29.0", "note": "SystemVerilog / Verilog" },
+    { "dest": "vhdl", "publisher": "p2l2", "name": "vhdl-by-hgb", "version": "1.0.2" },
+    { "dest": "gleam", "publisher": "gleam", "name": "gleam", "version": "2.13.0" },
+    { "dest": "crystal", "publisher": "crystal-lang-tools", "name": "crystal-lang", "version": "0.9.8" },
+    { "dest": "erlang", "publisher": "pgourlain", "name": "erlang", "version": "1.1.3" },
+    { "dest": "assembly", "publisher": "13xforever", "name": "language-x86-64-assembly", "version": "3.1.5" },
+    { "dest": "matlab", "publisher": "mathworks", "name": "language-matlab", "version": "1.3.12" },
+    { "dest": "scheme", "publisher": "jeandeaual", "name": "scheme", "version": "0.2.0" },
+    { "dest": "prolog", "publisher": "jeff-hykin", "name": "better-prolog-syntax", "version": "0.3.3" },
+    { "dest": "gdscript", "publisher": "geequlim", "name": "godot-tools", "version": "2.7.1" },
+    { "dest": "ocaml", "publisher": "ocamllabs", "name": "ocaml-platform", "version": "2.3.0" },
+    { "dest": "sas", "publisher": "sasjs", "name": "sasjs-for-vscode", "version": "2.7.4" },
+    { "dest": "lisp", "publisher": "kchanqvq", "name": "olive", "version": "0.0.6", "note": "Common Lisp syntax" }
+  ],
+  "builtinCoverage": {
+    "note": "Already covered by /vscode/extensions language basics (product/language-extensions.json)",
+    "languages": [
+      "Python", "TypeScript", "JavaScript", "Java", "C#", "C++", "C", "Go", "Rust",
+      "PHP", "SQL", "Swift", "Ruby", "Dart", "R", "Bash/Shell", "PowerShell",
+      "Objective-C", "Lua", "Perl", "Clojure", "Groovy", "Julia", "F#", "Visual Basic .NET"
+    ]
+  },
+  "notBundled": {
+    "note": "No suitable universal browser-safe pack on Open VSX at pin time; use marketplace install if needed",
+    "languages": ["Ada (platform-specific VSIX)", "Apex (heavy Salesforce host)", "Delphi IDE tooling beyond Pascal grammar"]
+  }
+}

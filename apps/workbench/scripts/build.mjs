@@ -49,7 +49,7 @@ try {
   console.warn('apps/workbench: product/language-extensions.json missing — syntax packs not listed');
 }
 
-const zcodeProductExtensions = [
+const zcodeCoreExtensions = [
   { path: '/extensions/zcode-browser-fs' },
   { path: '/extensions/zcode-git' },
   { path: '/extensions/zcode-diagnostics' },
@@ -60,9 +60,23 @@ const zcodeProductExtensions = [
   { path: '/extensions/zcode-remote' },
   { path: '/extensions/vscode-icons' },
   { path: '/extensions/github-vscode-theme' },
-  { path: '/extensions/terraform' },
-  { path: '/extensions/nix' },
 ];
+
+// Open VSX language packs (product/extra-language-extensions.json)
+let extraLanguageDests = [];
+try {
+  const extraManifest = JSON.parse(
+    readFileSync(join(monorepo, 'product/extra-language-extensions.json'), 'utf8'),
+  );
+  extraLanguageDests = (extraManifest.packs || []).map((p) => p.dest).filter(Boolean);
+} catch {
+  console.warn('apps/workbench: product/extra-language-extensions.json missing');
+}
+const extraLanguageExtensions = extraLanguageDests.map((id) => ({
+  path: `/extensions/${id}`,
+}));
+
+const zcodeProductExtensions = [...zcodeCoreExtensions, ...extraLanguageExtensions];
 
 const languageBuiltinExtensions = languageExtensionIds.map((id) => ({
   path: `/vscode/extensions/${id}`,

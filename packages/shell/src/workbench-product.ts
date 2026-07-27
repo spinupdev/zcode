@@ -11,6 +11,7 @@ import type {
 } from '@zcode/protocol';
 import { capabilitiesForMode } from '@zcode/protocol';
 import { bootstrapFromInput } from './bootstrap.js';
+import { extraLanguageExtensionPaths } from './extra-language-extensions.js';
 import { languageExtensionPaths } from './language-extensions.js';
 
 export interface ProductOverlay {
@@ -97,17 +98,16 @@ const ZCODE_PRODUCT_EXTENSIONS = [
   '/extensions/zcode-runtime-node',
   '/extensions/zcode-runtime-remote',
   '/extensions/zcode-remote',
-  // Marketplace defaults (scripts/fetch-theme-extensions.sh)
+  // Marketplace themes/icons (scripts/fetch-theme-extensions.sh)
   '/extensions/vscode-icons',
   '/extensions/github-vscode-theme',
-  // Extra language TextMate packs (Open VSX; browser-safe grammars only)
-  '/extensions/terraform',
-  '/extensions/nix',
+  // Extra language packs (same script + product/extra-language-extensions.json)
+  ...extraLanguageExtensionPaths(),
 ];
 
 /**
- * All additionalBuiltinExtensions: ZCode product + VS Code language/theme packs
- * from /vscode/extensions (TextMate grammars for JS/TS/Python/Go/…).
+ * All additionalBuiltinExtensions: ZCode product + marketplace languages +
+ * VS Code built-in language/theme packs from /vscode/extensions.
  */
 export const DEFAULT_BUILTIN_EXTENSIONS: string[] = [
   ...ZCODE_PRODUCT_EXTENSIONS,

@@ -153,8 +153,14 @@ Default theme: **GitHub Dark Default** + **vscode-icons** (from Open VSX via
 `scripts/fetch-theme-extensions.sh`). Bootstrap falls back to Default Dark Modern /
 vs-seti only if those extensions fail to load.
 
-Extra language packs (same script): **Terraform** (`4ops.terraform`) and **Nix**
-(`bbenoist.Nix`) under `/extensions/terraform` and `/extensions/nix`.
+Extra language packs (same script + `product/extra-language-extensions.json`): HCL,
+Terraform, Nix, Kotlin, Scala, Elixir, Haskell, Solidity, Zig, Fortran, COBOL,
+Pascal/Delphi, ABAP, SystemVerilog, VHDL, Gleam, Crystal, Erlang, Assembly, MATLAB,
+Scheme, Prolog, GDScript, OCaml, SAS, Common Lisp — under `/extensions/<name>`.
+
+Built-in packs under `/vscode/extensions` already cover Python, TypeScript, JavaScript,
+Java, C#/C++/C, Go, Rust, PHP, SQL, Swift, Ruby, Dart, R, Shell, PowerShell, Objective-C,
+Lua, Perl, Clojure, Groovy, Julia, F#, VB, and more.
 
 ### Syntax highlighting (TextMate)
 

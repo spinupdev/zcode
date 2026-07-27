@@ -449,6 +449,7 @@ pnpm smoke            # lighter checks
 | 2026-07-27 | Syntax highlight root cause: stale `zcode web` without `dist/vscode-web` → `/vscode/extensions/*` 404; server logs grammar path; tryStatic path-resolve harden; product serves 85 builtins |
 | 2026-07-27 | **Monochrome editor**: owned web missing `node_modules/vscode-oniguruma` (TextMate WASM). Added `scripts/stage-vscode-web-node-modules.sh`; bootstrap uses Default Dark Modern |
 | 2026-07-27 | Terraform + Nix TextMate packs (`extensions/terraform`, `extensions/nix`); restore GitHub Theme + vscode-icons as product defaults on reload |
+| 2026-07-27 | Expanded Open VSX language packs (HCL, Kotlin, Scala, Elixir, Haskell, Solidity, Zig, Fortran, COBOL, …) via `product/extra-language-extensions.json` |
 | 2026-07-27 | **M0f**: default file icons `vscode-icons`; color theme GitHub Light/Dark Default via `window.autoDetectColorScheme`; `pnpm fetch:themes` stages Open VSX VSIX into `extensions/` |
 | 2026-07-27 | **B8c**: multi-project browser repos — first-run clone dialog, Browser Projects view, manage/switch/delete, unique workspace id per clone, last project restore via localStorage + OPFS/IDB, `navigator.storage.persist()` |
 | 2026-07-27 | **WB7**: browser integrated terminal via Pseudoterminal — WebContainer `jsh` + Pyodide REPL; terminal profiles; browser `terminal: true`; Open Browser Shell command |

@@ -51,10 +51,35 @@ patches/.pc/
 *.tgz
 release/
 
-# Marketplace VSIX cache + staged theme/icon extensions (scripts/fetch-theme-extensions.sh)
+# Marketplace VSIX cache + staged packs (scripts/fetch-theme-extensions.sh)
+# Themes/icons always fetched; language dests match product/extra-language-extensions.json
 .cache/
 extensions/vscode-icons/
 extensions/github-vscode-theme/
+extensions/hcl/
+extensions/kotlin/
+extensions/scala/
+extensions/elixir/
+extensions/haskell/
+extensions/solidity/
+extensions/zig/
+extensions/fortran/
+extensions/cobol/
+extensions/pascal/
+extensions/abap/
+extensions/verilog/
+extensions/vhdl/
+extensions/gleam/
+extensions/crystal/
+extensions/erlang/
+extensions/assembly/
+extensions/matlab/
+extensions/scheme/
+extensions/prolog/
+extensions/gdscript/
+extensions/ocaml/
+extensions/sas/
+extensions/lisp/
 
 # Playwright
 e2e/test-results/

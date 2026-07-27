@@ -57,3 +57,8 @@ export {
   LANGUAGE_AND_THEME_EXTENSION_IDS,
   languageExtensionPaths,
 } from './language-extensions.js';
+
+export {
+  EXTRA_LANGUAGE_EXTENSION_DESTS,
+  extraLanguageExtensionPaths,
+} from './extra-language-extensions.js';
