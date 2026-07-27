@@ -51,6 +51,11 @@ patches/.pc/
 *.tgz
 release/
 
+# Marketplace VSIX cache + staged theme/icon extensions (scripts/fetch-theme-extensions.sh)
+.cache/
+extensions/vscode-icons/
+extensions/github-vscode-theme/
+
 # Playwright
 e2e/test-results/
 e2e/playwright-report/

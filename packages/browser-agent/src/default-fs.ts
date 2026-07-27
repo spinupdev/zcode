@@ -31,11 +31,20 @@ export function createDefaultFs(): AgentFs {
   return new MemoryFs();
 }
 
-let asyncCache: Promise<DefaultFsInfo> | null = null;
+/**
+ * Cross-bundle shared cache.
+ *
+ * zcode-browser-fs and zcode-git each esbuild-bundle @zcode/browser-agent, so
+ * module-level `let` caches are *not* shared. Use literal globalThis keys only.
+ */
+type GlobalFsBag = typeof globalThis & {
+  __zcodeDefaultFsInfo__?: Promise<DefaultFsInfo>;
+};
 
 /**
  * Prefer OPFS (ZenFS WebAccess) → IndexedDB → Memory.
  * When OPFS wins and IDB has legacy workspaces, one-shot migrate.
+ * OPFS failures/timeouts fall through to IDB so clone never hangs forever.
  */
 export async function createDefaultFsAsync(): Promise<AgentFs> {
   const info = await createDefaultFsInfo();
@@ -43,20 +52,25 @@ export async function createDefaultFsAsync(): Promise<AgentFs> {
 }
 
 export async function createDefaultFsInfo(): Promise<DefaultFsInfo> {
-  if (asyncCache) return asyncCache;
+  const g = globalThis as GlobalFsBag;
+  if (g.__zcodeDefaultFsInfo__) return g.__zcodeDefaultFsInfo__;
 
-  asyncCache = (async (): Promise<DefaultFsInfo> => {
+  // Claim slot synchronously before any await
+  const created = (async (): Promise<DefaultFsInfo> => {
     if (isOpfsAvailable()) {
       try {
         const zen = await createZenFsOpfs();
-        // Bridge B7 IDB workspaces into OPFS once
         try {
           await migrateIdbToFs(zen);
         } catch {
           /* migration best-effort */
         }
         return { fs: zen, kind: 'opfs', zen };
-      } catch {
+      } catch (err) {
+        console.warn(
+          '[zcode] OPFS unavailable, falling back to IndexedDB:',
+          err instanceof Error ? err.message : err,
+        );
         /* fall through to IDB */
       }
     }
@@ -66,15 +80,17 @@ export async function createDefaultFsInfo(): Promise<DefaultFsInfo> {
     return { fs: new MemoryFs(), kind: 'memory' };
   })();
 
+  g.__zcodeDefaultFsInfo__ = created;
+
   try {
-    return await asyncCache;
+    return await created;
   } catch (e) {
-    asyncCache = null;
+    delete g.__zcodeDefaultFsInfo__;
     throw e;
   }
 }
 
 /** Test helper */
 export function _resetDefaultFsCacheForTests(): void {
-  asyncCache = null;
+  delete (globalThis as GlobalFsBag).__zcodeDefaultFsInfo__;
 }

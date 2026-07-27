@@ -1,0 +1,92 @@
+/**
+ * Built-in language / theme extension folder names under /vscode/extensions.
+ * Keep in sync with product/language-extensions.json.
+ *
+ * These ship TextMate grammars + language configs (javascript, python, go, …)
+ * and are registered as additionalBuiltinExtensions so highlighting works on web.
+ */
+export const LANGUAGE_AND_THEME_EXTENSION_IDS: readonly string[] = [
+  // Language basics (TextMate)
+  'bat',
+  'clojure',
+  'coffeescript',
+  'cpp',
+  'csharp',
+  'css',
+  'dart',
+  'diff',
+  'docker',
+  'dotenv',
+  'fsharp',
+  'go',
+  'groovy',
+  'handlebars',
+  'hlsl',
+  'html',
+  'ini',
+  'java',
+  'javascript',
+  'json',
+  'julia',
+  'latex',
+  'less',
+  'log',
+  'lua',
+  'make',
+  'markdown-basics',
+  'objective-c',
+  'perl',
+  'php',
+  'powershell',
+  'pug',
+  'python',
+  'r',
+  'razor',
+  'restructuredtext',
+  'ruby',
+  'rust',
+  'scss',
+  'shaderlab',
+  'shellscript',
+  'sql',
+  'swift',
+  'typescript-basics',
+  'vb',
+  'xml',
+  'yaml',
+  // Themes / icons (built-in)
+  'theme-defaults',
+  'theme-abyss',
+  'theme-kimbie-dark',
+  'theme-monokai',
+  'theme-monokai-dimmed',
+  'theme-quietlight',
+  'theme-red',
+  'theme-solarized-dark',
+  'theme-solarized-light',
+  'theme-tomorrow-night-blue',
+  'theme-seti',
+  // Web-capable language features + editor helpers
+  'git-base',
+  'emmet',
+  'css-language-features',
+  'html-language-features',
+  'json-language-features',
+  'markdown-language-features',
+  'markdown-math',
+  'typescript-language-features',
+  'media-preview',
+  'merge-conflict',
+  'search-result',
+  'references-view',
+  'simple-browser',
+  'ipynb',
+  'notebook-renderers',
+  'configuration-editing',
+  'extension-editing',
+];
+
+/** Absolute paths for additionalBuiltinExtensions (same-origin /vscode/extensions). */
+export function languageExtensionPaths(): string[] {
+  return LANGUAGE_AND_THEME_EXTENSION_IDS.map((id) => `/vscode/extensions/${id}`);
+}

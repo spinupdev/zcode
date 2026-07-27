@@ -45,8 +45,11 @@ pnpm --filter zcode-browser-fs build
 pnpm --filter zcode-git build
 pnpm --filter zcode-diagnostics build
 pnpm --filter @zcode/web build
+bash "${ROOT}/scripts/fetch-theme-extensions.sh"
 test -f apps/workbench/dist/index.html || die "missing workbench dist"
 test -f apps/web/dist/index.html || die "missing web dist"
+test -f extensions/vscode-icons/package.json || die "missing vscode-icons — fetch-theme-extensions failed"
+test -f extensions/github-vscode-theme/package.json || die "missing github-vscode-theme — fetch-theme-extensions failed"
 
 log "stage product IDE at / (workbench host)"
 cp apps/workbench/dist/index.html "${STAGE}/"
@@ -81,6 +84,26 @@ for name in zcode-browser-fs zcode-git zcode-diagnostics; do
     cp "${src}/dist/web/extension.js" "${dst}/dist/web/"
   else
     die "missing ${src}/dist/web/extension.js — build failed?"
+  fi
+done
+
+# Theme/icon marketplace extensions (full asset trees — icons + theme JSON)
+log "stage /extensions theme defaults (vscode-icons, github-vscode-theme)"
+for name in vscode-icons github-vscode-theme; do
+  src="${ROOT}/extensions/${name}"
+  dst="${STAGE}/extensions/${name}"
+  [[ -f "${src}/package.json" ]] || die "missing ${src}/package.json — run scripts/fetch-theme-extensions.sh"
+  mkdir -p "${dst}"
+  if command -v rsync >/dev/null; then
+    rsync -a --delete \
+      --exclude '.zcode-fetched-version' \
+      --exclude '.zcode-source.json' \
+      "${src}/" "${dst}/"
+  else
+    rm -rf "${dst}"
+    mkdir -p "${dst}"
+    cp -R "${src}/." "${dst}/"
+    rm -f "${dst}/.zcode-fetched-version" "${dst}/.zcode-source.json"
   fi
 done
 

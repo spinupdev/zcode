@@ -11,6 +11,7 @@ import type {
 } from '@zcode/protocol';
 import { capabilitiesForMode } from '@zcode/protocol';
 import { bootstrapFromInput } from './bootstrap.js';
+import { languageExtensionPaths } from './language-extensions.js';
 
 export interface ProductOverlay {
   nameShort?: string;
@@ -66,7 +67,8 @@ export interface BuildWorkbenchProductInput {
   vscodeCommit?: string;
 }
 
-const DEFAULT_BUILTIN_EXTENSIONS = [
+/** ZCode product extensions under /extensions/* */
+const ZCODE_PRODUCT_EXTENSIONS = [
   '/extensions/zcode-browser-fs',
   '/extensions/zcode-git',
   '/extensions/zcode-diagnostics',
@@ -76,7 +78,36 @@ const DEFAULT_BUILTIN_EXTENSIONS = [
   '/extensions/zcode-runtime-node',
   '/extensions/zcode-runtime-remote',
   '/extensions/zcode-remote',
+  // Marketplace defaults (scripts/fetch-theme-extensions.sh) — optional
+  '/extensions/vscode-icons',
+  '/extensions/github-vscode-theme',
 ];
+
+/**
+ * All additionalBuiltinExtensions: ZCode product + VS Code language/theme packs
+ * from /vscode/extensions (TextMate grammars for JS/TS/Python/Go/…).
+ */
+export const DEFAULT_BUILTIN_EXTENSIONS: string[] = [
+  ...ZCODE_PRODUCT_EXTENSIONS,
+  ...languageExtensionPaths(),
+];
+
+/**
+ * Color / icon theme defaults.
+ * Prefer built-in "Default Dark Modern" so syntax colors work without marketplace
+ * theme fetch; GitHub Theme / vscode-icons still apply when those extensions load.
+ */
+export const ZCODE_THEME_DEFAULTS = {
+  iconTheme: 'vs-seti',
+  colorThemeDark: 'Default Dark Modern',
+  colorThemeLight: 'Default Light Modern',
+  colorThemeHcDark: 'Default High Contrast',
+  colorThemeHcLight: 'Default High Contrast Light',
+  /** Optional upgrades when github-vscode-theme / vscode-icons are present */
+  preferredGithubDark: 'GitHub Dark Default',
+  preferredGithubLight: 'GitHub Light Default',
+  preferredIcons: 'vscode-icons',
+} as const;
 
 /**
  * Configuration defaults by mode (capability chrome).
@@ -90,10 +121,19 @@ export function configurationDefaultsForMode(
   const base: Record<string, unknown> = {
     'security.workspace.trust.enabled': false,
     'security.workspace.trust.startupPrompt': 'never',
-    'workbench.startupEditor': 'readme',
-    // Align with monaco-parts-splash skeleton (dark); avoid light flash on first paint
-    'workbench.colorTheme': 'Default Dark Modern',
-    'window.autoDetectColorScheme': false,
+    // Empty browser workspace — Welcome / Open Repository, not a fake README seed
+    'workbench.startupEditor': 'welcomePage',
+    // Built-in theme-defaults + seti (always available under /vscode/extensions)
+    'workbench.iconTheme': ZCODE_THEME_DEFAULTS.iconTheme,
+    'workbench.colorTheme': ZCODE_THEME_DEFAULTS.colorThemeDark,
+    'workbench.preferredDarkColorTheme': ZCODE_THEME_DEFAULTS.colorThemeDark,
+    'workbench.preferredLightColorTheme': ZCODE_THEME_DEFAULTS.colorThemeLight,
+    'workbench.preferredHighContrastColorTheme': ZCODE_THEME_DEFAULTS.colorThemeHcDark,
+    'workbench.preferredHighContrastLightColorTheme': ZCODE_THEME_DEFAULTS.colorThemeHcLight,
+    'window.autoDetectColorScheme': true,
+    // Quiet marketplace theme/icon extensions if installed later
+    'vsicons.dontShowNewVersionMessage': true,
+    'vsicons.dontShowConfigManuallyChangedMessage': true,
   };
 
   if (!caps.terminal || mode === 'browser') {
@@ -107,7 +147,11 @@ export function configurationDefaultsForMode(
   }
 
   if (mode === 'browser') {
-    base['files.exclude'] = { '**/.git': true, '**/.git/**': true };
+    base['files.exclude'] = {
+      '**/.git': true,
+      '**/.git/**': true,
+      '**/.zcode-workspace.json': true,
+    };
   }
 
   return base;
@@ -215,5 +259,3 @@ export function buildWorkbenchCreateOptions(
 export function workbenchProductScript(opts: WorkbenchCreateOptions): string {
   return `window.product = ${JSON.stringify(opts)};`;
 }
-
-export { DEFAULT_BUILTIN_EXTENSIONS };

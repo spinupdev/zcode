@@ -26,6 +26,8 @@ export interface WorkspaceInfo {
   uri: string;
   createdAt: string;
   approxBytes?: number;
+  /** Clone origin HTTPS URL when known (persisted in .zcode-workspace.json) */
+  origin?: string;
 }
 
 export interface CloneProgress {

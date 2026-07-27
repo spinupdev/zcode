@@ -43,9 +43,15 @@ export {
   workbenchProductScript,
   configurationDefaultsForMode,
   DEFAULT_BUILTIN_EXTENSIONS,
+  ZCODE_THEME_DEFAULTS,
 } from './workbench-product.js';
 export type {
   ProductOverlay,
   WorkbenchCreateOptions,
   BuildWorkbenchProductInput,
 } from './workbench-product.js';
+
+export {
+  LANGUAGE_AND_THEME_EXTENSION_IDS,
+  languageExtensionPaths,
+} from './language-extensions.js';

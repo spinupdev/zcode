@@ -16,6 +16,8 @@
     "onFileSystem:zcode-opfs",
     "onCommand:zcode.fs.openWorkspace",
     "onCommand:zcode.fs.revealWorkspace",
+    "onCommand:zcode.fs.ready",
+    "onCommand:zcode.fs.refreshExplorer",
     "onCommand:zcode.fs.seedSample",
     "onCommand:zcode.fs.openSpa"
   ],
@@ -28,6 +30,14 @@
       {
         "command": "zcode.fs.revealWorkspace",
         "title": "ZCode: Reveal Virtual Workspace"
+      },
+      {
+        "command": "zcode.fs.ready",
+        "title": "ZCode: Wait for Browser FS Ready"
+      },
+      {
+        "command": "zcode.fs.refreshExplorer",
+        "title": "ZCode: Refresh File Explorer"
       },
       {
         "command": "zcode.fs.seedSample",

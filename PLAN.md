@@ -6,7 +6,7 @@
 | **Repo** | [`github.com/spinupdev/zcode`](https://github.com/spinupdev/zcode) |
 | **Local path** | may still be checked out as `code-server` — product is **ZCode** |
 | **Document purpose** | Handoff for **any agent or engineer**: architecture, how systems connect, **done / in progress / remaining** |
-| **Last updated** | 2026-07-18 (plan file + WB0–2/RA1–2 runtime & remote extensions) |
+| **Last updated** | 2026-07-27 (B8c: multi-project browser workspaces + first-run clone) |
 | **Canonical design RFC** | [`docs/design-dual-mode-vscode-ide.md`](./docs/design-dual-mode-vscode-ide.md) |
 | **VS Code pin** | `1.129.0` → SHA `125df467…` ([`docs/vscode-pin.md`](./docs/vscode-pin.md)) |
 | **Status owner** | Update this file’s **Work tracker** whenever a work package finishes or starts |
@@ -226,7 +226,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | B1 | Shell bootstrap matrix / mode resolution | **done** | `@zcode/shell` |
 | B2 | Browser agent workspace + locks | **done** | Memory + **IndexedDB** |
 | B2b | ZenFS + OPFS backend (design primary) | **done** | OPFS primary via ZenFS WebAccess; IDB fallback + migrate; see `docs/b2b-opfs-zenfs.md` |
-| B3 | `zcode-browser-fs` FileSystemProvider | **done** | Seeds sample workspace for `/` |
+| B3 | `zcode-browser-fs` FileSystemProvider | **done** | Empty default; restore `localStorage` last workspace; no auto-seed |
 | B4 | isomorphic-git + git-proxy + SPA SCM UX | **done** | Clone/commit/push + PAT |
 | B4b | Same-origin `/git-proxy` mount | **done** | CLI web/serve + CF Worker |
 | B4c | Private HTTPS (PAT) + push | **done** | sessionStorage token |
@@ -235,6 +235,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | B7 | Bridge SPA IDB workspace ↔ workbench `zcode-opfs` | **done** | Same IDB `zcode-fs-v1`; `/?workspace=<id>`; Open in IDE |
 | B8 | Full SCM inside workbench (not only SPA) | **done** | `zcode-git` status/commit/push via IDB + isomorphic-git |
 | B8b | Welcome Open Repository → in-IDE HTTPS clone | **done** | `zcode.git.openRepository` + `remoteHub.openRepository` alias; notification progress; any public HTTPS host via `/git-proxy` `*`; Zeish favicon |
+| B8c | Multi-project browser workspaces + first-run clone | **done** | Unique workspace per clone; Browser Projects tree + manage QuickPick; last workspace restore (`localStorage` + `?workspace=`); `storage.persist`; startup clone prompt when empty |
 | B9 | SSH remotes / LFS / submodules | **deferred** | non-goals MVP |
 | B10 | Offline PWA | **deferred** | OQ7 |
 
@@ -261,6 +262,7 @@ Update the **Status** column and **Last note** when you finish a package. Prefer
 | M0c | Serve `/vscode` + `/extensions` | **done** | |
 | M0d | **Owned** OSS web build at pin 1.129 | **done** | `vscode-web-ci` esbuild → dist/vscode-web source=owned; dual bootstrap (ESM/AMD); CI heavy_build=web |
 | M0e | Bundle/verify zcode-* extensions in workbench | **done** | IDB-backed FS extension bundled into workbench host |
+| M0f | Default theme/icons (GitHub + vscode-icons) | **done** | `window.autoDetectColorScheme` + GitHub Light/Dark Default; `workbench.iconTheme=vscode-icons`; `pnpm fetch:themes` |
 | M1 | Dual-mode remoteAuthority connect end-to-end | **done** | shell product builder + capabilities; session gate; e2e dual-mode product |
 | M2 | Diagnostics extension, CSP, log redaction | **done** | zcode-diagnostics copyReport; CSP on HTML; redactSecrets tests |
 | M3 | Playwright e2e: routes + SPA clone + IDE product handoff | **done** | `e2e/` + CI job; Buffer polyfill for worker clone; remote terminal still R6 |
@@ -450,5 +452,11 @@ pnpm smoke            # lighter checks
 | 2026-07-18 | **WS3 + RA0**: disconnect pulls remote→OPFS; RA0 concluded no mid-session remoteAuthority; e2e workspace-sync on reh config |
 | 2026-07-18 | **RA3**: `/v1/exec` + zcode-runtime-remote. **RA5**: connect-flow e2e. **WB2+**: WebContainers node engine + worker fallback; optional `ZCODE_COI=1` |
 | 2026-07-18 | **WB2 multi-file**: OPFS→WebContainer mount + auto npm install + npm run commands; **CI** `reh-and-e2e` enables STRICT + `ZCODE_E2E_REH_PTY_REQUIRED=1` |
+| 2026-07-25 | **B8b fix**: clone dialog stuck + Explorer empty after clone — share OPFS/ZenFS via `globalThis` across extension bundles; `zcode.fs.ready` (no toast); revealWorkspace reload `?workspace=` fallback; return openRepository promise |
+| 2026-07-25 | **B8b fix**: SCM showed clone, Explorer empty — gate FileSystemProvider on FS ready; `notifyTree` + refresh after clone; clone into *open* workspace folder; never seed over `.git` |
+| 2026-07-25 | **B8b fix**: clone “gone” / hung after URL — OPFS init timeout→IDB; progress before agent; unstick openRepoBusy; literal globalThis FS keys (esbuild-safe) |
+| 2026-07-25 | Empty default workspace (no hello.* seed); TextMate language packs via `product/language-extensions.json` + additionalBuiltinExtensions; Default Dark Modern theme |
+| 2026-07-27 | **M0f**: default file icons `vscode-icons`; color theme GitHub Light/Dark Default via `window.autoDetectColorScheme`; `pnpm fetch:themes` stages Open VSX VSIX into `extensions/` |
+| 2026-07-27 | **B8c**: multi-project browser repos — first-run clone dialog, Browser Projects view, manage/switch/delete, unique workspace id per clone, last project restore via localStorage + OPFS/IDB, `navigator.storage.persist()` |
 
 **When you complete work:** set the package **Status** to `done`, add a one-line **Last note** (commit SHA or PR), and append a row to §10.

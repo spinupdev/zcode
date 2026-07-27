@@ -32,10 +32,18 @@ export async function gitClone(
   let rec = store.get(opts.workspaceId);
   if (!rec) {
     rec = store.create(nameFromUrl, opts.workspaceId);
-    await fs.mkdir(rec.rootKey);
   } else {
     store.rename(rec.id, nameFromUrl);
   }
+
+  // isomorphic-git requires an empty target dir. Re-cloning into the open Explorer
+  // folder (or re-cloning the same id) must wipe seed files / prior trees first.
+  try {
+    await fs.rm(rec.rootKey, { recursive: true });
+  } catch {
+    /* missing is fine */
+  }
+  await fs.mkdir(rec.rootKey);
 
   const iso = createIsoFs(fs, rec.rootKey);
   const proxy = opts.corsProxyUrl.replace(/\/$/, '');
@@ -101,8 +109,9 @@ export async function gitClone(
 
   emit({ phase: 'done', message: 'clone complete' });
 
-  // Persist meta so IDE / new tabs can hydrate the same IDB workspace
+  // Persist meta so IDE / new tabs can hydrate the same OPFS/IDB workspace
   try {
+    store.setOrigin(rec.id, opts.url);
     await fs.writeFile(
       `${rec.rootKey}/.zcode-workspace.json`,
       JSON.stringify({
@@ -125,6 +134,7 @@ export async function gitClone(
     uri: fresh.uri,
     createdAt: fresh.createdAt,
     approxBytes: fresh.approxBytes,
+    origin: fresh.origin,
   };
 }
 

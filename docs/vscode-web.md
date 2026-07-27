@@ -10,9 +10,26 @@ The lightweight SPA at `/debug/` is a DEV-only dogfood surface for browser git/O
 /                  → apps/workbench (loads VS Code Web — product IDE)
 /debug/            → apps/web (SPA: clone/edit/search — DEV only)
 /vscode/*          → dist/vscode-web (static Code-OSS web compile)
-/extensions/*      → extensions/zcode-*
+/extensions/*      → extensions/zcode-* + marketplace themes (vscode-icons, github-vscode-theme)
 /git-proxy/*       → stateless CORS bridge
 /product.json      → dual-mode create() options (browser | remote)
+```
+
+## Default theme & icons
+
+Workbench product defaults (see `@zcode/shell` `configurationDefaultsForMode`):
+
+| Setting | Default |
+| --- | --- |
+| `workbench.iconTheme` | `vscode-icons` ([vscode-icons](https://marketplace.visualstudio.com/items?itemName=vscode-icons-team.vscode-icons)) |
+| `workbench.preferredDarkColorTheme` | `GitHub Dark Default` |
+| `workbench.preferredLightColorTheme` | `GitHub Light Default` |
+| `window.autoDetectColorScheme` | `true` (follows browser/OS light·dark) |
+
+Stage the marketplace extensions once:
+
+```bash
+pnpm fetch:themes   # scripts/fetch-theme-extensions.sh → extensions/vscode-icons + github-vscode-theme
 ```
 
 Dual mode (workbench):
@@ -93,17 +110,26 @@ Covers same-origin routes, SPA clone (Hello-World), and `/product.json?workspace
 
 ## Virtual workspace (browser mode)
 
-`zcode-browser-fs` registers the `zcode-opfs` scheme and seeds `/workspace/default` with sample files.
+`zcode-browser-fs` registers the `zcode-opfs` scheme. Startup opens **empty**
+`/workspace/default` (no hello.js / seed samples). Optional samples:
+**ZCode: Seed Sample Files** in the command palette.
 
-`/product.json` points `folderUri` at that folder and loads the extension via:
+`/product.json` points `folderUri` at that folder and loads:
 
 ```json
 "additionalBuiltinExtensions": [
-  { "scheme": "http", "authority": "<host>", "path": "/extensions/zcode-browser-fs" }
+  { "scheme": "http", "authority": "<host>", "path": "/extensions/zcode-browser-fs" },
+  { "scheme": "http", "authority": "<host>", "path": "/vscode/extensions/javascript" },
+  { "scheme": "http", "authority": "<host>", "path": "/vscode/extensions/python" }
 ]
 ```
 
-Bootstrap injects `location.host` so extension URIs are absolute same-origin.
+Language/theme packs (TextMate grammars for 40+ languages) are listed in
+[`product/language-extensions.json`](../product/language-extensions.json) and served from
+`/vscode/extensions/*`. Bootstrap injects `location.host` so extension URIs are absolute same-origin.
+
+Default theme: **Default Dark Modern** + **vs-seti** icons (built-in `theme-defaults` /
+`theme-seti`). Optional marketplace: `scripts/fetch-theme-extensions.sh`.
 
 ## Status
 
@@ -113,7 +139,8 @@ Bootstrap injects `location.host` so extension URIs are absolute same-origin.
 | ZCode product.json | ✅ |
 | Dual-mode product payload | ✅ |
 | Built-in extensions served | ✅ `/vscode/extensions/*` (owned web) + `/extensions/zcode-*` (product) |
-| `zcode-opfs` FileSystemProvider | ✅ seeded sample workspace |
+| `zcode-opfs` FileSystemProvider | ✅ empty default workspace; optional seed command |
+| TextMate language packs (40+) | ✅ `/vscode/extensions` + additionalBuiltinExtensions |
 | Owned 1.129 web compile in CI | ⏳ scripts ready (`build-web.sh --package`); dogfood until staged |
 | Browser SCM (`zcode-git`) | ✅ status / commit / push over IDB |
 | REH cookie proxy (R3b) | ✅ when `dist/server` artifact + `zcode serve` |

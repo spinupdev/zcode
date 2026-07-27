@@ -1,8 +1,8 @@
 {
   "name": "zcode-git",
   "displayName": "ZCode Git (Browser)",
-  "description": "SCM + open/clone any HTTPS git repo via isomorphic-git and /git-proxy (browser mode)",
-  "version": "0.3.0",
+  "description": "SCM + multi-project HTTPS clone via isomorphic-git and /git-proxy (browser mode, OPFS/IDB persistent)",
+  "version": "0.4.0",
   "publisher": "spinupdev",
   "private": true,
   "engines": {
@@ -13,8 +13,13 @@
   "browser": "./dist/web/extension.js",
   "activationEvents": [
     "onStartupFinished",
+    "onView:zcode.projects",
     "onCommand:zcode.git.clone",
     "onCommand:zcode.git.openRepository",
+    "onCommand:zcode.git.manageProjects",
+    "onCommand:zcode.git.openProject",
+    "onCommand:zcode.git.deleteProject",
+    "onCommand:zcode.git.refreshProjects",
     "onCommand:zcode.git.commit",
     "onCommand:zcode.git.push",
     "onCommand:zcode.git.refresh",
@@ -38,6 +43,26 @@
         "icon": "$(repo-clone)"
       },
       {
+        "command": "zcode.git.manageProjects",
+        "title": "ZCode: Manage Browser Projects…",
+        "icon": "$(folder-library)"
+      },
+      {
+        "command": "zcode.git.openProject",
+        "title": "ZCode: Open Browser Project",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "zcode.git.deleteProject",
+        "title": "ZCode: Delete Browser Project",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "zcode.git.refreshProjects",
+        "title": "ZCode: Refresh Browser Projects",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "zcode.git.commit",
         "title": "ZCode: Commit",
         "icon": "$(check)"
@@ -53,6 +78,15 @@
         "icon": "$(refresh)"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "zcode.projects",
+          "name": "Browser Projects",
+          "visibility": "visible"
+        }
+      ]
+    },
     "menus": {
       "scm/title": [
         {
@@ -69,6 +103,40 @@
           "command": "zcode.git.openRepository",
           "group": "navigation",
           "when": "scmProvider == zcode-git"
+        },
+        {
+          "command": "zcode.git.manageProjects",
+          "group": "navigation",
+          "when": "scmProvider == zcode-git"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "zcode.git.openRepository",
+          "when": "view == zcode.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "zcode.git.refreshProjects",
+          "when": "view == zcode.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "zcode.git.manageProjects",
+          "when": "view == zcode.projects",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "zcode.git.openProject",
+          "when": "view == zcode.projects",
+          "group": "inline"
+        },
+        {
+          "command": "zcode.git.deleteProject",
+          "when": "view == zcode.projects && viewItem == zcodeProject",
+          "group": "1_mod"
         }
       ],
       "commandPalette": [
@@ -77,6 +145,15 @@
         },
         {
           "command": "zcode.git.clone"
+        },
+        {
+          "command": "zcode.git.manageProjects"
+        },
+        {
+          "command": "zcode.git.openProject"
+        },
+        {
+          "command": "zcode.git.deleteProject"
         },
         {
           "command": "remoteHub.openRepository"

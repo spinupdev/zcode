@@ -30,7 +30,7 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.equal(o.connectionReady, true);
   });
 
-  it('embeds default builtin extension paths including diagnostics', () => {
+  it('embeds default builtin extension paths including diagnostics + language packs', () => {
     const o = buildWorkbenchCreateOptions({ mode: 'browser' });
     const paths = o.additionalBuiltinExtensions?.map((e) => e.path) ?? [];
     assert.ok(paths.includes('/extensions/zcode-browser-fs'));
@@ -41,6 +41,16 @@ describe('buildWorkbenchCreateOptions', () => {
     assert.ok(paths.includes('/extensions/zcode-runtime-node'));
     assert.ok(paths.includes('/extensions/zcode-runtime-remote'));
     assert.ok(paths.includes('/extensions/zcode-remote'));
+    assert.ok(paths.includes('/extensions/vscode-icons'));
+    assert.ok(paths.includes('/extensions/github-vscode-theme'));
+    // TextMate language packs (syntax highlighting)
+    assert.ok(paths.includes('/vscode/extensions/javascript'));
+    assert.ok(paths.includes('/vscode/extensions/typescript-basics'));
+    assert.ok(paths.includes('/vscode/extensions/python'));
+    assert.ok(paths.includes('/vscode/extensions/go'));
+    assert.ok(paths.includes('/vscode/extensions/rust'));
+    assert.ok(paths.includes('/vscode/extensions/theme-defaults'));
+    assert.ok(paths.length >= 40, `expected 40+ builtins, got ${paths.length}`);
   });
 
   it('embeds custom builtin extension paths with origin', () => {
@@ -56,10 +66,16 @@ describe('buildWorkbenchCreateOptions', () => {
     const browser = configurationDefaultsForMode('browser', browserCapabilities());
     assert.equal(browser['terminal.integrated.enablePersistentSessions'], false);
     assert.equal(browser['workbench.colorTheme'], 'Default Dark Modern');
+    assert.equal(browser['workbench.preferredLightColorTheme'], 'Default Light Modern');
+    assert.equal(browser['workbench.preferredDarkColorTheme'], 'Default Dark Modern');
+    assert.equal(browser['workbench.iconTheme'], 'vs-seti');
+    assert.equal(browser['window.autoDetectColorScheme'], true);
     const remote = configurationDefaultsForMode('remote', remoteCapabilities());
     assert.equal(remote['terminal.integrated.enablePersistentSessions'], true);
     assert.equal(remote['remote.autoForwardPorts'], true);
     assert.equal(remote['workbench.colorTheme'], 'Default Dark Modern');
+    assert.equal(remote['workbench.iconTheme'], 'vs-seti');
+    assert.equal(remote['window.autoDetectColorScheme'], true);
   });
 
   it('serializes window.product script', () => {

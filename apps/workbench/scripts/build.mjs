@@ -2,7 +2,7 @@
  * Build ZCode workbench loader (VS Code Web host page + product.json).
  * Static assets for VS Code itself live in dist/vscode-web (fetch-vscode-web.sh).
  */
-import { mkdirSync, writeFileSync, readFileSync, cpSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, cpSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,17 +22,60 @@ if (existsSync(brandIconSrc)) {
   cpSync(brandIconSrc, join(dist, 'icon.svg'));
 }
 
+/** Built-in theme-defaults (always present under /vscode/extensions). */
+const themeConfigurationDefaults = {
+  'workbench.iconTheme': 'vs-seti',
+  'workbench.colorTheme': 'Default Dark Modern',
+  'workbench.preferredDarkColorTheme': 'Default Dark Modern',
+  'workbench.preferredLightColorTheme': 'Default Light Modern',
+  'workbench.preferredHighContrastColorTheme': 'Default High Contrast',
+  'workbench.preferredHighContrastLightColorTheme': 'Default High Contrast Light',
+  'window.autoDetectColorScheme': true,
+  'vsicons.dontShowNewVersionMessage': true,
+  'vsicons.dontShowConfigManuallyChangedMessage': true,
+};
+
+// TextMate language packs + themes from product/language-extensions.json
+let languageExtensionIds = [];
+try {
+  const langManifest = JSON.parse(
+    readFileSync(join(monorepo, 'product/language-extensions.json'), 'utf8'),
+  );
+  languageExtensionIds = Array.isArray(langManifest.extensions) ? langManifest.extensions : [];
+} catch {
+  console.warn('apps/workbench: product/language-extensions.json missing — syntax packs not listed');
+}
+
+const zcodeProductExtensions = [
+  { path: '/extensions/zcode-browser-fs' },
+  { path: '/extensions/zcode-git' },
+  { path: '/extensions/zcode-diagnostics' },
+  { path: '/extensions/zcode-runtime-core' },
+  { path: '/extensions/zcode-runtime-python' },
+  { path: '/extensions/zcode-runtime-node' },
+  { path: '/extensions/zcode-runtime-remote' },
+  { path: '/extensions/zcode-remote' },
+  { path: '/extensions/vscode-icons' },
+  { path: '/extensions/github-vscode-theme' },
+];
+
+const languageBuiltinExtensions = languageExtensionIds.map((id) => ({
+  path: `/vscode/extensions/${id}`,
+}));
+
 const defaultProduct = {
   productConfiguration: {
     ...productOverlay,
-    // Helpful web defaults — dark theme matches monaco-parts-splash skeleton
     configurationDefaults: {
       'security.workspace.trust.enabled': false,
       'security.workspace.trust.startupPrompt': 'never',
-      'workbench.startupEditor': 'readme',
-      'workbench.colorTheme': 'Default Dark Modern',
-      'window.autoDetectColorScheme': false,
-      'files.exclude': { '**/.git': true, '**/.git/**': true },
+      'workbench.startupEditor': 'welcomePage',
+      ...themeConfigurationDefaults,
+      'files.exclude': {
+        '**/.git': true,
+        '**/.git/**': true,
+        '**/.zcode-workspace.json': true,
+      },
     },
   },
   zcodeMode: 'browser',
@@ -49,16 +92,7 @@ const defaultProduct = {
     path: '/workspace/default',
   },
   // Paths only — bootstrap.js injects scheme + authority from location
-  additionalBuiltinExtensions: [
-    { path: '/extensions/zcode-browser-fs' },
-    { path: '/extensions/zcode-git' },
-    { path: '/extensions/zcode-diagnostics' },
-    { path: '/extensions/zcode-runtime-core' },
-    { path: '/extensions/zcode-runtime-python' },
-    { path: '/extensions/zcode-runtime-node' },
-    { path: '/extensions/zcode-runtime-remote' },
-    { path: '/extensions/zcode-remote' },
-  ],
+  additionalBuiltinExtensions: [...zcodeProductExtensions, ...languageBuiltinExtensions],
   homeIndicator: {
     href: '/',
     icon: 'code',
@@ -68,18 +102,21 @@ const defaultProduct = {
     label: '$(folder) ZCode browser',
     tooltip: 'Browser mode — virtual FS (zcode-opfs)',
   },
-  // Paint dark chrome before theme extension finishes loading (matches splash)
+  // Bootstrap overwrites themeType from prefers-color-scheme before create()
   initialColorTheme: {
     themeType: 'dark',
   },
   // Top-level create() defaults (VS Code Web reads these in addition to productConfiguration)
   configurationDefaults: {
-    'workbench.colorTheme': 'Default Dark Modern',
-    'window.autoDetectColorScheme': false,
+    ...themeConfigurationDefaults,
   },
   // Workspace is trusted so FS provider can write without prompts
   workspaceProvider: undefined, // filled by workbench.js from folderUri
 };
+
+console.log(
+  `apps/workbench: ${languageBuiltinExtensions.length} language/theme packs + ${zcodeProductExtensions.length} product extensions`,
+);
 
 writeFileSync(join(dist, 'product.json'), JSON.stringify(defaultProduct, null, 2));
 
@@ -96,32 +133,33 @@ const indexHtml = `<!DOCTYPE html>
   <!-- Stylesheet href is finalized by bootstrap.js (dogfood AMD vs owned esbuild). -->
   <link id="zcode-workbench-css" data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="/vscode/out/vs/workbench/workbench.web.main.css" />
   <style class="initialShellColors">
+    /* Splash colors approximate GitHub Dark/Light Default until the theme extension loads */
     html, body {
       width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
-      background-color: #1e1e1e; color: #cccccc;
+      background-color: #0d1117; color: #e6edf3;
     }
     /* VS Code parts splash (vendor/vscode .../workbench/workbench.ts #monaco-parts-splash) */
     #monaco-parts-splash {
       position: fixed; inset: 0; z-index: 100;
-      background-color: #1e1e1e; color: #cccccc;
+      background-color: #0d1117; color: #e6edf3;
       pointer-events: none; user-select: none;
     }
     #monaco-parts-splash.hidden { display: none !important; }
     #monaco-parts-splash .part { position: absolute; box-sizing: border-box; }
     #monaco-parts-splash .titlebar {
       top: 0; left: 0; right: 0; height: 35px;
-      background: #3c3c3c;
-      border-bottom: 1px solid #2b2b2b;
+      background: #0d1117;
+      border-bottom: 1px solid #30363d;
     }
     #monaco-parts-splash .activitybar {
       top: 35px; left: 0; bottom: 22px; width: 48px;
-      background: #333333;
-      border-right: 1px solid #2b2b2b;
+      background: #0d1117;
+      border-right: 1px solid #30363d;
     }
     #monaco-parts-splash .sidebar {
       top: 35px; left: 48px; bottom: 22px; width: min(300px, 28vw);
-      background: #252526;
-      border-right: 1px solid #2b2b2b;
+      background: #010409;
+      border-right: 1px solid #30363d;
     }
     #monaco-parts-splash .sidebar-lines {
       position: absolute; top: 48px; left: 16px; right: 16px;
@@ -129,7 +167,7 @@ const indexHtml = `<!DOCTYPE html>
     }
     #monaco-parts-splash .sidebar-lines i {
       display: block; height: 8px; border-radius: 4px;
-      background: rgba(255,255,255,0.08);
+      background: rgba(230,237,243,0.08);
     }
     #monaco-parts-splash .sidebar-lines i:nth-child(1) { width: 55%; }
     #monaco-parts-splash .sidebar-lines i:nth-child(2) { width: 78%; }
@@ -138,21 +176,58 @@ const indexHtml = `<!DOCTYPE html>
     #monaco-parts-splash .sidebar-lines i:nth-child(5) { width: 50%; }
     #monaco-parts-splash .editor {
       top: 35px; left: calc(48px + min(300px, 28vw)); right: 0; bottom: 22px;
-      background: #1e1e1e;
+      background: #0d1117;
     }
     #monaco-parts-splash .tabs {
       position: absolute; top: 0; left: 0; right: 0; height: 35px;
-      background: #252526;
-      border-bottom: 1px solid #2b2b2b;
+      background: #010409;
+      border-bottom: 1px solid #30363d;
     }
     #monaco-parts-splash .tab {
       position: absolute; top: 0; left: 0; width: 120px; height: 35px;
-      background: #1e1e1e;
-      border-right: 1px solid #2b2b2b;
+      background: #0d1117;
+      border-right: 1px solid #30363d;
     }
     #monaco-parts-splash .statusbar {
       left: 0; right: 0; bottom: 0; height: 22px;
-      background: #007acc;
+      background: #0d1117;
+      border-top: 1px solid #30363d;
+    }
+    @media (prefers-color-scheme: light) {
+      html, body {
+        background-color: #ffffff; color: #1f2328;
+      }
+      #monaco-parts-splash {
+        background-color: #ffffff; color: #1f2328;
+      }
+      #monaco-parts-splash .titlebar {
+        background: #ffffff;
+        border-bottom-color: #d0d7de;
+      }
+      #monaco-parts-splash .activitybar {
+        background: #ffffff;
+        border-right-color: #d0d7de;
+      }
+      #monaco-parts-splash .sidebar {
+        background: #f6f8fa;
+        border-right-color: #d0d7de;
+      }
+      #monaco-parts-splash .sidebar-lines i {
+        background: rgba(31,35,40,0.08);
+      }
+      #monaco-parts-splash .editor { background: #ffffff; }
+      #monaco-parts-splash .tabs {
+        background: #f6f8fa;
+        border-bottom-color: #d0d7de;
+      }
+      #monaco-parts-splash .tab {
+        background: #ffffff;
+        border-right-color: #d0d7de;
+      }
+      #monaco-parts-splash .statusbar {
+        background: #ffffff;
+        border-top-color: #d0d7de;
+      }
     }
   </style>
   <!-- Permanent: never removed by hideSplash (avoids error toast leaking into IDE) -->
@@ -359,7 +434,22 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
       }
     }
     if (mode !== 'remote' && window.product) {
-      const ws = params.get('workspace') || 'default';
+      // Prefer URL ?workspace= · else last project (localStorage) · else default
+      let lastWs = '';
+      try {
+        lastWs = (localStorage.getItem('zcode.lastWorkspaceId') || '').trim();
+      } catch (_) { /* private mode */ }
+      const ws = params.get('workspace') || lastWs || 'default';
+      // Keep last-opened id sticky so Cmd-Shift-T / reopen restores the same project
+      try {
+        if (ws && ws !== 'default') localStorage.setItem('zcode.lastWorkspaceId', ws);
+      } catch (_) { /* ignore */ }
+      // Ask browser not to evict OPFS/IDB under storage pressure
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          navigator.storage.persist().catch(function () {});
+        }
+      } catch (_) { /* ignore */ }
       window.product = {
         ...window.product,
         zcodeMode: 'browser',
@@ -370,28 +460,45 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
         },
         windowIndicator: {
           label: '$(folder) ' + String(ws).slice(0, 12),
-          tooltip: 'zcode-opfs workspace ' + ws + ' (shared IDB with SPA; no PTY)',
+          tooltip: 'zcode-opfs workspace ' + ws + ' (OPFS/IDB; multi-project via Browser Projects)',
         },
       };
     }
   } catch (_) { /* ignore */ }
 
   window.product = withHostAuthority(window.product || {});
-  // Ensure dark shell: VS Code Web honors top-level configurationDefaults on create()
-  // as well as productConfiguration.configurationDefaults.
-  window.product.initialColorTheme = { themeType: 'dark' };
-  const darkDefaults = {
-    'workbench.colorTheme': 'Default Dark Modern',
-    'window.autoDetectColorScheme': false,
+  // Match OS/browser light·dark before create() (GitHub Theme prefers + autoDetect).
+  const prefersDark =
+    typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+  const prefersLight =
+    typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches;
+  // Prefer explicit light; otherwise dark (including no-preference).
+  const themeType = prefersLight && !prefersDark ? 'light' : 'dark';
+  window.product.initialColorTheme = { themeType };
+  if (splash) {
+    splash.classList.toggle('vs', themeType === 'light');
+    splash.classList.toggle('vs-dark', themeType === 'dark');
+  }
+  // Ensure theme defaults survive if product.json is a partial overlay
+  const themeDefaults = {
+    'workbench.iconTheme': 'vscode-icons',
+    'workbench.colorTheme': themeType === 'light' ? 'GitHub Light Default' : 'GitHub Dark Default',
+    'workbench.preferredDarkColorTheme': 'GitHub Dark Default',
+    'workbench.preferredLightColorTheme': 'GitHub Light Default',
+    'workbench.preferredHighContrastColorTheme': 'GitHub Dark High Contrast',
+    'workbench.preferredHighContrastLightColorTheme': 'GitHub Light High Contrast',
+    'window.autoDetectColorScheme': true,
+    'vsicons.dontShowNewVersionMessage': true,
+    'vsicons.dontShowConfigManuallyChangedMessage': true,
   };
   window.product.configurationDefaults = {
+    ...themeDefaults,
     ...(window.product.configurationDefaults || {}),
-    ...darkDefaults,
   };
   if (window.product.productConfiguration) {
     window.product.productConfiguration.configurationDefaults = {
+      ...themeDefaults,
       ...(window.product.productConfiguration.configurationDefaults || {}),
-      ...darkDefaults,
     };
   }
 
@@ -570,10 +677,11 @@ const bootstrap = `/* ZCode workbench bootstrap — load VS Code Web + inject ex
 
 writeFileSync(join(dist, 'bootstrap.js'), bootstrap);
 
-// Copy extension packages (must include package.json + dist/web/extension.js)
+// Copy extension packages into workbench dist (optional offline host).
+// Product server usually serves monorepo /extensions/* directly.
 const extRoot = join(monorepo, 'extensions');
 const extOut = join(dist, 'extensions');
-for (const name of [
+const productExts = [
   'zcode-browser-fs',
   'zcode-git',
   'zcode-diagnostics',
@@ -582,11 +690,37 @@ for (const name of [
   'zcode-runtime-node',
   'zcode-runtime-remote',
   'zcode-remote',
-]) {
+];
+// Theme/icon contributions need full trees (icons/*.svg, themes/*.json).
+const themeExts = ['vscode-icons', 'github-vscode-theme'];
+
+for (const name of productExts) {
   const src = join(extRoot, name);
-  if (existsSync(src)) {
-    cpSync(src, join(extOut, name), { recursive: true });
+  const dest = join(extOut, name);
+  if (!existsSync(join(src, 'package.json'))) continue;
+  // Selective: package.json + dist only (skip node_modules)
+  mkdirSync(join(dest, 'dist/web'), { recursive: true });
+  cpSync(join(src, 'package.json'), join(dest, 'package.json'));
+  const extJs = join(src, 'dist/web/extension.js');
+  if (existsSync(extJs)) {
+    cpSync(extJs, join(dest, 'dist/web/extension.js'));
   }
+}
+
+for (const name of themeExts) {
+  const src = join(extRoot, name);
+  const dest = join(extOut, name);
+  if (!existsSync(join(src, 'package.json'))) {
+    console.warn(
+      `apps/workbench: missing ${name} — run pnpm fetch:themes for default icons/theme`,
+    );
+    continue;
+  }
+  // Force-replace so re-runs do not hit EEXIST on nested dirs
+  if (existsSync(dest)) {
+    rmSync(dest, { recursive: true, force: true });
+  }
+  cpSync(src, dest, { recursive: true });
 }
 
 console.log('apps/workbench: wrote dist/ (index, bootstrap, product, extensions)');

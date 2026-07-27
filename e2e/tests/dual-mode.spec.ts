@@ -26,12 +26,26 @@ test.describe('dual-mode product (M1)', () => {
     expect(paths).toContain('/extensions/zcode-runtime-node');
     expect(paths).toContain('/extensions/zcode-runtime-remote');
     expect(paths).toContain('/extensions/zcode-remote');
+    expect(paths).toContain('/extensions/vscode-icons');
+    expect(paths).toContain('/extensions/github-vscode-theme');
     expect(body.zcodeCapabilities?.executionBackends).toEqual(
       expect.arrayContaining(['browser-python', 'browser-node']),
     );
     expect(body.productConfiguration?.configurationDefaults?.[
       'terminal.integrated.enablePersistentSessions'
     ]).toBe(false);
+    expect(body.productConfiguration?.configurationDefaults?.[
+      'workbench.iconTheme'
+    ]).toBe('vscode-icons');
+    expect(body.productConfiguration?.configurationDefaults?.[
+      'workbench.preferredDarkColorTheme'
+    ]).toBe('GitHub Dark Default');
+    expect(body.productConfiguration?.configurationDefaults?.[
+      'workbench.preferredLightColorTheme'
+    ]).toBe('GitHub Light Default');
+    expect(body.productConfiguration?.configurationDefaults?.[
+      'window.autoDetectColorScheme'
+    ]).toBe(true);
   });
 
   test('remote product sets remoteAuthority and enables terminal', async ({ request }) => {

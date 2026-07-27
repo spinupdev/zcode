@@ -52,6 +52,12 @@ export class WorkspaceStore {
     if (rec) rec.name = name;
   }
 
+  /** Upsert clone origin URL (used after clone / hydrate). */
+  setOrigin(id: string, origin: string | undefined): void {
+    const rec = this.byId.get(id);
+    if (rec) rec.origin = origin;
+  }
+
   delete(id: string): void {
     if (!this.byId.has(id)) {
       throw Object.assign(new Error(`workspace not found: ${id}`), { code: 'NOT_FOUND' });
@@ -75,5 +81,6 @@ function toInfo(r: WorkspaceRecord): WorkspaceInfo {
     uri: r.uri,
     createdAt: r.createdAt,
     approxBytes: r.approxBytes,
+    origin: r.origin,
   };
 }

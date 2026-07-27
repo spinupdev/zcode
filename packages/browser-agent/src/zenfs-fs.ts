@@ -165,8 +165,18 @@ export class ZenFsAgentFs implements AgentFs {
   }
 }
 
-let opfsSingleton: ZenFsAgentFs | null = null;
-let opfsInit: Promise<ZenFsAgentFs> | null = null;
+/**
+ * Hardcoded realm keys as *string literals* in every access (not const bindings).
+ * esbuild ESM lazy-init can leave `const KEY = '…'` undefined if a hoisted
+ * function runs before the init chunk — which produced globalThis["undefined"].
+ */
+type GlobalOpfsBag = typeof globalThis & {
+  __zcodeZenFsOpfs__?: ZenFsAgentFs;
+  __zcodeZenFsOpfsInit__?: Promise<ZenFsAgentFs>;
+};
+
+/** OPFS configure can hang under dual-open / worker races — never block clone forever. */
+const OPFS_INIT_TIMEOUT_MS = 8_000;
 
 export function isOpfsAvailable(): boolean {
   return (
@@ -175,15 +185,33 @@ export function isOpfsAvailable(): boolean {
   );
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 /**
  * Configure ZenFS on Origin Private File System under `zcode-workspaces/`.
- * Singleton per JS realm (window / extension host).
+ * Singleton per JS realm (window / extension host), including across bundles.
  */
 export async function createZenFsOpfs(): Promise<ZenFsAgentFs> {
-  if (opfsSingleton) return opfsSingleton;
-  if (opfsInit) return opfsInit;
+  const g = globalThis as GlobalOpfsBag;
+  if (g.__zcodeZenFsOpfs__) return g.__zcodeZenFsOpfs__;
+  if (g.__zcodeZenFsOpfsInit__) return g.__zcodeZenFsOpfsInit__;
 
-  opfsInit = (async () => {
+  // Claim the global init slot *synchronously* before any await (cross-bundle race).
+  const init = (async (): Promise<ZenFsAgentFs> => {
     if (!isOpfsAvailable()) {
       throw new Error('OPFS not available in this environment');
     }
@@ -194,39 +222,34 @@ export async function createZenFsOpfs(): Promise<ZenFsAgentFs> {
     const ready = configureSingle({
       backend: WebAccess,
       handle,
-      // Avoid metadata file races with multi-tab SPA + workbench
       disableHandleCache: false,
     } as Parameters<typeof configureSingle>[0]);
     const agent = new ZenFsAgentFs(ready, 'opfs');
     await ready;
-    // Best-effort persistence (quota UX)
     try {
       await navigator.storage.persist?.();
     } catch {
       /* ignore */
     }
-    opfsSingleton = agent;
+    g.__zcodeZenFsOpfs__ = agent;
     return agent;
   })();
 
+  g.__zcodeZenFsOpfsInit__ = init;
+
   try {
-    return await opfsInit;
+    return await withTimeout(init, OPFS_INIT_TIMEOUT_MS, 'OPFS/ZenFS init');
   } catch (e) {
-    opfsInit = null;
+    delete g.__zcodeZenFsOpfsInit__;
+    // Leave a failed init out of the singleton so IDB fallback can win
     throw e;
   }
 }
 
-/** In-memory ZenFS for unit tests (isolated configure). */
+/** In-memory ZenFS for unit tests (no OPFS). */
 export async function createZenFsMemory(): Promise<ZenFsAgentFs> {
   const ready = configureSingle({ backend: InMemory });
   const agent = new ZenFsAgentFs(ready, 'memory');
   await ready;
   return agent;
-}
-
-/** Test helper: reset OPFS singleton (not for production). */
-export function _resetOpfsSingletonForTests(): void {
-  opfsSingleton = null;
-  opfsInit = null;
 }

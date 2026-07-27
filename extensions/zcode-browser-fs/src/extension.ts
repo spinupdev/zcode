@@ -25,24 +25,92 @@ function folderUriFor(workspaceId: string): vscode.Uri {
   return vscode.Uri.from({ scheme: SCHEME, path: `/workspace/${workspaceId}` });
 }
 
+/** Navigate so product.json re-opens folderUri for this workspace id (web fallback). */
+function reloadWithWorkspace(workspaceId: string): void {
+  try {
+    const loc = globalThis.location;
+    if (!loc?.href) return;
+    const u = new URL(loc.href);
+    u.searchParams.set('workspace', workspaceId);
+    loc.assign(u.toString());
+  } catch (err) {
+    console.warn('[zcode-browser-fs] reloadWithWorkspace failed', err);
+  }
+}
+
+async function refreshExplorer(): Promise<void> {
+  for (const cmd of [
+    'workbench.files.action.refreshFilesExplorer',
+    'workbench.view.explorer',
+  ]) {
+    try {
+      await vscode.commands.executeCommand(cmd);
+    } catch {
+      /* command may not exist on all builds */
+    }
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   // Start on shared IDB; upgrade to OPFS (same createDefaultFsInfo cache as zcode-git).
   const holder: { provider: IdbFileSystemProvider } = {
     provider: new IdbFileSystemProvider(new IdbFs(), storageLabel('idb')),
   };
 
+  let fsReadyResolve!: () => void;
+  const fsReady = new Promise<void>((r) => {
+    fsReadyResolve = r;
+  });
+  let fsReadyDone = false;
+
+  const ensureFs = async (): Promise<void> => {
+    if (fsReadyDone) return;
+    // Never hang Explorer forever if OPFS init stalls
+    await Promise.race([
+      fsReady,
+      new Promise<void>((r) => setTimeout(r, 10_000)),
+    ]);
+    fsReadyDone = true;
+  };
+
+  /**
+   * Gate every provider op on shared FS upgrade. Without this, Explorer can
+   * list the temporary empty IdbFs before OPFS is swapped in, then never
+   * re-query — SCM (git agent) sees the clone, Explorer stays empty.
+   */
   const facade: vscode.FileSystemProvider = {
     get onDidChangeFile() {
       return holder.provider.onDidChangeFile;
     },
     watch: (uri, opts) => holder.provider.watch(uri, opts),
-    stat: (uri) => holder.provider.stat(uri),
-    readDirectory: (uri) => holder.provider.readDirectory(uri),
-    createDirectory: (uri) => holder.provider.createDirectory(uri),
-    readFile: (uri) => holder.provider.readFile(uri),
-    writeFile: (uri, content, opts) => holder.provider.writeFile(uri, content, opts),
-    delete: (uri, opts) => holder.provider.delete(uri, opts),
-    rename: (oldUri, newUri, opts) => holder.provider.rename(oldUri, newUri, opts),
+    stat: async (uri) => {
+      await ensureFs();
+      return holder.provider.stat(uri);
+    },
+    readDirectory: async (uri) => {
+      await ensureFs();
+      return holder.provider.readDirectory(uri);
+    },
+    createDirectory: async (uri) => {
+      await ensureFs();
+      return holder.provider.createDirectory(uri);
+    },
+    readFile: async (uri) => {
+      await ensureFs();
+      return holder.provider.readFile(uri);
+    },
+    writeFile: async (uri, content, opts) => {
+      await ensureFs();
+      return holder.provider.writeFile(uri, content, opts);
+    },
+    delete: async (uri, opts) => {
+      await ensureFs();
+      return holder.provider.delete(uri, opts);
+    },
+    rename: async (oldUri, newUri, opts) => {
+      await ensureFs();
+      return holder.provider.rename(oldUri, newUri, opts);
+    },
   };
 
   context.subscriptions.push(
@@ -52,34 +120,63 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  const seedFolder = async (uri: vscode.Uri) => {
+  /** Ensure folder exists; strip leftover hello.* seed samples; never auto-seed. */
+  const prepareFolder = async (uri: vscode.Uri) => {
+    await ensureFs();
     const id = workspaceIdFromFolder(uri) ?? 'default';
-    await holder.provider.seedIfEmpty(id);
+    if (await holder.provider.hasGit(id)) {
+      await holder.provider.notifyTree(id, uri);
+      return;
+    }
+    // Remove dogfood hello.js / hello.py samples from older builds
+    await holder.provider.clearSeedIfOnlySamples(id);
+    await holder.provider.ensureWorkspaceRoot(id);
   };
 
-  const fsReady = (async () => {
+  void (async () => {
     try {
       const info = await createDefaultFsInfo();
       holder.provider.setFs(info.fs as AgentFs, storageLabel(info.kind));
-    } catch {
-      /* keep IDB */
+    } catch (err) {
+      console.warn('[zcode-browser-fs] createDefaultFsInfo failed, keeping IDB', err);
+    } finally {
+      fsReadyDone = true;
+      fsReadyResolve();
     }
+    // Re-notify any open folders so Explorer re-lists on the real backend
     for (const f of vscode.workspace.workspaceFolders ?? []) {
-      if (f.uri.scheme === SCHEME) void seedFolder(f.uri);
+      if (f.uri.scheme === SCHEME) {
+        const id = workspaceIdFromFolder(f.uri) ?? 'default';
+        try {
+          await prepareFolder(f.uri);
+          await holder.provider.notifyTree(id, f.uri);
+        } catch {
+          holder.provider.notifyChanged(f.uri, vscode.FileChangeType.Changed);
+        }
+      }
     }
+    await refreshExplorer();
   })();
-
-  for (const f of vscode.workspace.workspaceFolders ?? []) {
-    if (f.uri.scheme === SCHEME) void seedFolder(f.uri);
-  }
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders((e) => {
       for (const f of e.added) {
-        if (f.uri.scheme === SCHEME) void seedFolder(f.uri);
+        if (f.uri.scheme === SCHEME) {
+          void (async () => {
+            await prepareFolder(f.uri);
+            const id = workspaceIdFromFolder(f.uri) ?? 'default';
+            await holder.provider.notifyTree(id, f.uri);
+            await refreshExplorer();
+          })();
+        }
       }
     }),
   );
+
+  const isWorkspaceOpen = (id: string): boolean =>
+    (vscode.workspace.workspaceFolders ?? []).some(
+      (f) => f.uri.scheme === SCHEME && workspaceIdFromFolder(f.uri) === id,
+    );
 
   /**
    * Open (or switch to) a zcode-opfs workspace and refresh Explorer.
@@ -87,33 +184,38 @@ export function activate(context: vscode.ExtensionContext): void {
    */
   const revealWorkspace = async (
     workspaceId: string,
-    opts?: { name?: string; seedIfEmpty?: boolean },
-  ): Promise<void> => {
-    await fsReady;
+    opts?: { name?: string; seedIfEmpty?: boolean; allowReload?: boolean },
+  ): Promise<boolean> => {
+    await ensureFs();
     const id = workspaceId || 'default';
-    if (opts?.seedIfEmpty !== false) {
-      // Only seed empty default sample workspaces; never wipe a clone
-      if (opts?.seedIfEmpty === true) {
-        await holder.provider.seedIfEmpty(id);
-      } else {
-        // seed only if truly empty (seedIfEmpty already checks hasContent)
-        await holder.provider.seedIfEmpty(id);
-      }
+    // seedIfEmpty is legacy; startup no longer seeds. Explicit seed uses seedSample command.
+    await holder.provider.ensureWorkspaceRoot(id);
+
+    // Remember for reopen / multi-project switch (OPFS/IDB holds the bytes)
+    try {
+      globalThis.localStorage?.setItem('zcode.lastWorkspaceId', id);
+    } catch {
+      /* private mode */
     }
+
     const uri = folderUriFor(id);
-    // Refresh provider watchers / explorer
-    holder.provider.notifyChanged(uri, vscode.FileChangeType.Changed);
+
+    // Prove the provider can see the tree (and log if not — dual-FS regression)
+    let entryCount = 0;
     try {
       const names = await holder.provider.readDirectory(uri);
-      for (const [name] of names.slice(0, 50)) {
-        holder.provider.notifyChanged(
-          vscode.Uri.joinPath(uri, name),
-          vscode.FileChangeType.Created,
-        );
-      }
-    } catch {
-      /* empty or not yet visible */
+      entryCount = names.length;
+      console.info(
+        `[zcode-browser-fs] revealWorkspace ${id}: ${entryCount} top-level entries`,
+        names.slice(0, 12).map(([n]) => n),
+      );
+    } catch (err) {
+      console.warn(`[zcode-browser-fs] revealWorkspace ${id}: readDirectory failed`, err);
     }
+
+    // Always fire full tree events so Explorer rebuilds after external clone writes
+    const fileCount = await holder.provider.notifyTree(id, uri);
+    console.info(`[zcode-browser-fs] revealWorkspace ${id}: notified ${fileCount} files`);
 
     const name = opts?.name ?? id.slice(0, 24);
     const folders = vscode.workspace.workspaceFolders ?? [];
@@ -122,33 +224,73 @@ export function activate(context: vscode.ExtensionContext): void {
     );
 
     if (existingIdx >= 0) {
-      // Already open — still fire refresh (Explorer can lag after clone)
-      holder.provider.notifyChanged(uri, vscode.FileChangeType.Changed);
+      await refreshExplorer();
       try {
         await vscode.commands.executeCommand('revealInExplorer', uri);
       } catch {
         /* ignore */
       }
-      return;
+      return true;
     }
 
     // Prefer in-place folder swap (avoids full reload when possible)
-    const ok = vscode.workspace.updateWorkspaceFolders(
-      0,
-      folders.length,
-      { uri, name },
-    );
-    if (!ok) {
+    const ok = vscode.workspace.updateWorkspaceFolders(0, folders.length, { uri, name });
+    if (ok) {
+      // Wait for folder change event (async in VS Code)
+      await new Promise<void>((resolve) => {
+        const sub = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+          sub.dispose();
+          resolve();
+        });
+        setTimeout(() => {
+          sub.dispose();
+          resolve();
+        }, 500);
+      });
+      if (isWorkspaceOpen(id)) {
+        await holder.provider.notifyTree(id, uri);
+        await refreshExplorer();
+        try {
+          await vscode.commands.executeCommand('revealInExplorer', uri);
+        } catch {
+          /* ignore */
+        }
+        // If still empty after switch, hard-reload so folderUri boots correctly
+        if (entryCount === 0 && fileCount === 0 && opts?.allowReload !== false) {
+          console.info(
+            `[zcode-browser-fs] workspace ${id} open but empty after swap; reloading`,
+          );
+          reloadWithWorkspace(id);
+          return false;
+        }
+        return true;
+      }
+    }
+
+    // openFolder on web often no-ops for custom schemes; try then verify
+    try {
       await vscode.commands.executeCommand('vscode.openFolder', uri, {
         forceReuseWindow: true,
       });
-    } else {
-      try {
-        await vscode.commands.executeCommand('revealInExplorer', uri);
-      } catch {
-        /* ignore */
-      }
+    } catch {
+      /* ignore */
     }
+    await new Promise((r) => setTimeout(r, 150));
+    if (isWorkspaceOpen(id)) {
+      await holder.provider.notifyTree(id, uri);
+      await refreshExplorer();
+      return true;
+    }
+
+    // Last resort: reload workbench with ?workspace=<id>
+    if (opts?.allowReload !== false) {
+      console.info(
+        `[zcode-browser-fs] folder switch failed for ${id}; reloading with ?workspace=`,
+      );
+      reloadWithWorkspace(id);
+      return false;
+    }
+    return false;
   };
 
   const openVirtualWorkspace = async (workspaceId?: string) => {
@@ -160,7 +302,7 @@ export function activate(context: vscode.ExtensionContext): void {
         value: 'default',
       }));
     if (id == null) return;
-    await revealWorkspace(id || 'default', { seedIfEmpty: true, name: id || 'default' });
+    await revealWorkspace(id || 'default', { seedIfEmpty: false, name: id || 'default' });
   };
 
   context.subscriptions.push(
@@ -168,21 +310,60 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       'zcode.fs.revealWorkspace',
       (workspaceId: string, name?: string) =>
-        revealWorkspace(workspaceId, { name, seedIfEmpty: false }),
+        revealWorkspace(workspaceId, { name, seedIfEmpty: false, allowReload: true }),
     ),
+    // Silent wait for OPFS/IDB upgrade (clone calls this — do not toast)
+    vscode.commands.registerCommand('zcode.fs.ready', async () => {
+      await ensureFs();
+      return holder.provider.storageLabel;
+    }),
+    // Debug: force re-list current folder
+    vscode.commands.registerCommand('zcode.fs.refreshExplorer', async () => {
+      await ensureFs();
+      for (const f of vscode.workspace.workspaceFolders ?? []) {
+        if (f.uri.scheme !== SCHEME) continue;
+        const id = workspaceIdFromFolder(f.uri) ?? 'default';
+        await holder.provider.notifyTree(id, f.uri);
+      }
+      await refreshExplorer();
+    }),
   );
 
-  // If workbench failed to open folderUri (common race), open default once provider is ready.
+  // If workbench failed to open folderUri (common race), open last/default once provider is ready.
   void (async () => {
     try {
-      await fsReady;
+      await ensureFs();
       await new Promise((r) => setTimeout(r, 300));
       const folders = vscode.workspace.workspaceFolders ?? [];
       const hasOpfs = folders.some((f) => f.uri.scheme === SCHEME);
       if (!hasOpfs) {
         const params = new URLSearchParams(globalThis.location?.search ?? '');
-        const ws = params.get('workspace') || 'default';
-        await revealWorkspace(ws, { seedIfEmpty: true, name: ws });
+        let last = '';
+        try {
+          last = globalThis.localStorage?.getItem('zcode.lastWorkspaceId')?.trim() || '';
+        } catch {
+          /* private mode */
+        }
+        const ws = params.get('workspace') || last || 'default';
+        await revealWorkspace(ws, {
+          seedIfEmpty: false,
+          name: ws,
+          allowReload: false,
+        });
+      } else {
+        // Folder already open from product.json — clean seed leftovers + re-notify
+        for (const f of folders) {
+          if (f.uri.scheme !== SCHEME) continue;
+          const id = workspaceIdFromFolder(f.uri) ?? 'default';
+          try {
+            globalThis.localStorage?.setItem('zcode.lastWorkspaceId', id);
+          } catch {
+            /* ignore */
+          }
+          await prepareFolder(f.uri);
+          await holder.provider.notifyTree(id, f.uri);
+        }
+        await refreshExplorer();
       }
     } catch (err) {
       console.warn('[zcode-browser-fs] auto-open workspace failed', err);
@@ -191,17 +372,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('zcode.fs.seedSample', async () => {
-      await fsReady;
+      await ensureFs();
       const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
       if (folder?.scheme !== SCHEME) {
         void vscode.window.showWarningMessage('Open a zcode-opfs folder first.');
         return;
       }
       const id = workspaceIdFromFolder(folder) ?? 'default';
-      await holder.provider.seedIfEmpty(id);
-      holder.provider.notifyChanged(folder, vscode.FileChangeType.Changed);
+      await holder.provider.seedSample(id, { force: true });
+      await holder.provider.notifyTree(id, folder);
+      await refreshExplorer();
       void vscode.window.showInformationMessage(
-        `Workspace ${id} ready (${holder.provider.storageLabel}; shared with SPA).`,
+        `Sample files added to ${id} (${holder.provider.storageLabel}).`,
       );
     }),
   );
@@ -215,7 +397,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('zcode.fs.storageInfo', async () => {
-      await fsReady;
+      await ensureFs();
       void vscode.window.showInformationMessage(`ZCode FS: ${holder.provider.storageLabel}`);
     }),
   );

@@ -1,7 +1,10 @@
 packages:
   - "packages/*"
   - "apps/*"
-  - "extensions/*"
+  # Only product extensions — marketplace themes (vscode-icons, github-vscode-theme)
+  # are staged under extensions/ by scripts/fetch-theme-extensions.sh and must not
+  # join the pnpm workspace.
+  - "extensions/zcode-*"
   - "e2e"
 
 # pnpm 11: allow lifecycle scripts for native bundler

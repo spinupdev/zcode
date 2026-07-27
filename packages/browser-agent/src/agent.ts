@@ -69,8 +69,10 @@ export class ZCodeBrowserAgent implements BrowserAgent {
             id?: string;
             name?: string;
             createdAt?: string;
+            origin?: string;
           };
           this.store.create(meta.name ?? id, id);
+          if (meta.origin) this.store.setOrigin(id, meta.origin);
         } catch {
           this.store.create(id, id);
         }
